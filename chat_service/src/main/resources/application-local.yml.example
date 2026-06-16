@@ -1,0 +1,16 @@
+﻿server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ditto_chat
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/ditto_chat
+  kafka:
+    bootstrap-servers: localhost:9092

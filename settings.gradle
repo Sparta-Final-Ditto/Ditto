@@ -1,1 +1,9 @@
-rootProject.name = 'ditto'
+﻿rootProject.name = 'ditto'
+
+include 'common'
+include 'api-gateway'
+include 'user_service'
+include 'feed_service'
+include 'match_service'
+include 'chat_service'
+include 'notification_service'

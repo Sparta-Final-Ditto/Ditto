@@ -1,5 +1,6 @@
-README.md
-.md
+*.md
+!README.md
+
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar
@@ -36,3 +37,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Local profile — contains secrets, never commit ###
+**/application-local.yml

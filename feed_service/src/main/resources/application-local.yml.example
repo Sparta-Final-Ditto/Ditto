@@ -1,0 +1,27 @@
+﻿server:
+  port: 8082
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ditto_feed
+    username: postgres
+    password: postgres
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  kafka:
+    bootstrap-servers: localhost:9092
+
+cloud:
+  aws:
+    s3:
+      bucket: ditto-media-local
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: your-access-key
+      secret-key: your-secret-key
