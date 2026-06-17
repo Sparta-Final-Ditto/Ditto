@@ -40,3 +40,14 @@ out/
 
 ### Local profile — contains secrets, never commit ###
 **/application-local.yml
+
+### Python ###
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.egg-info/
+dist/
+.pytest_cache/
