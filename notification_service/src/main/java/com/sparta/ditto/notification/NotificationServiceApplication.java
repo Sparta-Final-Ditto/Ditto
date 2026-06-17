@@ -1,4 +1,4 @@
-﻿package com.sparta.ditto.notification;
+package com.sparta.ditto.notification;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

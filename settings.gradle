@@ -1,4 +1,4 @@
-﻿rootProject.name = 'ditto'
+rootProject.name = 'ditto'
 
 include 'common'
 include 'api-gateway'

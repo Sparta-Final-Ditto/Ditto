@@ -1,4 +1,4 @@
-﻿package com.sparta.ditto.user;
+package com.sparta.ditto.user;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

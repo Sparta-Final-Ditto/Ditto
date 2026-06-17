@@ -1,4 +1,4 @@
-﻿package com.sparta.ditto.gateway;
+package com.sparta.ditto.gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
