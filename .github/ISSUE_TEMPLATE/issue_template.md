@@ -6,7 +6,7 @@ labels: ''
 assignees: ''
 ---
 ## 💡 Issue 제목
-> 예: [Chore] 로그인 API 구현
+> 예: [Feat] 로그인 API 구현
 
 ## 📄 설명
 설명을 작성해 주세요.
