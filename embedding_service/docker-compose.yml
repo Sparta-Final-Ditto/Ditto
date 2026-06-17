@@ -1,0 +1,20 @@
+services:
+  embedding-db:
+    image: pgvector/pgvector:pg16
+    container_name: embedding-db
+    environment:
+      POSTGRES_USER: embedding_user
+      POSTGRES_PASSWORD: embedding_pwd
+      POSTGRES_DB: embedding_db
+    ports:
+      - "5434:5432"
+    volumes:
+      - embedding_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U embedding_user -d embedding_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  embedding_db_data:
