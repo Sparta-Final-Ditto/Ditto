@@ -29,5 +29,5 @@ spring:
       properties:
         spring.json.trusted.packages: "com.sparta.ditto.*"
 
-ai-service:
-  url: ${AI_SERVICE_URL}
+embedding-service:
+  url: ${EMBEDDING_SERVICE_URL}

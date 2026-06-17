@@ -7,7 +7,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Ditto AI Service", version="0.0.1", lifespan=lifespan)
+app = FastAPI(title="Ditto Embedding Service", version="0.0.1", lifespan=lifespan)
 
 
 @app.get("/health")
