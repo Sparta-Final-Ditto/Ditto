@@ -1,4 +1,4 @@
-﻿package com.sparta.ditto.feed;
+package com.sparta.ditto.feed;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
