@@ -9,43 +9,84 @@ jobs:
     if: github.event.action == 'opened'
     runs-on: ubuntu-latest
     steps:
+      - name: Build description
+        id: desc
+        env:
+          REVIEWERS: ${{ join(github.event.pull_request.requested_reviewers.*.login, ', ') }}
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ', ') }}
+        run: |
+          {
+            echo 'content<<EOF'
+            echo "**${{ github.event.pull_request.title }}**"
+            echo "작성자: ${{ github.event.pull_request.user.login }}"
+            echo "브랜치: \`${{ github.event.pull_request.head.ref }}\` → \`${{ github.event.pull_request.base.ref }}\`"
+            echo "커밋: ${{ github.event.pull_request.commits }}개 · 파일: ${{ github.event.pull_request.changed_files }}개 변경 (+${{ github.event.pull_request.additions }} / -${{ github.event.pull_request.deletions }})"
+            [ -n "$REVIEWERS" ] && echo "리뷰어: $REVIEWERS"
+            [ -n "$LABELS" ] && echo "라벨: $LABELS"
+            echo "${{ github.event.pull_request.html_url }}"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
       - name: PR 생성 알림
         uses: sarisia/actions-status-discord@v1
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_PR }}
           title: "🔵 PR 생성됨"
-          description: |
-            **${{ github.event.pull_request.title }}**
-            작성자: ${{ github.event.pull_request.user.login }}
-            ${{ github.event.pull_request.html_url }}
+          description: ${{ steps.desc.outputs.content }}
           color: "0x5865F2"
 
   notify-merged:
     if: github.event.action == 'closed' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
+      - name: Build description
+        id: desc
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ', ') }}
+        run: |
+          {
+            echo 'content<<EOF'
+            echo "**${{ github.event.pull_request.title }}**"
+            echo "작성자: ${{ github.event.pull_request.user.login }}"
+            echo "브랜치: \`${{ github.event.pull_request.head.ref }}\` → \`${{ github.event.pull_request.base.ref }}\`"
+            echo "커밋: ${{ github.event.pull_request.commits }}개 · 파일: ${{ github.event.pull_request.changed_files }}개 변경 (+${{ github.event.pull_request.additions }} / -${{ github.event.pull_request.deletions }})"
+            [ -n "$LABELS" ] && echo "라벨: $LABELS"
+            echo "${{ github.event.pull_request.html_url }}"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
       - name: PR 머지 알림
         uses: sarisia/actions-status-discord@v1
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_PR }}
           title: "✅ PR 머지됨"
-          description: |
-            **${{ github.event.pull_request.title }}**
-            작성자: ${{ github.event.pull_request.user.login }}
-            ${{ github.event.pull_request.html_url }}
+          description: ${{ steps.desc.outputs.content }}
           color: "0x57F287"
 
   notify-closed-without-merge:
     if: github.event.action == 'closed' && github.event.pull_request.merged == false
     runs-on: ubuntu-latest
     steps:
+      - name: Build description
+        id: desc
+        env:
+          LABELS: ${{ join(github.event.pull_request.labels.*.name, ', ') }}
+        run: |
+          {
+            echo 'content<<EOF'
+            echo "**${{ github.event.pull_request.title }}**"
+            echo "작성자: ${{ github.event.pull_request.user.login }}"
+            echo "브랜치: \`${{ github.event.pull_request.head.ref }}\` → \`${{ github.event.pull_request.base.ref }}\`"
+            echo "커밋: ${{ github.event.pull_request.commits }}개 · 파일: ${{ github.event.pull_request.changed_files }}개 변경 (+${{ github.event.pull_request.additions }} / -${{ github.event.pull_request.deletions }})"
+            [ -n "$LABELS" ] && echo "라벨: $LABELS"
+            echo "${{ github.event.pull_request.html_url }}"
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
       - name: PR 닫힘 (머지 안 됨) 알림
         uses: sarisia/actions-status-discord@v1
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK_PR }}
           title: "❌ PR 닫힘 (머지 안 됨)"
-          description: |
-            **${{ github.event.pull_request.title }}**
-            작성자: ${{ github.event.pull_request.user.login }}
-            ${{ github.event.pull_request.html_url }}
+          description: ${{ steps.desc.outputs.content }}
           color: "0xED4245"
