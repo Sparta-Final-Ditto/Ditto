@@ -33,6 +33,7 @@ jobs:
           webhook: ${{ secrets.DISCORD_WEBHOOK_PR }}
           title: "🔵 PR 생성됨"
           description: ${{ steps.desc.outputs.content }}
+          nodetail: true
           color: "0x5865F2"
 
   notify-merged:
@@ -61,6 +62,7 @@ jobs:
           webhook: ${{ secrets.DISCORD_WEBHOOK_PR }}
           title: "✅ PR 머지됨"
           description: ${{ steps.desc.outputs.content }}
+          nodetail: true
           color: "0x57F287"
 
   notify-closed-without-merge:
@@ -89,4 +91,5 @@ jobs:
           webhook: ${{ secrets.DISCORD_WEBHOOK_PR }}
           title: "❌ PR 닫힘 (머지 안 됨)"
           description: ${{ steps.desc.outputs.content }}
+          nodetail: true
           color: "0xED4245"
