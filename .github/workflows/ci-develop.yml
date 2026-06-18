@@ -10,58 +10,17 @@ permissions:
   contents: read
 
 jobs:
-  checkstyle:
-    name: Checkstyle
-    runs-on: ubuntu-latest
-    outputs:
-      has_violations: ${{ steps.check_violations.outputs.has_violations }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
-
-      - name: Run Checkstyle
-        run: ./gradlew checkstyleMain --continue
-
-      - name: Check for violations
-        id: check_violations
-        if: always()
-        run: |
-          if find . -path '*/build/reports/checkstyle/main.xml' -exec grep -l '<error ' {} \; | grep -q .; then
-            echo "has_violations=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_violations=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Upload Checkstyle Reports
-        if: always() && steps.check_violations.outputs.has_violations == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: checkstyle-reports
-          path: '**/build/reports/checkstyle/'
-          retention-days: 3
-
-  test:
-    name: Unit Test & Coverage
+  detect:
+    name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.changes.outputs.skip }}
+      modules: ${{ steps.changes.outputs.modules }}
       all_modules: ${{ steps.changes.outputs.all_modules }}
-      service_results: ${{ steps.test_run.outputs.service_results }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'gradle'
 
       - name: Detect changed services
         id: changes
@@ -75,7 +34,6 @@ jobs:
           echo "=== Changed files ==="
           echo "$CHANGED"
 
-          # settings.gradle에서 서비스 목록 동적 추출 (common 제외)
           ALL_SERVICES=$(grep "^include " settings.gradle | sed "s/include '//;s/'//" | grep -v "^common$" | tr '\n' ' ' | xargs)
           echo "=== All services: [$ALL_SERVICES] ==="
 
@@ -102,15 +60,74 @@ jobs:
             echo "modules=$MODULES" >> $GITHUB_OUTPUT
           fi
 
-      - name: No service changes — skip
-        if: steps.changes.outputs.skip == 'true'
-        run: echo "변경된 서비스 없음 — 유닛 테스트 스킵"
+  checkstyle:
+    name: Checkstyle
+    runs-on: ubuntu-latest
+    needs: [detect]
+    if: needs.detect.outputs.skip != 'true'
+    outputs:
+      checkstyle_results: ${{ steps.run_checkstyle.outputs.checkstyle_results }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Run Checkstyle per service
+        id: run_checkstyle
+        run: |
+          MODULES="${{ needs.detect.outputs.modules }}"
+          RESULTS=""
+
+          for m in $MODULES; do
+            ./gradlew :${m}:checkstyleMain
+
+            if find "${m}/build/reports/checkstyle" -name "main.xml" -exec grep -l '<error ' {} \; 2>/dev/null | grep -q .; then
+              STATUS="failure"
+            else
+              STATUS="success"
+            fi
+
+            if [ -z "$RESULTS" ]; then
+              RESULTS="${m}=${STATUS}"
+            else
+              RESULTS="${RESULTS}|${m}=${STATUS}"
+            fi
+          done
+
+          echo "checkstyle_results=$RESULTS" >> $GITHUB_OUTPUT
+
+      - name: Upload Checkstyle Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkstyle-reports
+          path: '**/build/reports/checkstyle/'
+          retention-days: 3
+
+  test:
+    name: Unit Test & Coverage
+    runs-on: ubuntu-latest
+    needs: [detect]
+    if: needs.detect.outputs.skip != 'true'
+    outputs:
+      service_results: ${{ steps.test_run.outputs.service_results }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
 
       - name: Run Tests & Coverage Check (≥70%)
         id: test_run
-        if: steps.changes.outputs.skip != 'true'
         run: |
-          MODULES="${{ steps.changes.outputs.modules }}"
+          MODULES="${{ needs.detect.outputs.modules }}"
           RESULTS=""
           OVERALL_EXIT=0
 
@@ -133,7 +150,7 @@ jobs:
           exit $OVERALL_EXIT
 
       - name: Upload JaCoCo HTML Reports
-        if: always() && steps.changes.outputs.skip != 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-reports-${{ github.run_number }}
@@ -141,7 +158,7 @@ jobs:
           retention-days: 7
 
       - name: Upload Test Results
-        if: always() && steps.changes.outputs.skip != 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-${{ github.run_number }}
@@ -151,18 +168,17 @@ jobs:
   notify:
     name: Discord Notification
     runs-on: ubuntu-latest
-    needs: [checkstyle, test]
+    needs: [detect, checkstyle, test]
     if: always()
     steps:
       - name: Send Result to Discord
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          CHECKSTYLE_RESULT: ${{ needs.checkstyle.result }}
-          CS_HAS_VIOLATIONS: ${{ needs.checkstyle.outputs.has_violations }}
           TEST_RESULT: ${{ needs.test.result }}
-          TEST_SKIP: ${{ needs.test.outputs.skip }}
+          TEST_SKIP: ${{ needs.detect.outputs.skip }}
+          ALL_MODULES: ${{ needs.detect.outputs.all_modules }}
           SERVICE_RESULTS: ${{ needs.test.outputs.service_results }}
-          ALL_MODULES: ${{ needs.test.outputs.all_modules }}
+          CHECKSTYLE_RESULTS: ${{ needs.checkstyle.outputs.checkstyle_results }}
           BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
           ACTOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -178,39 +194,32 @@ jobs:
             STATUS="❌ 실패"
           fi
 
-          if [ "$CS_HAS_VIOLATIONS" = "true" ]; then
-            CS_ICON="⚠️"
-            CS_TEXT="경고 (위반 있음)"
-          else
-            CS_ICON="✅"
-            CS_TEXT="통과"
-          fi
-
-          # 모듈명 → 표시용 레이블 (snake_case·kebab-case → Title Case)
           service_label() {
             echo "$1" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
           }
 
-          # 유닛 테스트 필드 구성 — 전체 서비스 항상 표시, 감지 안된건 스킵
-          TEST_FIELDS=""
+          SERVICE_FIELDS=""
+
           for module in $ALL_MODULES; do
             label=$(service_label "$module")
-            svc_status=$(echo "$SERVICE_RESULTS" | tr '|' '\n' | grep "^${module}=" | cut -d'=' -f2)
-            if [ -z "$svc_status" ]; then
-              icon="⏭️"
-              result_text="스킵"
-            elif [ "$svc_status" = "success" ]; then
-              icon="✅"
-              result_text="성공 (≥70%)"
+            test_status=$(echo "$SERVICE_RESULTS" | tr '|' '\n' | grep "^${module}=" | cut -d'=' -f2)
+            cs_status=$(echo "$CHECKSTYLE_RESULTS" | tr '|' '\n' | grep "^${module}=" | cut -d'=' -f2)
+
+            if [ -z "$test_status" ] && [ -z "$cs_status" ]; then
+              value="⏭️ 스킵"
             else
-              icon="❌"
-              result_text="실패"
+              test_icon=$([ "$test_status" = "success" ] && echo "✅" || echo "❌")
+              test_text=$([ "$test_status" = "success" ] && echo "성공 (≥70%)" || echo "실패")
+              cs_icon=$([ "$cs_status" = "success" ] && echo "✅" || echo "⚠️")
+              cs_text=$([ "$cs_status" = "success" ] && echo "통과" || echo "경고 (위반 있음)")
+              value="Unit Test: ${test_icon} ${test_text}\nCheckstyle: ${cs_icon} ${cs_text}"
             fi
-            field="{\"name\": \"${label}\", \"value\": \"${icon} ${result_text}\", \"inline\": true}"
-            if [ -z "$TEST_FIELDS" ]; then
-              TEST_FIELDS="$field"
+
+            field="{\"name\": \"${label}\", \"value\": \"${value}\", \"inline\": false}"
+            if [ -z "$SERVICE_FIELDS" ]; then
+              SERVICE_FIELDS="$field"
             else
-              TEST_FIELDS="${TEST_FIELDS},${field}"
+              SERVICE_FIELDS="${SERVICE_FIELDS},${field}"
             fi
           done
 
@@ -225,8 +234,7 @@ jobs:
               "fields": [
                 {"name": "브랜치", "value": "\`${BRANCH}\`", "inline": true},
                 {"name": "작성자", "value": "\`${ACTOR}\`", "inline": true},
-                {"name": "Checkstyle", "value": "${CS_ICON} ${CS_TEXT}", "inline": false},
-                ${TEST_FIELDS}
+                ${SERVICE_FIELDS}
               ],
               "footer": {"text": "GitHub Actions CI · develop"}
             }]
