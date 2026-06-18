@@ -24,7 +24,18 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Check for test files
+        id: check_tests
+        run: |
+          TEST_FILES=$(find embedding_service -name "test_*.py" -o -name "*_test.py" 2>/dev/null | head -1)
+          if [ -z "$TEST_FILES" ]; then
+            echo "found=false" >> $GITHUB_OUTPUT
+          else
+            echo "found=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Cache virtualenv
+        if: steps.check_tests.outputs.found == 'true'
         id: cache-venv
         uses: actions/cache@v4
         with:
@@ -32,7 +43,7 @@ jobs:
           key: venv-${{ runner.os }}-${{ hashFiles('embedding_service/requirements*.txt') }}
 
       - name: Install dependencies
-        if: steps.cache-venv.outputs.cache-hit != 'true'
+        if: steps.check_tests.outputs.found == 'true' && steps.cache-venv.outputs.cache-hit != 'true'
         run: |
           python -m venv .venv
           .venv/bin/pip install --upgrade pip
@@ -42,8 +53,7 @@ jobs:
       - name: Run Tests & Coverage
         id: test_run
         run: |
-          TEST_FILES=$(find embedding_service -name "test_*.py" -o -name "*_test.py" 2>/dev/null | head -1)
-          if [ -z "$TEST_FILES" ]; then
+          if [ "${{ steps.check_tests.outputs.found }}" = "false" ]; then
             echo "테스트 파일 없음 — 스킵"
             echo "result=skipped" >> $GITHUB_OUTPUT
           elif .venv/bin/pytest embedding_service/ \
