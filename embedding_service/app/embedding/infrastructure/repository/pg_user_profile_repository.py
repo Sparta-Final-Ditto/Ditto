@@ -1,0 +1,53 @@
+from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.common.db.models import UserProfileEmbedding
+from app.embedding.domain.model.user_profile import UserProfile
+from app.embedding.domain.repository.user_profile_repository import UserProfileRepository
+
+
+class PgUserProfileRepository(UserProfileRepository):
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def find_by_user_id(self, user_id: UUID) -> UserProfile | None:
+        row = await self.db.get(UserProfileEmbedding, user_id)
+        if row is None:
+            return None
+        return self._to_domain(row)
+
+    async def upsert(
+        self,
+        user_id: UUID,
+        vector: list[float],
+        record_count: int,
+        active: bool,
+        last_processed_record_id: UUID | None = None,
+    ) -> None:
+        row = await self.db.get(UserProfileEmbedding, user_id)
+        if row:
+            row.vector = vector
+            row.record_count = record_count
+            row.active = active
+            row.last_processed_record_id = last_processed_record_id
+        else:
+            self.db.add(UserProfileEmbedding(
+                user_id=user_id,
+                vector=vector,
+                record_count=record_count,
+                active=active,
+                last_processed_record_id=last_processed_record_id,
+            ))
+        await self.db.commit()
+
+    @staticmethod
+    def _to_domain(row: UserProfileEmbedding) -> UserProfile:
+        return UserProfile(
+            user_id=row.user_id,
+            vector=row.vector,
+            record_count=row.record_count,
+            active=row.active,
+            last_processed_record_id=row.last_processed_record_id,
+            updated_at=row.updated_at,
+            created_at=row.created_at,
+        )
