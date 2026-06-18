@@ -1,6 +1,7 @@
 package com.sparta.ditto.common.exception;
 
 import com.sparta.ditto.common.response.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -33,8 +34,20 @@ public class GlobalExceptionHandler {
                         errors));
     }
 
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(ConstraintViolationException e) {
+        List<String> errors = e.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .toList();
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(400,
+                        "[%s] %s".formatted(CommonErrorCode.INVALID_INPUT.getCode(), CommonErrorCode.INVALID_INPUT.getMessage()),
+                        errors));
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception ignored) {
         return ResponseEntity
                 .internalServerError()
                 .body(ApiResponse.error(500,
