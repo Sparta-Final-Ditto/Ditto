@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+    "-//Checkstyle//DTD SuppressionFilter Configuration 1.0//EN"
+    "https://checkstyle.org/dtds/suppressions_1_0.dtd">
+<suppressions>
+  <!-- 테스트 코드는 네이밍·스타일 검사 완화 -->
+  <suppress files=".*[/\\]test[/\\].*\.java"
+      checks="MemberName|MethodName|ParameterName|LocalVariableName|WhitespaceAround|EmptyLineSeparator"/>
+</suppressions>
