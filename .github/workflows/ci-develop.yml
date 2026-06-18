@@ -160,7 +160,10 @@ jobs:
           ACTOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [[ "$TEST_RESULT" == "success" ]]; then
+          if [[ "$TEST_SKIP" == "true" ]]; then
+            COLOR=9807270
+            STATUS="⏭️ 스킵"
+          elif [[ "$TEST_RESULT" == "success" ]]; then
             COLOR=3066993
             STATUS="✅ 성공"
           else
