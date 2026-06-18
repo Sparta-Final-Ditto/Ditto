@@ -13,6 +13,7 @@ from app.config.settings import settings
 from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
+from app.embedding.presentation.router.embedding_router import router as embedding_router
 
 TAGS_METADATA = [
     {
@@ -52,3 +53,4 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix="/health")
+app.include_router(embedding_router, prefix="/api/v1/embedding")
