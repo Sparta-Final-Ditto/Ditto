@@ -1,5 +1,11 @@
 apply plugin: 'org.springframework.boot'
 
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
+    maven { url 'https://repo.spring.io/snapshot' }
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -8,4 +14,15 @@ dependencies {
     implementation 'com.pgvector:pgvector:0.1.6'
     runtimeOnly 'org.postgresql:postgresql'
     implementation project(':common')
+
+    // OpenFeign
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:4.2.1'
+
+    // Spring AI
+    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M6'
+    implementation 'org.springframework.ai:spring-ai-pgvector-store-spring-boot-starter:1.0.0-M6'
+
+    // Test
+    testImplementation 'org.testcontainers:postgresql:1.19.0'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
 }
