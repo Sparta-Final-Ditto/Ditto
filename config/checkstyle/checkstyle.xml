@@ -1,0 +1,131 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+    "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+    "https://checkstyle.org/dtds/configuration_1_3.dtd">
+<module name="Checker">
+  <property name="charset" value="UTF-8"/>
+  <property name="severity" value="error"/>
+  <property name="fileExtensions" value="java"/>
+
+  <module name="SuppressionFilter">
+    <property name="file" value="${config_loc}/suppressions.xml"/>
+    <property name="optional" value="true"/>
+  </module>
+
+  <!-- 파일 끝 개행 -->
+  <module name="NewlineAtEndOfFile"/>
+
+  <!-- 탭 문자 금지 (공백만 허용) -->
+  <module name="FileTabCharacter">
+    <property name="eachLine" value="true"/>
+  </module>
+
+  <!-- 한 줄 최대 100자, import/package/URL 제외 -->
+  <module name="LineLength">
+    <property name="max" value="100"/>
+    <property name="ignorePattern" value="^package.*|^import.*|a href|href|http://|https://|ftp://"/>
+  </module>
+
+  <!-- ===== 파일명 규칙 (RegexpOnFilename) =====
+       match=false : 해당 폴더 내 파일이 패턴에 불일치할 때 위반으로 처리
+  -->
+  <!-- dto/request/ → 반드시 {도메인}{용도}Request.java -->
+  <module name="RegexpOnFilename">
+    <property name="folderPattern" value=".*[/\\]dto[/\\]request[/\\]"/>
+    <property name="fileNamePattern" value="^[A-Z][a-zA-Z]+Request\.java$"/>
+    <property name="match" value="false"/>
+    <message key="regexp.filename.mismatch"
+        value="Request DTO 파일명은 '도메인+용도+Request.java' 형식이어야 합니다. (예: UserCreateRequest.java)"/>
+  </module>
+
+  <!-- dto/response/ → 반드시 {도메인}{용도}Response.java -->
+  <module name="RegexpOnFilename">
+    <property name="folderPattern" value=".*[/\\]dto[/\\]response[/\\]"/>
+    <property name="fileNamePattern" value="^[A-Z][a-zA-Z]+Response\.java$"/>
+    <property name="match" value="false"/>
+    <message key="regexp.filename.mismatch"
+        value="Response DTO 파일명은 '도메인+용도+Response.java' 형식이어야 합니다. (예: UserCreateResponse.java)"/>
+  </module>
+
+  <module name="TreeWalker">
+
+    <!-- ===== Import ===== -->
+    <module name="AvoidStarImport"/>
+    <module name="UnusedImports"/>
+    <module name="RedundantImport"/>
+    <!-- static import → 빈줄 → 일반 import (각 그룹 내 알파벳순) -->
+    <module name="CustomImportOrder">
+      <property name="sortImportsInGroupAlphabetically" value="true"/>
+      <property name="separateLineBetweenGroups" value="true"/>
+      <property name="customImportOrderRules" value="STATIC###THIRD_PARTY_PACKAGE"/>
+    </module>
+
+    <!-- ===== Naming ===== -->
+    <module name="PackageName">
+      <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+    </module>
+    <module name="TypeName"/>
+    <module name="ConstantName"/>
+    <module name="MethodName">
+      <property name="format" value="^[a-z][a-zA-Z0-9_]*$"/>
+    </module>
+    <module name="MemberName">
+      <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+    </module>
+    <module name="ParameterName">
+      <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+    </module>
+    <module name="LocalVariableName">
+      <property name="format" value="^[a-z][a-zA-Z0-9]*$"/>
+    </module>
+
+    <!-- ===== Braces (K&R style) ===== -->
+    <module name="NeedBraces"/>
+    <module name="LeftCurly"/>
+    <module name="RightCurly">
+      <property name="option" value="same"/>
+      <property name="tokens"
+          value="LITERAL_TRY, LITERAL_CATCH, LITERAL_FINALLY, LITERAL_IF, LITERAL_ELSE, LITERAL_DO"/>
+    </module>
+
+    <!-- ===== Whitespace ===== -->
+    <module name="WhitespaceAround">
+      <property name="allowEmptyConstructors" value="true"/>
+      <property name="allowEmptyLambdas" value="true"/>
+      <property name="allowEmptyMethods" value="true"/>
+      <property name="allowEmptyTypes" value="true"/>
+      <property name="allowEmptyLoops" value="true"/>
+    </module>
+    <module name="WhitespaceAfter"/>
+    <module name="NoWhitespaceBefore"/>
+    <module name="GenericWhitespace"/>
+    <module name="EmptyLineSeparator">
+      <property name="allowNoEmptyLineBetweenFields" value="true"/>
+    </module>
+    <module name="SeparatorWrap">
+      <property name="id" value="SeparatorWrapComma"/>
+      <property name="tokens" value="COMMA"/>
+      <property name="option" value="EOL"/>
+    </module>
+
+    <!-- ===== Coding ===== -->
+    <module name="OneStatementPerLine"/>
+    <module name="MultipleVariableDeclarations"/>
+    <module name="ArrayTypeStyle"/>
+    <module name="FallThrough"/>
+    <module name="UpperEll"/>
+    <module name="ModifierOrder"/>
+    <module name="NoLineWrap">
+      <property name="tokens" value="PACKAGE_DEF, IMPORT, STATIC_IMPORT"/>
+    </module>
+    <module name="EmptyCatchBlock">
+      <property name="exceptionVariableName" value="expected|ignored"/>
+    </module>
+    <module name="AnnotationLocation">
+      <property name="id" value="AnnotationLocationMostCases"/>
+      <property name="tokens"
+          value="CLASS_DEF, INTERFACE_DEF, ENUM_DEF, METHOD_DEF, CTOR_DEF"/>
+    </module>
+
+  </module>
+</module>
