@@ -13,6 +13,8 @@ jobs:
   checkstyle:
     name: Checkstyle
     runs-on: ubuntu-latest
+    outputs:
+      has_violations: ${{ steps.check_violations.outputs.has_violations }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,8 +27,18 @@ jobs:
       - name: Run Checkstyle
         run: ./gradlew checkstyleMain --continue
 
+      - name: Check for violations
+        id: check_violations
+        if: always()
+        run: |
+          if find . -path '*/build/reports/checkstyle/main.xml' -exec grep -l '<error ' {} \; | grep -q .; then
+            echo "has_violations=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_violations=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Upload Checkstyle Reports
-        if: failure()
+        if: always() && steps.check_violations.outputs.has_violations == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: checkstyle-reports
@@ -140,16 +152,15 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
           CHECKSTYLE_RESULT: ${{ needs.checkstyle.result }}
+          CS_HAS_VIOLATIONS: ${{ needs.checkstyle.outputs.has_violations }}
           TEST_RESULT: ${{ needs.test.result }}
           TEST_SKIP: ${{ needs.test.outputs.skip }}
           SERVICE_RESULTS: ${{ needs.test.outputs.service_results }}
-          BRANCH: ${{ github.ref_name }}
-          SHORT_SHA: ${{ github.sha }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          ACTOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          SHORT_SHA="${SHORT_SHA:0:7}"
-
-          if [[ "$CHECKSTYLE_RESULT" == "success" && "$TEST_RESULT" == "success" ]]; then
+          if [[ "$TEST_RESULT" == "success" ]]; then
             COLOR=3066993
             STATUS="✅ 성공"
           else
@@ -157,7 +168,13 @@ jobs:
             STATUS="❌ 실패"
           fi
 
-          CS_ICON=$([ "$CHECKSTYLE_RESULT" = "success" ] && echo "✅" || echo "❌")
+          if [ "$CS_HAS_VIOLATIONS" = "true" ]; then
+            CS_ICON="⚠️"
+            CS_TEXT="경고 (위반 있음)"
+          else
+            CS_ICON="✅"
+            CS_TEXT="통과"
+          fi
 
           service_label() {
             case "$1" in
@@ -206,8 +223,8 @@ jobs:
               "color": ${COLOR},
               "fields": [
                 {"name": "브랜치", "value": "\`${BRANCH}\`", "inline": true},
-                {"name": "커밋", "value": "\`${SHORT_SHA}\`", "inline": true},
-                {"name": "Checkstyle", "value": "${CS_ICON} ${CHECKSTYLE_RESULT}", "inline": false},
+                {"name": "작성자", "value": "\`${ACTOR}\`", "inline": true},
+                {"name": "Checkstyle", "value": "${CS_ICON} ${CS_TEXT}", "inline": false},
                 ${TEST_FIELDS}
               ],
               "footer": {"text": "GitHub Actions CI · develop"}
