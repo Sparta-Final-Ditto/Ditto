@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from app.common.db.models import UserPostEmbedding
+from app.embedding.domain.model.post_embedding import PostEmbedding
 
 
 class PostEmbeddingRepository(ABC):
@@ -9,10 +9,10 @@ class PostEmbeddingRepository(ABC):
     async def save(self, post_id: UUID, user_id: UUID, vector: list[float]) -> None: ...
 
     @abstractmethod
-    async def find_by_post_id(self, post_id: UUID) -> UserPostEmbedding | None: ...
+    async def find_by_post_id(self, post_id: UUID) -> PostEmbedding | None: ...
 
     @abstractmethod
-    async def find_all_by_user_id(self, user_id: UUID) -> list[UserPostEmbedding]: ...
+    async def find_all_by_user_id(self, user_id: UUID) -> list[PostEmbedding]: ...
 
     @abstractmethod
     async def update_status(self, post_id: UUID, status: str) -> None: ...

@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
 from uuid import UUID
-from app.common.db.models import UserProfileEmbedding
+from app.embedding.domain.model.user_profile import UserProfile
 
 
 class UserProfileRepository(ABC):
 
     @abstractmethod
-    async def find_by_user_id(self, user_id: UUID) -> UserProfileEmbedding | None: ...
+    async def find_by_user_id(self, user_id: UUID) -> UserProfile | None: ...
 
     @abstractmethod
     async def upsert(
