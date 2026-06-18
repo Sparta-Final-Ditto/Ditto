@@ -1,0 +1,43 @@
+package com.sparta.ditto.common.exception;
+
+import com.sparta.ditto.common.response.ApiResponse;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.List;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException e) {
+        ErrorCode errorCode = e.getErrorCode();
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ApiResponse.error(errorCode.getStatus(),
+                        "[%s] %s".formatted(errorCode.getCode(), errorCode.getMessage())));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<List<String>>> handleValidationException(MethodArgumentNotValidException e) {
+        List<String> errors = e.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getDefaultMessage)
+                .toList();
+        return ResponseEntity
+                .badRequest()
+                .body(new ApiResponse<>(400,
+                        "[%s] %s".formatted(CommonErrorCode.INVALID_INPUT.getCode(), CommonErrorCode.INVALID_INPUT.getMessage()),
+                        errors));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+        return ResponseEntity
+                .internalServerError()
+                .body(ApiResponse.error(500,
+                        "[%s] %s".formatted(CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(), CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage())));
+    }
+}
