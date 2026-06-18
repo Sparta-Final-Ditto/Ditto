@@ -1,0 +1,16 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  kafka:
+    bootstrap-servers: ${spring.embedded.kafka.brokers}
+
+app:
+  cloudfront:
+    domain: https://test.cloudfront.net
+  kakao:
+    api-key: test-key
+  matching-service:
+    base-url: http://localhost:8083
+    timeout-ms: 1000

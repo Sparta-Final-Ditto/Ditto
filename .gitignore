@@ -41,6 +41,10 @@ out/
 ### Local profile — contains secrets, never commit ###
 **/application-local.yml
 
+### .env ###
+.env
+**/.env
+
 ### Python ###
 .venv/
 __pycache__/

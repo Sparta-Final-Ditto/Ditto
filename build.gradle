@@ -16,6 +16,8 @@ allprojects {
 subprojects {
     apply plugin: 'java'
     apply plugin: 'io.spring.dependency-management'
+    apply plugin: 'checkstyle'
+    apply plugin: 'jacoco'
 
     java {
         toolchain {
@@ -36,7 +38,41 @@ subprojects {
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     }
 
+    checkstyle {
+        toolVersion = '10.12.5'
+        configFile = rootProject.file('config/checkstyle/checkstyle.xml')
+        ignoreFailures = true
+        showViolations = true
+    }
+
+    jacoco {
+        toolVersion = '0.8.11'
+    }
+
+    jacocoTestReport {
+        dependsOn test
+        reports {
+            xml.required = true
+            html.required = true
+            csv.required = false
+        }
+    }
+
+    jacocoTestCoverageVerification {
+        dependsOn jacocoTestReport
+        violationRules {
+            rule {
+                limit {
+                    counter = 'LINE'
+                    value = 'COVEREDRATIO'
+                    minimum = 0.70
+                }
+            }
+        }
+    }
+
     tasks.named('test') {
         useJUnitPlatform()
+        finalizedBy jacocoTestReport
     }
 }
