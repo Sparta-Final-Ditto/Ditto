@@ -28,8 +28,14 @@ import org.hibernate.annotations.UuidGenerator;
         ),
         // 내 채팅방 목록 조회와 방별 현재 참여자 조회에 사용하는 인덱스다.
         indexes = {
-                @Index(name = "idx_chat_room_participants_user_id_left_at", columnList = "user_id, left_at"),
-                @Index(name = "idx_chat_room_participants_room_id_left_at", columnList = "room_id, left_at")
+                @Index(
+                        name = "idx_chat_room_participants_user_id_left_at",
+                        columnList = "user_id, left_at"
+                ),
+                @Index(
+                        name = "idx_chat_room_participants_room_id_left_at",
+                        columnList = "room_id, left_at"
+                )
         }
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -94,7 +100,10 @@ public class ChatRoomParticipant {
     }
 
     public void updateLastRead(String lastReadMessageId, Instant lastReadAt) {
-        this.lastReadMessageId = Objects.requireNonNull(lastReadMessageId, "lastReadMessageId must not be null");
+        this.lastReadMessageId = Objects.requireNonNull(
+                lastReadMessageId,
+                "lastReadMessageId must not be null"
+        );
         this.lastReadAt = Objects.requireNonNull(lastReadAt, "lastReadAt must not be null");
     }
 

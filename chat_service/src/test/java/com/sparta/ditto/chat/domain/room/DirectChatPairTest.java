@@ -18,7 +18,8 @@ class DirectChatPairTest {
         UUID userBId = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
         // when
-        DirectChatPair.OrderedUserIds orderedUserIds = DirectChatPair.orderUserIds(userAId, userBId);
+        DirectChatPair.OrderedUserIds orderedUserIds =
+                DirectChatPair.orderUserIds(userAId, userBId);
 
         // then
         assertThat(orderedUserIds.user1Id()).isEqualTo(userBId);

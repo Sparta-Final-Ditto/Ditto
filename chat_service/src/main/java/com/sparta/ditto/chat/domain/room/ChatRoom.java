@@ -82,7 +82,10 @@ public class ChatRoom {
 
     public void updateLastMessage(String messageId, Instant messageCreatedAt) {
         this.lastMessageId = Objects.requireNonNull(messageId, "messageId must not be null");
-        this.lastMessageAt = Objects.requireNonNull(messageCreatedAt, "messageCreatedAt must not be null");
+        this.lastMessageAt = Objects.requireNonNull(
+                messageCreatedAt,
+                "messageCreatedAt must not be null"
+        );
     }
 
     public void inactivate(UUID userId) {
