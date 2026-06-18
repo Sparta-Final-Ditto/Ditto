@@ -40,3 +40,7 @@ out/
 
 ### Local profile — contains secrets, never commit ###
 **/application-local.yml
+
+### .env ###
+.env
+**/.env
