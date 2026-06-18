@@ -1,3 +1,4 @@
+import numpy as np
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from app.embedding.infrastructure.model.model_loader import ModelLoader
@@ -29,7 +30,7 @@ class RawTextRequest(BaseModel):
 )
 async def embed_test(body: RawTextRequest) -> EmbedTestResponse:
     model = ModelLoader.get_model()
-    vector = model.encode(body.text)
+    vector = np.array(model.encode(body.text))
     return EmbedTestResponse(input_text=body.text, dimension=len(vector), sample=vector[:7].tolist())
 
 
@@ -50,7 +51,7 @@ class InitialProfileRequest(BaseModel):
 async def embed_initial_profile(body: InitialProfileRequest) -> EmbedTestResponse:
     text = build_initial_text(body.hashtags, body.gender, body.age_group)
     model = ModelLoader.get_model()
-    vector = model.encode(text)
+    vector = np.array(model.encode(text))
     return EmbedTestResponse(input_text=text, dimension=len(vector), sample=vector[:7].tolist())
 
 
@@ -73,5 +74,5 @@ class PostEmbedRequest(BaseModel):
 async def embed_post(body: PostEmbedRequest) -> EmbedTestResponse:
     text = build_post_text(body.content, body.hashtags, body.time_slot, body.gender, body.age_group)
     model = ModelLoader.get_model()
-    vector = model.encode(text)
+    vector = np.array(model.encode(text))
     return EmbedTestResponse(input_text=text, dimension=len(vector), sample=vector[:7].tolist())
