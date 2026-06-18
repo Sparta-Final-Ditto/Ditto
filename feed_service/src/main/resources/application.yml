@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT}
+  port: 8082
 
 spring:
   application:
@@ -11,7 +11,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO}
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -19,7 +19,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      port: 6379
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
@@ -31,7 +31,7 @@ cloud:
     s3:
       bucket: ${S3_BUCKET}
     region:
-      static: ${AWS_REGION}
+      static: ap-northeast-2
     credentials:
       access-key: ${AWS_ACCESS_KEY}
       secret-key: ${AWS_SECRET_KEY}
