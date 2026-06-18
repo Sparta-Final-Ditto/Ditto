@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,6 +18,7 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
             user_id=user_id,
             vector=vector,
             embedding_status="DONE",
+            embedded_at=datetime.now(timezone.utc),
         ))
         await self.db.commit()
 
