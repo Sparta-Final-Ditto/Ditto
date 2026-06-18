@@ -1,11 +1,18 @@
+import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s: %(message)s",
+)
+
 from app.config.settings import settings
 from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
+from app.embedding.infrastructure.model.model_loader import ModelLoader
 
 TAGS_METADATA = [
     {
@@ -21,7 +28,8 @@ TAGS_METADATA = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # TODO: DB 초기화, 모델 로드, Kafka Consumer, Scheduler 순서로 추가
+    ModelLoader.load()
+    # TODO: DB 초기화, Kafka Consumer, Scheduler 순서로 추가
     yield
 
 
