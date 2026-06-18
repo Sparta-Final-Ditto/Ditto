@@ -23,12 +23,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
+
+      - name: Cache virtualenv
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('embedding_service/requirements*.txt') }}
 
       - name: Install dependencies
+        if: steps.cache-venv.outputs.cache-hit != 'true'
         run: |
-          pip install -r embedding_service/requirements.txt
-          pip install -r embedding_service/requirements-test.txt
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r embedding_service/requirements.txt
+          .venv/bin/pip install -r embedding_service/requirements-test.txt
 
       - name: Run Tests & Coverage
         id: test_run
@@ -37,7 +46,7 @@ jobs:
           if [ -z "$TEST_FILES" ]; then
             echo "테스트 파일 없음 — 스킵"
             echo "result=skipped" >> $GITHUB_OUTPUT
-          elif pytest embedding_service/ \
+          elif .venv/bin/pytest embedding_service/ \
             --cov=embedding_service \
             --cov-fail-under=70 \
             --asyncio-mode=auto \
