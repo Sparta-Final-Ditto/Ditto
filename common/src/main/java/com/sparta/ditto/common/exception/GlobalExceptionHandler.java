@@ -22,13 +22,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<List<String>>> handleValidationException(MethodArgumentNotValidException e) {
+    public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
         List<String> errors = e.getBindingResult().getFieldErrors().stream()
                 .map(FieldError::getDefaultMessage)
                 .toList();
         return ResponseEntity
                 .badRequest()
-                .body(new ApiResponse<>(400,
+                .body(ApiResponse.error(400,
                         "[%s] %s".formatted(CommonErrorCode.INVALID_INPUT.getCode(), CommonErrorCode.INVALID_INPUT.getMessage()),
                         errors));
     }
