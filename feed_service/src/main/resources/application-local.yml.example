@@ -25,3 +25,12 @@ cloud:
     credentials:
       access-key: your-access-key
       secret-key: your-secret-key
+
+app:
+  cloudfront:
+    domain: https://your-cloudfront-domain.cloudfront.net
+  kakao:
+    api-key: your-kakao-api-key
+  matching-service:
+    base-url: http://localhost:8083
+    timeout-ms: 1000
