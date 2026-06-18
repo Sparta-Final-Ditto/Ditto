@@ -40,6 +40,10 @@ public abstract class BaseEntity {
     @Column
     private UUID deletedBy;
 
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
     public void delete(UUID deletedBy) {
         this.deletedAt = LocalDateTime.now();
         this.deletedBy = deletedBy;
