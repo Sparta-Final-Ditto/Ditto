@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       skip: ${{ steps.changes.outputs.skip }}
+      all_modules: ${{ steps.changes.outputs.all_modules }}
       service_results: ${{ steps.test_run.outputs.service_results }}
     steps:
       - uses: actions/checkout@v4
@@ -74,11 +75,15 @@ jobs:
           echo "=== Changed files ==="
           echo "$CHANGED"
 
+          # settings.gradle에서 서비스 목록 동적 추출 (common 제외)
+          ALL_SERVICES=$(grep "^include " settings.gradle | sed "s/include '//;s/'//" | grep -v "^common$" | tr '\n' ' ' | xargs)
+          echo "=== All services: [$ALL_SERVICES] ==="
+
           if echo "$CHANGED" | grep -qE "^(settings\.gradle|gradle/|common/)"; then
-            MODULES="api-gateway user_service feed_service match_service chat_service notification_service"
+            MODULES="$ALL_SERVICES"
           else
             MODULES=""
-            for module in api-gateway user_service feed_service match_service chat_service notification_service; do
+            for module in $ALL_SERVICES; do
               if echo "$CHANGED" | grep -qE "^${module}/src/"; then
                 MODULES="$MODULES $module"
               fi
@@ -88,6 +93,7 @@ jobs:
 
           echo "=== Modules to test: [$MODULES] ==="
 
+          echo "all_modules=$ALL_SERVICES" >> $GITHUB_OUTPUT
           if [ -z "$MODULES" ]; then
             echo "skip=true" >> $GITHUB_OUTPUT
             echo "modules=" >> $GITHUB_OUTPUT
@@ -156,6 +162,7 @@ jobs:
           TEST_RESULT: ${{ needs.test.result }}
           TEST_SKIP: ${{ needs.test.outputs.skip }}
           SERVICE_RESULTS: ${{ needs.test.outputs.service_results }}
+          ALL_MODULES: ${{ needs.test.outputs.all_modules }}
           BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
           ACTOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
@@ -179,42 +186,33 @@ jobs:
             CS_TEXT="통과"
           fi
 
+          # 모듈명 → 표시용 레이블 (snake_case·kebab-case → Title Case)
           service_label() {
-            case "$1" in
-              api-gateway)          echo "API Gateway" ;;
-              user_service)         echo "User Service" ;;
-              feed_service)         echo "Feed Service" ;;
-              match_service)        echo "Match Service" ;;
-              chat_service)         echo "Chat Service" ;;
-              notification_service) echo "Notification" ;;
-              *)                    echo "$1" ;;
-            esac
+            echo "$1" | sed 's/[-_]/ /g' | awk '{for(i=1;i<=NF;i++) $i=toupper(substr($i,1,1)) substr($i,2)}1'
           }
 
-          # 유닛 테스트 필드 구성
-          if [ "$TEST_SKIP" = "true" ]; then
-            TEST_FIELDS="{\"name\": \"유닛 테스트 & 커버리지\", \"value\": \"⏭️ 스킵 (변경 없음)\", \"inline\": false}"
-          elif [ -z "$SERVICE_RESULTS" ]; then
-            TEST_ICON=$([ "$TEST_RESULT" = "success" ] && echo "✅" || echo "❌")
-            TEST_FIELDS="{\"name\": \"유닛 테스트 & 커버리지\", \"value\": \"${TEST_ICON} ${TEST_RESULT}\", \"inline\": false}"
-          else
-            TEST_FIELDS=""
-            IFS='|' read -ra PAIRS <<< "$SERVICE_RESULTS"
-            for pair in "${PAIRS[@]}"; do
-              [ -z "$pair" ] && continue
-              module="${pair%%=*}"
-              status="${pair##*=}"
-              label=$(service_label "$module")
-              icon=$([ "$status" = "success" ] && echo "✅" || echo "❌")
-              result_text=$([ "$status" = "success" ] && echo "성공 (≥70%)" || echo "실패")
-              field="{\"name\": \"${label}\", \"value\": \"${icon} ${result_text}\", \"inline\": true}"
-              if [ -z "$TEST_FIELDS" ]; then
-                TEST_FIELDS="$field"
-              else
-                TEST_FIELDS="${TEST_FIELDS},${field}"
-              fi
-            done
-          fi
+          # 유닛 테스트 필드 구성 — 전체 서비스 항상 표시, 감지 안된건 스킵
+          TEST_FIELDS=""
+          for module in $ALL_MODULES; do
+            label=$(service_label "$module")
+            svc_status=$(echo "$SERVICE_RESULTS" | tr '|' '\n' | grep "^${module}=" | cut -d'=' -f2)
+            if [ -z "$svc_status" ]; then
+              icon="⏭️"
+              result_text="스킵"
+            elif [ "$svc_status" = "success" ]; then
+              icon="✅"
+              result_text="성공 (≥70%)"
+            else
+              icon="❌"
+              result_text="실패"
+            fi
+            field="{\"name\": \"${label}\", \"value\": \"${icon} ${result_text}\", \"inline\": true}"
+            if [ -z "$TEST_FIELDS" ]; then
+              TEST_FIELDS="$field"
+            else
+              TEST_FIELDS="${TEST_FIELDS},${field}"
+            fi
+          done
 
           curl -s -X POST "$DISCORD_WEBHOOK" \
             -H "Content-Type: application/json" \

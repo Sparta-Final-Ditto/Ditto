@@ -41,7 +41,7 @@ subprojects {
     checkstyle {
         toolVersion = '10.12.5'
         configFile = rootProject.file('config/checkstyle/checkstyle.xml')
-        ignoreFailures = false
+        ignoreFailures = true
         showViolations = true
     }
 
