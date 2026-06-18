@@ -66,11 +66,17 @@ jobs:
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
           TEST_RESULT: ${{ needs.test.result }}
+          TEST_RUN_RESULT: ${{ needs.test.outputs.result }}
           BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
           ACTOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          if [[ "$TEST_RESULT" == "success" ]]; then
+          if [[ "$TEST_RUN_RESULT" == "skipped" ]]; then
+            COLOR=9807270
+            STATUS="⏭️ 스킵"
+            TEST_ICON="⏭️"
+            TEST_TEXT="스킵 (테스트 없음)"
+          elif [[ "$TEST_RESULT" == "success" ]]; then
             COLOR=3066993
             STATUS="✅ 성공"
             TEST_ICON="✅"
