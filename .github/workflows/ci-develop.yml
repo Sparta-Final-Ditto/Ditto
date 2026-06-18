@@ -74,12 +74,12 @@ jobs:
           echo "=== Changed files ==="
           echo "$CHANGED"
 
-          if echo "$CHANGED" | grep -qE "^(build\.gradle|settings\.gradle|gradle/|common/)"; then
+          if echo "$CHANGED" | grep -qE "^(settings\.gradle|gradle/|common/)"; then
             MODULES="api-gateway user_service feed_service match_service chat_service notification_service"
           else
             MODULES=""
             for module in api-gateway user_service feed_service match_service chat_service notification_service; do
-              if echo "$CHANGED" | grep -qE "^${module}/"; then
+              if echo "$CHANGED" | grep -qE "^${module}/src/"; then
                 MODULES="$MODULES $module"
               fi
             done
