@@ -86,6 +86,11 @@ public class ChatMessageDocument {
             MessageType messageType,
             String content
     ) {
+        Objects.requireNonNull(messageType, "messageType은 null일 수 없습니다.");
+        if (messageType.isSystem()) {
+            throw new IllegalArgumentException(
+                    "사용자 메시지에는 시스템 메시지 타입을 사용할 수 없습니다: " + messageType);
+        }
         Objects.requireNonNull(senderId, "사용자 메시지의 senderId는 null일 수 없습니다.");
         Objects.requireNonNull(clientMessageId, "사용자 메시지의 clientMessageId는 null일 수 없습니다.");
         return new ChatMessageDocument(messageId, roomId, senderId, null, clientMessageId, messageType, content);
@@ -98,6 +103,11 @@ public class ChatMessageDocument {
             MessageType messageType,
             String content
     ) {
+        Objects.requireNonNull(messageType, "messageType은 null일 수 없습니다.");
+        if (messageType.isUser()) {
+            throw new IllegalArgumentException(
+                    "시스템 메시지에는 사용자 메시지 타입을 사용할 수 없습니다: " + messageType);
+        }
         Objects.requireNonNull(actorId, "시스템 메시지의 actorId는 null일 수 없습니다.");
         return new ChatMessageDocument(messageId, roomId, null, actorId, null, messageType, content);
     }

@@ -142,4 +142,20 @@ class ChatMessageDocumentTest {
             assertThat(doc.getDeletedAt()).isEqualTo(firstDeletedAt);
         }
     }
+
+    @Test
+    @DisplayName("실패 - 사용자 메시지에 SYSTEM_* 타입 사용")
+    void fail_user_message_with_system_type() {
+        assertThatThrownBy(() -> ChatMessageDocument.createUserMessage(
+                messageId, roomId, senderId, clientMessageId, MessageType.SYSTEM_JOIN, "hello"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("실패 - 시스템 메시지에 사용자(TEXT/IMAGE) 타입 사용")
+    void fail_system_message_with_user_type() {
+        assertThatThrownBy(() -> ChatMessageDocument.createSystemMessage(
+                messageId, roomId, actorId, MessageType.TEXT, "joined"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }
