@@ -6,6 +6,7 @@ T = TypeVar("T")
 
 class ApiResponse(BaseModel, Generic[T]):
     status: int
+    code: str | None = None
     message: str
     data: T | None = None
     errors: list[str] | None = None
@@ -23,5 +24,17 @@ class ApiResponse(BaseModel, Generic[T]):
         return cls(status=201, message="CREATED", data=data)
 
     @classmethod
-    def error(cls, status: int, message: str, errors: list[str] | None = None) -> "ApiResponse[None]":
-        return cls(status=status, message=message, errors=errors)
+    def updated(cls, data: T) -> "ApiResponse[T]":
+        return cls(status=200, message="UPDATED", data=data)
+
+    @classmethod
+    def deleted(cls) -> "ApiResponse[None]":
+        return cls(status=200, message="DELETED")
+
+    @classmethod
+    def accepted(cls) -> "ApiResponse[None]":
+        return cls(status=202, message="ACCEPTED")
+
+    @classmethod
+    def error(cls, status: int, code: str, message: str, errors: list[str] | None = None) -> "ApiResponse[None]":
+        return cls(status=status, code=code, message=message, errors=errors)
