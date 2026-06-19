@@ -1,5 +1,6 @@
 package com.sparta.ditto.match.application.dto;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -8,6 +9,6 @@ public record MatchResponseDto(
         UUID matchedUserId,
         Float similarityScore,
         Float finalScore,
-        LocalDateTime matchedAt,
+        Instant matchedAt,  // LocalDateTime → Instant
         String status
 ) {}
