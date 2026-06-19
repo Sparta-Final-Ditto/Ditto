@@ -3,6 +3,8 @@ package com.sparta.ditto.feed.domain.entity;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -42,6 +44,7 @@ public class OutboxEvent {
     @Column(nullable = false)
     private String eventType;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String payload;
 

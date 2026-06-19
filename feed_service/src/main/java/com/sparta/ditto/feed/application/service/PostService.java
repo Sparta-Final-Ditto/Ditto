@@ -21,7 +21,7 @@ import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse.MediaF
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,6 +33,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PostService {
 
+    private final TransactionTemplate transactionTemplate;
     private final PostRepository postRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final S3Port s3Port;
@@ -53,7 +54,6 @@ public class PostService {
      * 3. user-service에서 nickname 조회
      * 4. Post, PostTag, PostMedia, OutboxEvent를 단일 트랜잭션으로 저장
      */
-    @Transactional
     public CreatePostResponse createPost(UUID userId, CreatePostRequest request) {
         List<MediaFileRequest> mediaFiles = request.mediaFiles() != null ? request.mediaFiles() : List.of();
 
@@ -79,22 +79,26 @@ public class PostService {
         // DB의 UNIQUE(post_id, tag) 제약 위반 방지를 위해 중복 태그를 미리 제거
         List<String> distinctTags = request.tags().stream().distinct().toList();
 
-        Post post = new Post(userId, request.content(), neighborhood,
-                request.latitude(), request.longitude(), locationScope, showLocation);
+        // 외부 API 호출이 끝난 뒤 DB 저장만 트랜잭션으로 묶음
+        Post savedPost = transactionTemplate.execute(status -> {
+            Post post = new Post(userId, request.content(), neighborhood,
+                    request.latitude(), request.longitude(), locationScope, showLocation);
 
-        // PostTag, PostMedia는 Post와 cascade=ALL로 연관되어 있어 Post 저장 시 함께 저장됨
-        distinctTags.forEach(tag -> post.getTags().add(new PostTag(post, tag)));
-        for (int i = 0; i < mediaFiles.size(); i++) {
-            MediaFileRequest m = mediaFiles.get(i);
-            post.getMediaList().add(new PostMedia(post, m.s3Key(), parsedMediaTypes.get(i), m.sortOrder()));
-        }
+            // PostTag, PostMedia는 Post와 cascade=ALL로 연관되어 있어 Post 저장 시 함께 저장됨
+            distinctTags.forEach(tag -> post.getTags().add(new PostTag(post, tag)));
+            for (int i = 0; i < mediaFiles.size(); i++) {
+                MediaFileRequest m = mediaFiles.get(i);
+                post.getMediaList().add(new PostMedia(post, m.s3Key(), parsedMediaTypes.get(i), m.sortOrder()));
+            }
 
-        Post savedPost = postRepository.save(post);
+            Post saved = postRepository.save(post);
 
-        // Transactional Outbox 패턴: Post 저장과 같은 트랜잭션에 이벤트를 기록해 발행 유실 방지
-        // Outbox Poller가 주기적으로 PENDING 이벤트를 Kafka에 발행
-        outboxEventRepository.save(new OutboxEvent("post-events", "POST_CREATED",
-                buildOutboxPayload(savedPost, userId, distinctTags)));
+            // Transactional Outbox 패턴: Post 저장과 같은 트랜잭션에 이벤트를 기록해 발행 유실 방지
+            outboxEventRepository.save(new OutboxEvent("post-events", "POST_CREATED",
+                    buildOutboxPayload(saved, userId, distinctTags)));
+
+            return saved;
+        });
 
         return buildResponse(savedPost, userId, nickname);
     }

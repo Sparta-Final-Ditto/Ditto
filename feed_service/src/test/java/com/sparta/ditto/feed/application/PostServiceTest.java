@@ -21,6 +21,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -38,6 +40,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
+
+    @Mock
+    private TransactionTemplate transactionTemplate;
 
     @Mock
     private PostRepository postRepository;
@@ -64,6 +69,8 @@ class PostServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(postService, "cloudfrontDomain", CLOUDFRONT_DOMAIN);
 
+        lenient().when(transactionTemplate.execute(any())).thenAnswer(inv ->
+                ((TransactionCallback<?>) inv.getArgument(0)).doInTransaction(null));
         lenient().when(s3Port.doesObjectExist(anyString())).thenReturn(true);
         lenient().when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn("서울 성동구");
         lenient().when(userPort.getNickname(any(UUID.class))).thenReturn("새벽러너");
