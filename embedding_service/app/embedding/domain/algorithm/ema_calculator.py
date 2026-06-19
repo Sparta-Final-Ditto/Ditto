@@ -6,8 +6,9 @@ def update_profile(
     new_embedding: list[float],
     alpha: float,
 ) -> list[float]:
-    """EMA로 유저 프로필 벡터를 업데이트한다."""
+    """EMA로 유저 프로필 벡터를 업데이트하고 단위 벡터로 정규화한다."""
     profile = np.array(current_profile)
     embedding = np.array(new_embedding)
     updated = alpha * embedding + (1 - alpha) * profile
-    return updated.tolist()
+    norm = np.linalg.norm(updated)
+    return (updated / norm).tolist() if norm > 0 else updated.tolist()
