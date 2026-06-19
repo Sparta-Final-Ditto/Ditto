@@ -45,7 +45,7 @@ class ChatDirectRoomControllerTest {
                 .willReturn(ChatDirectRoomResult.of(ROOM_ID, RoomStatus.ACTIVE, true, false));
 
         // when & then
-        mockMvc.perform(post("/chat/rooms/direct")
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
@@ -63,7 +63,7 @@ class ChatDirectRoomControllerTest {
                 .willReturn(ChatDirectRoomResult.of(ROOM_ID, RoomStatus.ACTIVE, false, false));
 
         // when & then
-        mockMvc.perform(post("/chat/rooms/direct")
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
@@ -82,7 +82,7 @@ class ChatDirectRoomControllerTest {
                 .willReturn(ChatDirectRoomResult.of(ROOM_ID, RoomStatus.ACTIVE, false, true));
 
         // when & then
-        mockMvc.perform(post("/chat/rooms/direct")
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
