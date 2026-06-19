@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.presentation;
+package com.sparta.ditto.chat.presentation.controller;
 
 import com.sparta.ditto.chat.application.room.ChatDirectRoomService;
 import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomCreateCommand;

@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.presentation;
+package com.sparta.ditto.chat.presentation.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
