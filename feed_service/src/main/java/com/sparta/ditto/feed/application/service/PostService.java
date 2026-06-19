@@ -28,6 +28,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 @RequiredArgsConstructor
@@ -182,11 +183,24 @@ public class PostService {
     }
 
     // 클라이언트가 실제로 S3에 업로드했는지 확인 (presigned URL 발급 후 미업로드 방지)
+    // 다중 파일을 병렬로 검증해 응답 지연 최소화
     private void validateS3Objects(List<MediaFileRequest> mediaFiles) {
-        for (MediaFileRequest m : mediaFiles) {
-            if (!s3Port.doesObjectExist(m.s3Key())) {
-                throw new BusinessException(FeedErrorCode.S3_OBJECT_NOT_FOUND);
-            }
+        if (mediaFiles.isEmpty()) {
+            return;
+        }
+
+        List<CompletableFuture<Boolean>> futures = mediaFiles.stream()
+                .map(m -> CompletableFuture.supplyAsync(() -> s3Port.doesObjectExist(m.s3Key())))
+                .toList();
+
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        boolean anyMissing = futures.stream()
+                .map(CompletableFuture::join)
+                .anyMatch(exists -> !exists);
+
+        if (anyMissing) {
+            throw new BusinessException(FeedErrorCode.S3_OBJECT_NOT_FOUND);
         }
     }
 
