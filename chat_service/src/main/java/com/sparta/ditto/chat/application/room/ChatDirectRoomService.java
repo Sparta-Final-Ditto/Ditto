@@ -102,7 +102,7 @@ public class ChatDirectRoomService {
     }
 
     private ChatDirectRoomResult createDirectRoom(UUID requesterId, UUID targetUserId) {
-        ChatRoom chatRoom = chatRoomRepository.saveAndFlush(ChatRoom.createDirect(requesterId));
+        ChatRoom chatRoom = chatRoomRepository.saveAndFlush(ChatRoom.createDirect());
         // 1:1 채팅방은 별도 방장 없이 두 사용자를 모두 MEMBER로 생성한다.
         chatRoomParticipantRepository.saveAll(List.of(
                 ChatRoomParticipant.join(chatRoom.getId(), requesterId, ParticipantRole.MEMBER),

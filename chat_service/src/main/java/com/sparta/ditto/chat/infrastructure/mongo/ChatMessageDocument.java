@@ -94,7 +94,14 @@ public class ChatMessageDocument {
         Objects.requireNonNull(senderId, "사용자 메시지의 senderId는 null일 수 없습니다.");
         Objects.requireNonNull(clientMessageId, "사용자 메시지의 clientMessageId는 null일 수 없습니다.");
         return new ChatMessageDocument(
-                messageId, roomId, senderId, null, clientMessageId, messageType, content);
+                messageId,
+                roomId,
+                senderId,
+                null,
+                clientMessageId,
+                messageType,
+                content
+        );
     }
 
     public static ChatMessageDocument createSystemMessage(
@@ -111,7 +118,14 @@ public class ChatMessageDocument {
         }
         Objects.requireNonNull(actorId, "시스템 메시지의 actorId는 null일 수 없습니다.");
         return new ChatMessageDocument(
-                messageId, roomId, null, actorId, null, messageType, content);
+                messageId,
+                roomId,
+                null,
+                actorId,
+                null,
+                messageType,
+                content
+        );
     }
 
     public void markDeleted() {

@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -10,6 +11,12 @@ logging.basicConfig(
 )
 
 from app.config.settings import settings
+from app.common.exception.business_exception import BusinessException
+from app.common.exception.exception_handler import (
+    business_exception_handler,
+    validation_exception_handler,
+    unhandled_exception_handler,
+)
 from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
@@ -43,6 +50,10 @@ app = FastAPI(
     redoc_url="/redoc",
     lifespan=lifespan,
 )
+
+app.add_exception_handler(BusinessException, business_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.add_middleware(BaseHTTPMiddleware, dispatch=logging_middleware)
 app.add_middleware(
