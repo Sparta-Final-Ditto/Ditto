@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -54,7 +55,7 @@ class MatchControllerTest {
         UUID matchedUserId = UUID.randomUUID();
         MatchRequestDto request = new MatchRequestDto("NONE", false);
         MatchResponseDto response = new MatchResponseDto(
-                matchId, matchedUserId, 0.8f, 0.75f, LocalDateTime.now(), "PENDING");
+                matchId, matchedUserId, 0.8f, 0.75f, Instant.now(), "PENDING");
 
         given(matchService.createMatch(eq(userId), any(MatchRequestDto.class))).willReturn(response);
 
@@ -74,7 +75,7 @@ class MatchControllerTest {
         UUID matchId = UUID.randomUUID();
         UUID matchedUserId = UUID.randomUUID();
         MatchResponseDto response = new MatchResponseDto(
-                matchId, matchedUserId, 0.9f, 0.85f, LocalDateTime.now(), "ACCEPTED");
+                matchId, matchedUserId, 0.9f, 0.85f, Instant.now(), "ACCEPTED");
 
         given(matchService.getTodayMatch(eq(userId))).willReturn(response);
 
