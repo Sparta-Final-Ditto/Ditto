@@ -20,7 +20,8 @@ class WebSocketConfigTest {
     void register_stomp_endpoints() {
         // given
         StompEndpointRegistry registry = mock(StompEndpointRegistry.class);
-        StompWebSocketEndpointRegistration registration = mock(StompWebSocketEndpointRegistration.class);
+        StompWebSocketEndpointRegistration registration =
+                mock(StompWebSocketEndpointRegistration.class);
         given(registry.addEndpoint("/ws-chat")).willReturn(registration);
 
         // when
