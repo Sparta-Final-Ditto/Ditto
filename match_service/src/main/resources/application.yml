@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT}
+  port: 8083
 
 spring:
   application:
@@ -11,7 +11,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO}
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -19,7 +19,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      port: 6379
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     consumer:
@@ -30,4 +30,4 @@ spring:
         spring.json.trusted.packages: "com.sparta.ditto.*"
 
 embedding-service:
-  url: ${EMBEDDING_SERVICE_URL}
+  url: http://embedding-service:8090
