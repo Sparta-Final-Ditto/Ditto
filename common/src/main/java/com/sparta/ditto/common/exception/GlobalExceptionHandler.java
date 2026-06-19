@@ -18,8 +18,7 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = e.getErrorCode();
         return ResponseEntity
                 .status(errorCode.getStatus())
-                .body(ApiResponse.error(errorCode.getStatus(),
-                        "[%s] %s".formatted(errorCode.getCode(), errorCode.getMessage())));
+                .body(ApiResponse.error(errorCode.getStatus(), errorCode.getCode(), errorCode.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -30,7 +29,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(400,
-                        "[%s] %s".formatted(CommonErrorCode.INVALID_INPUT.getCode(), CommonErrorCode.INVALID_INPUT.getMessage()),
+                        CommonErrorCode.INVALID_INPUT.getCode(),
+                        CommonErrorCode.INVALID_INPUT.getMessage(),
                         errors));
     }
 
@@ -42,7 +42,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(400,
-                        "[%s] %s".formatted(CommonErrorCode.INVALID_INPUT.getCode(), CommonErrorCode.INVALID_INPUT.getMessage()),
+                        CommonErrorCode.INVALID_INPUT.getCode(),
+                        CommonErrorCode.INVALID_INPUT.getMessage(),
                         errors));
     }
 
@@ -51,6 +52,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .internalServerError()
                 .body(ApiResponse.error(500,
-                        "[%s] %s".formatted(CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(), CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage())));
+                        CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(),
+                        CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
     }
 }
