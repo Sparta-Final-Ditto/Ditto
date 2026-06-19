@@ -2,6 +2,7 @@ package com.sparta.ditto.match.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.match.application.dto.MatchRequestDto;
+import com.sparta.ditto.match.application.dto.MatchResponseDto;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
 import com.sparta.ditto.match.application.service.MatchService;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
@@ -17,6 +18,7 @@ import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -103,5 +105,32 @@ class MatchServiceTest {
                     BusinessException be = (BusinessException) e;
                     assert be.getErrorCode() == MatchErrorCode.MATCH_NOT_FOUND;
                 });
+    }
+
+    @Test
+    @DisplayName("오늘 매칭 이력이 있으면 getTodayMatch가 DTO를 반환한다")
+    void getTodayMatch_hasHistory_returnsDto() {
+        // given
+        UUID userId = UUID.randomUUID();
+        MatchingHistory history = MatchingHistory.of(
+                userId,
+                UUID.randomUUID(),
+                0.8f,
+                0.75f,
+                "NONE",
+                false
+        );
+
+        given(matchingHistoryRepository.findTodayMatchByUserId(any(), any()))
+                .willReturn(Optional.of(history));
+
+        // when
+        MatchResponseDto result = matchService.getTodayMatch(userId);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.similarityScore()).isEqualTo(0.8f);
+        assertThat(result.finalScore()).isEqualTo(0.75f);
+        assertThat(result.status()).isEqualTo("PENDING");
     }
 }
