@@ -1,7 +1,7 @@
-package com.sparta.ditto.chat.application;
+package com.sparta.ditto.chat.application.room;
 
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomCreateCommand;
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;

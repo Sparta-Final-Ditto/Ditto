@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.sparta.ditto.chat.application.ChatDirectRoomService;
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.ChatDirectRoomService;
+import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
