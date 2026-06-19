@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.dto.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.dto.ChatGroupRoomResult;
+import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -92,7 +93,7 @@ class ChatGroupRoomServiceTest {
         given(chatRoomRepository.save(any(ChatRoom.class))).willReturn(savedRoom);
         ChatGroupRoomCreateCommand command = ChatGroupRoomCreateCommand.of(
                 REQUESTER_ID,
-                List.of(REQUESTER_ID, MEMBER_USER_ID, MEMBER_USER_ID),
+                List.of(REQUESTER_ID, MEMBER_USER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID),
                 ROOM_NAME
         );
 
@@ -105,12 +106,12 @@ class ChatGroupRoomServiceTest {
 
         assertThat(captor.getValue())
                 .extracting(ChatRoomParticipant::getUserId)
-                .containsExactly(REQUESTER_ID, MEMBER_USER_ID);
+                .containsExactly(REQUESTER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID);
     }
 
     @Test
-    @DisplayName("요청자를 제외한 참여자가 없으면 그룹방을 생성할 수 없다")
-    void createGroupRoom_should_reject_empty_member_list() {
+    @DisplayName("요청자 포함 참여자가 3명 미만이면 그룹방을 생성할 수 없다")
+    void createGroupRoom_should_reject_less_than_three_participants() {
         // given
         ChatGroupRoomCreateCommand command = ChatGroupRoomCreateCommand.of(
                 REQUESTER_ID,
@@ -120,7 +121,9 @@ class ChatGroupRoomServiceTest {
 
         // when & then
         assertThatThrownBy(() -> chatGroupRoomService.createGroupRoom(command))
-                .isInstanceOf(BusinessException.class);
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(ChatErrorCode.CHAT_INVALID_GROUP_PARTICIPANTS));
     }
 
     @Test

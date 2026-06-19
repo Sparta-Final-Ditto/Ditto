@@ -2,6 +2,7 @@ package com.sparta.ditto.chat.application;
 
 import com.sparta.ditto.chat.application.dto.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.dto.ChatGroupRoomResult;
+import com.sparta.ditto.chat.domain.exception.ChatInvalidGroupParticipantsException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -78,8 +79,8 @@ public class ChatGroupRoomService {
             }
         }
 
-        if (uniqueMemberIds.isEmpty()) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        if (uniqueMemberIds.size() < 2) {
+            throw new ChatInvalidGroupParticipantsException();
         }
         return List.copyOf(uniqueMemberIds);
     }
