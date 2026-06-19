@@ -6,7 +6,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 @Entity
@@ -32,7 +32,7 @@ public class MatchingHistory extends BaseEntity {
     private Float finalScore;
 
     @Column(nullable = false)
-    private LocalDateTime matchedAt;
+    private Instant matchedAt;
 
     @Column(nullable = false, length = 10)
     private String genderFilter;
@@ -59,7 +59,7 @@ public class MatchingHistory extends BaseEntity {
         history.genderFilter = genderFilter;
         history.locationFilterOn = locationFilterOn;
         history.status = "PENDING";
-        history.matchedAt = LocalDateTime.now();
+        history.matchedAt = Instant.now();
         return history;
     }
 
