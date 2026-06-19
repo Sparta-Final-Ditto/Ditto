@@ -1,7 +1,8 @@
 package com.sparta.ditto.chat.application.dto;
 
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 
 public record ChatGroupRoomCreateCommand(
@@ -15,15 +16,15 @@ public record ChatGroupRoomCreateCommand(
             List<UUID> participantUserIds,
             String roomName
     ) {
+        if (requesterId == null || participantUserIds == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         if (roomName == null || roomName.isBlank()) {
-            throw new IllegalArgumentException("roomName must not be blank");
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         return new ChatGroupRoomCreateCommand(
-                Objects.requireNonNull(requesterId, "requesterId must not be null"),
-                List.copyOf(Objects.requireNonNull(
-                        participantUserIds,
-                        "participantUserIds must not be null"
-                )),
+                requesterId,
+                List.copyOf(participantUserIds),
                 roomName
         );
     }

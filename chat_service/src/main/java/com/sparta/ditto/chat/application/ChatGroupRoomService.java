@@ -7,10 +7,11 @@ import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,9 @@ public class ChatGroupRoomService {
 
     @Transactional
     public ChatGroupRoomResult createGroupRoom(ChatGroupRoomCreateCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
+        if (command == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         UUID requesterId = command.requesterId();
         List<UUID> memberUserIds = resolveMemberUserIds(
                 requesterId,
@@ -60,13 +63,14 @@ public class ChatGroupRoomService {
     }
 
     private List<UUID> resolveMemberUserIds(UUID requesterId, List<UUID> participantUserIds) {
-        Objects.requireNonNull(requesterId, "requesterId must not be null");
-        Objects.requireNonNull(participantUserIds, "participantUserIds must not be null");
+        if (requesterId == null || participantUserIds == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
 
         Set<UUID> uniqueMemberIds = new LinkedHashSet<>();
         for (UUID participantUserId : participantUserIds) {
             if (participantUserId == null) {
-                throw new IllegalArgumentException("participantUserId must not be null");
+                throw new BusinessException(CommonErrorCode.INVALID_INPUT);
             }
             // 요청자는 OWNER로 별도 저장하므로 MEMBER 목록에서는 제외한다.
             if (!participantUserId.equals(requesterId)) {
@@ -75,7 +79,7 @@ public class ChatGroupRoomService {
         }
 
         if (uniqueMemberIds.isEmpty()) {
-            throw new IllegalArgumentException("group room must have at least one member");
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         return List.copyOf(uniqueMemberIds);
     }

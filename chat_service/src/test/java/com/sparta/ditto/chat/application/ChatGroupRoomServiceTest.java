@@ -16,6 +16,7 @@ import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
+import com.sparta.ditto.common.exception.BusinessException;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -119,8 +120,7 @@ class ChatGroupRoomServiceTest {
 
         // when & then
         assertThatThrownBy(() -> chatGroupRoomService.createGroupRoom(command))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("group room must have at least one member");
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -132,8 +132,7 @@ class ChatGroupRoomServiceTest {
                 List.of(MEMBER_USER_ID),
                 " "
         ))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("roomName must not be blank");
+                .isInstanceOf(BusinessException.class);
     }
 
     private ChatGroupRoomCreateCommand command() {
