@@ -3,6 +3,7 @@ package com.sparta.ditto.chat.domain.participant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.sparta.ditto.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -93,7 +94,7 @@ class ChatRoomParticipantTest {
 
         // when & then
         assertThatThrownBy(() -> participant.updateLastRead(null, Instant.now()))
-                .isInstanceOf(NullPointerException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

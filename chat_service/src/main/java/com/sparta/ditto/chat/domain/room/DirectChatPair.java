@@ -1,12 +1,13 @@
 package com.sparta.ditto.chat.domain.room;
 
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -43,9 +44,12 @@ public class DirectChatPair {
     private UUID user2Id;
 
     private DirectChatPair(UUID roomId, UUID user1Id, UUID user2Id) {
-        this.roomId = Objects.requireNonNull(roomId, "roomId must not be null");
-        this.user1Id = Objects.requireNonNull(user1Id, "user1Id must not be null");
-        this.user2Id = Objects.requireNonNull(user2Id, "user2Id must not be null");
+        if (roomId == null || user1Id == null || user2Id == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.roomId = roomId;
+        this.user1Id = user1Id;
+        this.user2Id = user2Id;
     }
 
     public static DirectChatPair create(UUID roomId, UUID userAId, UUID userBId) {
@@ -54,10 +58,13 @@ public class DirectChatPair {
     }
 
     public static OrderedUserIds orderUserIds(UUID userAId, UUID userBId) {
-        UUID firstUserId = Objects.requireNonNull(userAId, "userAId must not be null");
-        UUID secondUserId = Objects.requireNonNull(userBId, "userBId must not be null");
+        if (userAId == null || userBId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        UUID firstUserId = userAId;
+        UUID secondUserId = userBId;
         if (firstUserId.equals(secondUserId)) {
-            throw new IllegalArgumentException("direct chat users must be different");
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         if (firstUserId.compareTo(secondUserId) > 0) {
             return new OrderedUserIds(secondUserId, firstUserId);
