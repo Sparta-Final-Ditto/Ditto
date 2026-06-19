@@ -24,6 +24,6 @@ class BaseEntity:
     def is_deleted(self) -> bool:
         return self.deleted_at is not None
 
-    def soft_delete(self, deleted_by: uuid.UUID) -> None:
+    def delete(self, deleted_by: uuid.UUID) -> None: # soft_delete
         self.deleted_at = datetime.now(timezone.utc)
         self.deleted_by = deleted_by
