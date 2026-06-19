@@ -1,5 +1,6 @@
 package com.sparta.ditto.feed.domain.entity;
 
+import com.sparta.ditto.common.entity.BaseEntity;
 import com.sparta.ditto.feed.domain.type.LocationScope;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -14,15 +15,12 @@ import jakarta.persistence.Index;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -38,7 +36,7 @@ import org.hibernate.annotations.UpdateTimestamp;
                         columnList = "location_scope, created_at DESC, id DESC")
         }
 )
-public class Post {
+public class Post extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -72,14 +70,6 @@ public class Post {
 
     @Column(nullable = false)
     private Integer commentCount = 0;
-
-    @CreationTimestamp
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
 
     @OneToMany(
             mappedBy = "post",
