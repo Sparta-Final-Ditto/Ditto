@@ -57,6 +57,32 @@ public class ChatMessageService {
         return ChatMessageCursorResponse.of(items, nextCursor, hasNext);
     }
 
+    // 누락 메시지 조회. after 이후의 메시지를 오래된 순(ASC)으로 반환한다.
+    public ChatMessageCursorResponse getMissedMessages(
+            UUID roomId, String after, Integer size, UUID requesterId) {
+
+        chatParticipantValidator.ensureActiveParticipant(roomId, requesterId);
+
+        int pageSize = normalizeSize(size);
+        Limit limit = Limit.of(pageSize + 1);
+
+        ChatMessageDocument cursor = resolveCursor(roomId, after);
+        List<ChatMessageDocument> rows = chatMessageMongoRepository.findAfterCursor(
+                roomId, cursor.getCreatedAt(), cursor.getMessageId(), limit);
+
+        boolean hasNext = rows.size() > pageSize;
+        if (hasNext) {
+            rows = rows.subList(0, pageSize);
+        }
+
+        List<ChatMessageResponse> items = toResponses(rows);
+
+        String nextCursor = (hasNext && !items.isEmpty())
+                ? items.get(items.size() - 1).messageId() : null;
+
+        return ChatMessageCursorResponse.of(items, nextCursor, hasNext);
+    }
+
     private List<ChatMessageDocument> findBefore(UUID roomId, String before, Limit limit) {
         // cursor 메시지가 해당 방에 실제 존재하는지 검증하고 createdAt을 확보한다.
         ChatMessageDocument cursor = chatMessageMongoRepository
@@ -64,6 +90,19 @@ public class ChatMessageService {
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
         return chatMessageMongoRepository.findBeforeCursor(
                 roomId, cursor.getCreatedAt(), cursor.getMessageId(), limit);
+    }
+
+    private ChatMessageDocument resolveCursor(UUID roomId, String messageId) {
+        return chatMessageMongoRepository.findByMessageIdAndRoomId(messageId, roomId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+    }
+
+    private List<ChatMessageResponse> toResponses(List<ChatMessageDocument> rows) {
+        List<ChatMessageResponse> items = new ArrayList<>(rows.size());
+        for (ChatMessageDocument row : rows) {
+            items.add(ChatMessageResponse.from(row));
+        }
+        return items;
     }
 
     private int normalizeSize(Integer size) {
