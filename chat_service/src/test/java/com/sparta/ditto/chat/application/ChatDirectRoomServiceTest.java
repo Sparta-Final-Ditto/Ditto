@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.dto.ChatDirectRoomCreateCommand;
 import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.DirectChatPair;
@@ -144,7 +145,7 @@ class ChatDirectRoomServiceTest {
 
         // when & then
         assertThatThrownBy(() -> chatDirectRoomService.createOrGetDirectRoom(command))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(ChatInvalidDirectTargetException.class);
     }
 
     @Test

@@ -2,6 +2,8 @@ package com.sparta.ditto.chat.application;
 
 import com.sparta.ditto.chat.application.dto.ChatDirectRoomCreateCommand;
 import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
+import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -66,23 +68,21 @@ public class ChatDirectRoomService {
     }
 
     private void validateDirectTarget(UUID requesterId, UUID targetUserId) {
-        // TODO: 공통 예외 모듈 확정 후 ChatErrorCode 기반 도메인 예외로 교체한다.
         if (requesterId == null) {
-            throw new IllegalArgumentException("requesterId must not be null");
+            throw new ChatInvalidDirectTargetException();
         }
         if (targetUserId == null) {
-            throw new IllegalArgumentException("targetUserId must not be null");
+            throw new ChatInvalidDirectTargetException();
         }
         if (requesterId.equals(targetUserId)) {
-            throw new IllegalArgumentException("direct chat users must be different");
+            throw new ChatInvalidDirectTargetException();
         }
         // TODO: user-service 연동 방식 확정 후 차단 관계 검증을 추가한다.
     }
 
     private ChatDirectRoomResult returnExistingOrReactivateRoom(DirectChatPair directChatPair) {
         ChatRoom chatRoom = chatRoomRepository.findById(directChatPair.getRoomId())
-                // TODO: 공통 예외 모듈 확정 후 CHAT_ROOM_NOT_FOUND 예외로 교체한다.
-                .orElseThrow(() -> new IllegalStateException("direct chat room not found"));
+                .orElseThrow(ChatRoomNotFoundException::new);
 
         boolean reactivated = false;
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
