@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT}
+  port: 8085
 
 spring:
   application:
@@ -7,7 +7,7 @@ spring:
   data:
     redis:
       host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      port: 6379
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     consumer:
