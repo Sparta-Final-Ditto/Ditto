@@ -3,6 +3,7 @@ package com.sparta.ditto.chat.domain.room;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.sparta.ditto.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +44,7 @@ class ChatRoomTest {
     void createGroup_fail_blank_room_name() {
         // when & then
         assertThatThrownBy(() -> ChatRoom.createGroup(" "))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test

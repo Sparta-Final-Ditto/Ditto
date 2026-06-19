@@ -1,8 +1,8 @@
-package com.sparta.ditto.chat.presentation;
+package com.sparta.ditto.chat.presentation.controller;
 
-import com.sparta.ditto.chat.application.ChatGroupRoomService;
-import com.sparta.ditto.chat.application.dto.ChatGroupRoomCreateCommand;
-import com.sparta.ditto.chat.application.dto.ChatGroupRoomResult;
+import com.sparta.ditto.chat.application.room.ChatGroupRoomService;
+import com.sparta.ditto.chat.application.room.dto.ChatGroupRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.ChatGroupRoomResult;
 import com.sparta.ditto.chat.presentation.dto.request.ChatGroupRoomCreateRequest;
 import com.sparta.ditto.chat.presentation.dto.response.ChatGroupRoomResponse;
 import com.sparta.ditto.common.response.ApiResponse;

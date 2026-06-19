@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.presentation;
+package com.sparta.ditto.chat.presentation.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.sparta.ditto.chat.application.ChatDirectRoomService;
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.ChatDirectRoomService;
+import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -50,9 +50,11 @@ class ChatDirectRoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID.toString()))
-                .andExpect(jsonPath("$.status").value(RoomStatus.ACTIVE.name()))
-                .andExpect(jsonPath("$.reactivated").value(false));
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.message").value("CREATED"))
+                .andExpect(jsonPath("$.data.roomId").value(ROOM_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value(RoomStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$.data.reactivated").value(false));
     }
 
     @Test
@@ -68,9 +70,11 @@ class ChatDirectRoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID.toString()))
-                .andExpect(jsonPath("$.status").value(RoomStatus.ACTIVE.name()))
-                .andExpect(jsonPath("$.reactivated").value(false));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.roomId").value(ROOM_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value(RoomStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$.data.reactivated").value(false));
     }
 
     @Test
@@ -87,9 +91,11 @@ class ChatDirectRoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID.toString()))
-                .andExpect(jsonPath("$.status").value(RoomStatus.ACTIVE.name()))
-                .andExpect(jsonPath("$.reactivated").value(true));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.roomId").value(ROOM_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value(RoomStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$.data.reactivated").value(true));
     }
 
     private String requestBody() {

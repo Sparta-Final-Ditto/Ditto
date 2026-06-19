@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.application.dto;
+package com.sparta.ditto.chat.application.room.dto;
 
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;

@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.presentation;
+package com.sparta.ditto.chat.presentation.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.sparta.ditto.chat.application.ChatGroupRoomService;
-import com.sparta.ditto.chat.application.dto.ChatGroupRoomResult;
+import com.sparta.ditto.chat.application.room.ChatGroupRoomService;
+import com.sparta.ditto.chat.application.room.dto.ChatGroupRoomResult;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import java.util.UUID;
