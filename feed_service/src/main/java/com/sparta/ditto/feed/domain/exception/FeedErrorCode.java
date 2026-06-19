@@ -20,7 +20,16 @@ public enum FeedErrorCode implements ErrorCode {
     BLOCKED_RELATION("BLOCKED_RELATION", "차단 관계에서는 이 작업을 수행할 수 없습니다.", 403),
     DUPLICATE_LIKE("DUPLICATE_LIKE", "이미 좋아요를 누른 게시글입니다.", 409),
     LIKE_NOT_FOUND("LIKE_NOT_FOUND", "좋아요를 누르지 않은 게시글입니다.", 404),
-    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "댓글을 찾을 수 없습니다.", 404);
+    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "댓글을 찾을 수 없습니다.", 404),
+    EMPTY_POST("VALIDATION_ERROR", "이미지, 영상, 텍스트 중 하나는 반드시 입력해주세요.", 400),
+    CONTENT_TOO_LONG("VALIDATION_ERROR", "게시글 본문은 500자 이내로 입력해주세요.", 400),
+    TAG_MIN_REQUIRED("VALIDATION_ERROR", "태그는 최소 1개 이상 입력해주세요.", 400),
+    TAG_MAX_EXCEEDED("VALIDATION_ERROR", "태그는 최대 10개까지 입력할 수 있습니다.", 400),
+    LOCATION_REQUIRED("VALIDATION_ERROR", "위치 정보는 필수입니다.", 400),
+    COORDINATE_OUT_OF_RANGE("VALIDATION_ERROR", "위치 정보가 유효한 범위를 벗어났습니다.", 400),
+    INVALID_LOCATION_SCOPE("VALIDATION_ERROR", "공개 범위는 PUBLIC, FOLLOWERS_ONLY, PRIVATE 중 선택해주세요.", 400),
+    INVALID_POST_MEDIA_TYPE("VALIDATION_ERROR", "미디어 타입은 IMAGE, VIDEO 중 선택해주세요.", 400),
+    DUPLICATE_SORT_ORDER("VALIDATION_ERROR", "미디어 파일의 정렬 순서가 중복됩니다.", 400);
 
     private final String code;
     private final String message;
