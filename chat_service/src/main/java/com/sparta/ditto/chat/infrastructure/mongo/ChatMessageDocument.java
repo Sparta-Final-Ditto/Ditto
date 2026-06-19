@@ -20,7 +20,10 @@ import org.springframework.data.mongodb.core.mapping.Field;
                 name = "uk_chat_messages_room_id_sender_id_client_message_id",
                 def = "{'room_id': 1, 'sender_id': 1, 'client_message_id': 1}",
                 unique = true,
-                sparse = true
+                // sparse 제거: room_id가 항상 존재해 복합 인덱스에서 sparse가 무력화됨.
+                // client_message_id가 실제 값(binData)인 사용자 메시지에만 unique 적용해
+                // 시스템 메시지(sender_id/client_message_id null) 충돌을 방지한다.
+                partialFilter = "{ 'client_message_id': { '$type': 'binData' } }"
         ),
         @CompoundIndex(
                 name = "idx_chat_messages_room_id_created_at_message_id",
