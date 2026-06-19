@@ -45,14 +45,16 @@ class ChatDirectRoomControllerTest {
                 .willReturn(ChatDirectRoomResult.of(ROOM_ID, RoomStatus.ACTIVE, true, false));
 
         // when & then
-        mockMvc.perform(post("/chat/rooms/direct")
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID.toString()))
-                .andExpect(jsonPath("$.status").value(RoomStatus.ACTIVE.name()))
-                .andExpect(jsonPath("$.reactivated").value(false));
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.message").value("CREATED"))
+                .andExpect(jsonPath("$.data.roomId").value(ROOM_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value(RoomStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$.data.reactivated").value(false));
     }
 
     @Test
@@ -63,14 +65,16 @@ class ChatDirectRoomControllerTest {
                 .willReturn(ChatDirectRoomResult.of(ROOM_ID, RoomStatus.ACTIVE, false, false));
 
         // when & then
-        mockMvc.perform(post("/chat/rooms/direct")
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID.toString()))
-                .andExpect(jsonPath("$.status").value(RoomStatus.ACTIVE.name()))
-                .andExpect(jsonPath("$.reactivated").value(false));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.roomId").value(ROOM_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value(RoomStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$.data.reactivated").value(false));
     }
 
     @Test
@@ -82,14 +86,16 @@ class ChatDirectRoomControllerTest {
                 .willReturn(ChatDirectRoomResult.of(ROOM_ID, RoomStatus.ACTIVE, false, true));
 
         // when & then
-        mockMvc.perform(post("/chat/rooms/direct")
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
                         .header("X-User-Id", REQUESTER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.roomId").value(ROOM_ID.toString()))
-                .andExpect(jsonPath("$.status").value(RoomStatus.ACTIVE.name()))
-                .andExpect(jsonPath("$.reactivated").value(true));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.roomId").value(ROOM_ID.toString()))
+                .andExpect(jsonPath("$.data.status").value(RoomStatus.ACTIVE.name()))
+                .andExpect(jsonPath("$.data.reactivated").value(true));
     }
 
     private String requestBody() {
