@@ -115,6 +115,23 @@ class ChatRoomParticipantTest {
     }
 
     @Test
+    @DisplayName("성공 - 참여자를 OWNER로 위임한다")
+    void assignOwnerRole_success() {
+        // given
+        ChatRoomParticipant participant = ChatRoomParticipant.join(
+                UUID.fromString("00000000-0000-0000-0000-000000000100"),
+                UUID.fromString("00000000-0000-0000-0000-000000000001"),
+                ParticipantRole.MEMBER
+        );
+
+        // when
+        participant.assignOwnerRole();
+
+        // then
+        assertThat(participant.getRole()).isEqualTo(ParticipantRole.OWNER);
+    }
+
+    @Test
     @DisplayName("성공 - 저장 전 참여 시각을 초기화한다")
     void prePersist_success() {
         // given
