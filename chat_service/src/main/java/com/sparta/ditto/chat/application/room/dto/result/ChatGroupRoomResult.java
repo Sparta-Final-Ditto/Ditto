@@ -2,7 +2,8 @@ package com.sparta.ditto.chat.application.room.dto.result;
 
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
-import java.util.Objects;
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
 
 public record ChatGroupRoomResult(
@@ -18,11 +19,9 @@ public record ChatGroupRoomResult(
             String roomName,
             RoomStatus status
     ) {
-        return new ChatGroupRoomResult(
-                Objects.requireNonNull(roomId, "roomId must not be null"),
-                Objects.requireNonNull(roomType, "roomType must not be null"),
-                Objects.requireNonNull(roomName, "roomName must not be null"),
-                Objects.requireNonNull(status, "status must not be null")
-        );
+        if (roomId == null || roomType == null || roomName == null || status == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        return new ChatGroupRoomResult(roomId, roomType, roomName, status);
     }
 }
