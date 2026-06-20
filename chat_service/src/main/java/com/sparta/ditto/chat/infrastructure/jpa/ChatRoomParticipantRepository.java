@@ -22,4 +22,7 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
 
     // 내 채팅방 목록 조회에서 현재 참여 중인 방을 찾을 때 사용한다.
     List<ChatRoomParticipant> findAllByUserIdAndLeftAtIsNull(UUID userId);
+
+    // 내 채팅방 기본 목록 조회에서 숨김 처리되지 않은 현재 참여 방만 찾을 때 사용한다.
+    List<ChatRoomParticipant> findAllByUserIdAndLeftAtIsNullAndHiddenFalse(UUID userId);
 }
