@@ -7,8 +7,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomCreateCommand;
-import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;

@@ -1,7 +1,7 @@
 package com.sparta.ditto.chat.presentation.controller;
 
 import com.sparta.ditto.chat.application.room.ChatRoomLeaveService;
-import com.sparta.ditto.chat.application.room.dto.ChatRoomLeaveResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomLeaveResult;
 import com.sparta.ditto.chat.presentation.dto.response.ChatRoomLeaveResponse;
 import com.sparta.ditto.common.response.ApiResponse;
 import java.util.UUID;

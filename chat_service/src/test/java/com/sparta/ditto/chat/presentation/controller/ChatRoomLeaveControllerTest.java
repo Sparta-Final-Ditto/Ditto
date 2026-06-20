@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sparta.ditto.chat.application.room.ChatRoomLeaveService;
-import com.sparta.ditto.chat.application.room.dto.ChatRoomLeaveResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomLeaveResult;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import java.time.Instant;
 import java.util.UUID;

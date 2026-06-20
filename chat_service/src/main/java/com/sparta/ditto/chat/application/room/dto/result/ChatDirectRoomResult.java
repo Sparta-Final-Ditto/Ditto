@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.application.room.dto;
+package com.sparta.ditto.chat.application.room.dto.result;
 
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import java.util.UUID;

@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.application.room.dto;
+package com.sparta.ditto.chat.application.room.dto.result;
 
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import java.time.Instant;
