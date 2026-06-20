@@ -119,6 +119,10 @@ public class ChatRoomParticipant {
         this.notificationEnabled = enabled;
     }
 
+    public void assignOwnerRole() {
+        this.role = ParticipantRole.OWNER;
+    }
+
     @PrePersist
     void prePersist() {
         if (this.joinedAt == null) {
