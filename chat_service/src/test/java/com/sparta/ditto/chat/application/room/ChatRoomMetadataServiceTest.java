@@ -4,10 +4,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
+import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
@@ -42,6 +44,7 @@ class ChatRoomMetadataServiceTest {
         // given
         ChatRoom chatRoom = mock(ChatRoom.class);
         given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoom.getStatus()).willReturn(RoomStatus.ACTIVE);
 
         // when
         chatRoomMetadataService.updateLastMessage(
@@ -69,6 +72,26 @@ class ChatRoomMetadataServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("INACTIVE 채팅방은 마지막 메시지를 갱신할 수 없다")
+    void updateLastMessage_fail_room_inactive() {
+        // given
+        ChatRoom chatRoom = mock(ChatRoom.class);
+        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoom.getStatus()).willReturn(RoomStatus.INACTIVE);
+
+        // when & then
+        assertThatThrownBy(() -> chatRoomMetadataService.updateLastMessage(
+                ROOM_ID,
+                MESSAGE_ID,
+                MESSAGE_CREATED_AT
+        ))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(ChatErrorCode.CHAT_ROOM_INACTIVE));
+        verify(chatRoom, never()).updateLastMessage(MESSAGE_ID, MESSAGE_CREATED_AT);
     }
 
     @Test

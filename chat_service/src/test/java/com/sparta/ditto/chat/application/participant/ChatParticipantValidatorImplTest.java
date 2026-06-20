@@ -64,12 +64,30 @@ class ChatParticipantValidatorImplTest {
                 ROOM_ID,
                 USER_ID
         )).willReturn(Optional.empty());
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> validator.ensureActiveParticipant(ROOM_ID, USER_ID))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(ChatErrorCode.CHAT_NOT_PARTICIPANT));
+    }
+
+    @Test
+    @DisplayName("채팅방이 없으면 현재 참여자 검증에 실패한다")
+    void ensureActiveParticipant_fail_room_not_found() {
+        // given
+        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+                ROOM_ID,
+                USER_ID
+        )).willReturn(Optional.empty());
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> validator.ensureActiveParticipant(ROOM_ID, USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
     }
 
     @Test
@@ -80,6 +98,7 @@ class ChatParticipantValidatorImplTest {
                 ROOM_ID,
                 USER_ID
         )).willReturn(Optional.empty());
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> validator.ensureActiveParticipant(ROOM_ID, USER_ID))
@@ -148,12 +167,28 @@ class ChatParticipantValidatorImplTest {
         // given
         given(chatRoomParticipantRepository.findByRoomIdAndUserId(ROOM_ID, USER_ID))
                 .willReturn(Optional.empty());
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> validator.getParticipant(ROOM_ID, USER_ID))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(ChatErrorCode.CHAT_NOT_PARTICIPANT));
+    }
+
+    @Test
+    @DisplayName("채팅방이 없으면 참여자 메타데이터 조회에 실패한다")
+    void getParticipant_fail_room_not_found() {
+        // given
+        given(chatRoomParticipantRepository.findByRoomIdAndUserId(ROOM_ID, USER_ID))
+                .willReturn(Optional.empty());
+        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(false);
+
+        // when & then
+        assertThatThrownBy(() -> validator.getParticipant(ROOM_ID, USER_ID))
+                .isInstanceOfSatisfying(BusinessException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
     }
 
     private ChatRoom mockChatRoom(RoomStatus status) {

@@ -23,7 +23,7 @@ public class ChatParticipantValidatorImpl implements ChatParticipantValidator {
     @Transactional(readOnly = true)
     public void ensureActiveParticipant(UUID roomId, UUID userId) {
         chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(roomId, userId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_NOT_PARTICIPANT));
+                .orElseThrow(() -> participantException(roomId));
     }
 
     @Override
@@ -41,6 +41,13 @@ public class ChatParticipantValidatorImpl implements ChatParticipantValidator {
     @Transactional(readOnly = true)
     public ChatRoomParticipant getParticipant(UUID roomId, UUID userId) {
         return chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, userId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_NOT_PARTICIPANT));
+                .orElseThrow(() -> participantException(roomId));
+    }
+
+    private BusinessException participantException(UUID roomId) {
+        if (!chatRoomRepository.existsById(roomId)) {
+            return new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+        }
+        return new BusinessException(ChatErrorCode.CHAT_NOT_PARTICIPANT);
     }
 }

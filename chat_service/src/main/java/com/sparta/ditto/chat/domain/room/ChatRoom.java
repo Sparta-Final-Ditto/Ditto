@@ -80,7 +80,7 @@ public class ChatRoom extends BaseEntity {
     }
 
     public void updateLastMessage(String messageId, Instant messageCreatedAt) {
-        if (messageId == null || messageCreatedAt == null) {
+        if (messageId == null || messageId.isBlank() || messageCreatedAt == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         this.lastMessageId = messageId;
