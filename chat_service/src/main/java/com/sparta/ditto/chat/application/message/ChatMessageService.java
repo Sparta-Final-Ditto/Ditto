@@ -111,4 +111,20 @@ public class ChatMessageService {
         }
         return Math.min(size, MAX_SIZE);
     }
+
+    // 메시지 삭제
+    public void deleteMessage(UUID roomId, String messageId, UUID requesterId) {
+        chatParticipantValidator.ensureActiveParticipant(roomId, requesterId);
+
+        ChatMessageDocument message = chatMessageMongoRepository
+                .findByMessageIdAndRoomId(messageId, roomId)
+                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+
+        if (!requesterId.equals(message.getSenderId())) {
+            throw new BusinessException(ChatErrorCode.CHAT_MESSAGE_FORBIDDEN);
+        }
+
+        message.markDeleted();
+        chatMessageMongoRepository.save(message);
+    }
 }
