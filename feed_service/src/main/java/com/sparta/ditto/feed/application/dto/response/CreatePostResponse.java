@@ -1,7 +1,6 @@
 package com.sparta.ditto.feed.application.dto.response;
 
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.entity.PostTag;
 import java.time.Instant;
 import java.util.List;
