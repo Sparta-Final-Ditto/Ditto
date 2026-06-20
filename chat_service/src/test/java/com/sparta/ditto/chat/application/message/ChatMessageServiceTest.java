@@ -7,6 +7,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
@@ -195,8 +197,98 @@ class ChatMessageServiceTest {
         }
     }
 
+    @Nested
+    @DisplayName("deleteMessage()")
+    class DeleteMessage {
+
+        @Test
+        @DisplayName("성공 - 본인 메시지를 soft delete 한다")
+        void success_soft_delete_own_message() {
+            // given
+            ChatMessageDocument message = myMessage("m1");
+            given(chatMessageMongoRepository.findByMessageIdAndRoomId(any(), any()))
+                    .willReturn(Optional.of(message));
+
+            // when
+            chatMessageService.deleteMessage(ROOM_ID, "m1", REQUESTER_ID);
+
+            // then
+            assertThat(message.isDeleted()).isTrue();
+            verify(chatMessageMongoRepository).save(message);
+        }
+
+        @Test
+        @DisplayName("멱등 - 이미 삭제된 메시지를 다시 삭제해도 예외 없이 처리된다")
+        void idempotent_when_already_deleted() {
+            // given
+            ChatMessageDocument message = myMessage("m1");
+            message.markDeleted();
+            given(chatMessageMongoRepository.findByMessageIdAndRoomId(any(), any()))
+                    .willReturn(Optional.of(message));
+
+            // when
+            chatMessageService.deleteMessage(ROOM_ID, "m1", REQUESTER_ID);
+
+            // then
+            assertThat(message.isDeleted()).isTrue();
+            verify(chatMessageMongoRepository).save(message);
+        }
+
+        @Test
+        @DisplayName("실패 - 본인이 보낸 메시지가 아니면 권한 예외가 발생한다")
+        void fail_forbidden_when_not_sender() {
+            // given
+            given(chatMessageMongoRepository.findByMessageIdAndRoomId(any(), any()))
+                    .willReturn(Optional.of(userMessage("m1")));
+
+            // when & then
+            assertThatThrownBy(() ->
+                    chatMessageService.deleteMessage(ROOM_ID, "m1", REQUESTER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ChatErrorCode.CHAT_MESSAGE_FORBIDDEN);
+            verify(chatMessageMongoRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("실패 - 메시지가 방에 없으면 예외가 발생한다")
+        void fail_message_not_found() {
+            // given
+            given(chatMessageMongoRepository.findByMessageIdAndRoomId(any(), any()))
+                    .willReturn(Optional.empty());
+
+            // when & then
+            assertThatThrownBy(() ->
+                    chatMessageService.deleteMessage(ROOM_ID, "m1", REQUESTER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND);
+        }
+
+        @Test
+        @DisplayName("실패 - 참여자가 아니면 조회 전에 예외가 발생한다")
+        void fail_not_participant() {
+            // given
+            willThrow(new BusinessException(ChatErrorCode.CHAT_NOT_PARTICIPANT))
+                    .given(chatParticipantValidator).ensureActiveParticipant(any(), any());
+
+            // when & then
+            assertThatThrownBy(() ->
+                    chatMessageService.deleteMessage(ROOM_ID, "m1", REQUESTER_ID))
+                    .isInstanceOf(BusinessException.class)
+                    .extracting(e -> ((BusinessException) e).getErrorCode())
+                    .isEqualTo(ChatErrorCode.CHAT_NOT_PARTICIPANT);
+            verifyNoInteractions(chatMessageMongoRepository);
+        }
+    }
+
     private ChatMessageDocument userMessage(String messageId) {
         return ChatMessageDocument.createUserMessage(
                 messageId, ROOM_ID, SENDER_ID, UUID.randomUUID(), MessageType.TEXT, "c-" + messageId);
+    }
+
+    private ChatMessageDocument myMessage(String messageId) {
+        return ChatMessageDocument.createUserMessage(
+                messageId, ROOM_ID, REQUESTER_ID, UUID.randomUUID(), MessageType.TEXT, "c-" + messageId);
     }
 }
