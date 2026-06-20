@@ -1,7 +1,7 @@
 package com.sparta.ditto.chat.presentation.controller;
 
 import com.sparta.ditto.chat.application.room.ChatRoomQueryService;
-import com.sparta.ditto.chat.application.room.dto.ChatRoomDetailResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomDetailResult;
 import com.sparta.ditto.chat.presentation.dto.response.ChatRoomResponse;
 import com.sparta.ditto.chat.presentation.dto.response.ChatRoomSummaryResponse;
 import com.sparta.ditto.common.response.ApiResponse;
@@ -24,7 +24,7 @@ public class ChatRoomQueryController {
 
     @GetMapping("/{roomId}")
     public ResponseEntity<ApiResponse<ChatRoomResponse>> getRoom(
-            // TODO: 인증 공통 모듈 확정 후 JWT 기반 사용자 ID 추출로 교체한다.
+            // Gateway JWT 필터가 전달한 사용자 ID를 사용한다.
             @RequestHeader("X-User-Id") UUID requesterId,
             @PathVariable UUID roomId
     ) {
@@ -35,7 +35,7 @@ public class ChatRoomQueryController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<ChatRoomSummaryResponse>>> getMyRooms(
-            // TODO: 인증 공통 모듈 확정 후 JWT 기반 사용자 ID 추출로 교체한다.
+            // Gateway JWT 필터가 전달한 사용자 ID를 사용한다.
             @RequestHeader("X-User-Id") UUID requesterId
     ) {
         List<ChatRoomSummaryResponse> responses = chatRoomQueryService.getMyRooms(requesterId)

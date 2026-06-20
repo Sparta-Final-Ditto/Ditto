@@ -6,9 +6,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sparta.ditto.chat.application.room.ChatRoomQueryService;
-import com.sparta.ditto.chat.application.room.dto.ChatParticipantResult;
-import com.sparta.ditto.chat.application.room.dto.ChatRoomDetailResult;
-import com.sparta.ditto.chat.application.room.dto.ChatRoomSummaryResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatParticipantResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomDetailResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomSummaryResult;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
