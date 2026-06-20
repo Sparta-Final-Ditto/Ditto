@@ -1,8 +1,8 @@
 package com.sparta.ditto.chat.presentation.controller;
 
 import com.sparta.ditto.chat.application.room.ChatGroupRoomService;
-import com.sparta.ditto.chat.application.room.dto.ChatGroupRoomCreateCommand;
-import com.sparta.ditto.chat.application.room.dto.ChatGroupRoomResult;
+import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
 import com.sparta.ditto.chat.presentation.dto.request.ChatGroupRoomCreateRequest;
 import com.sparta.ditto.chat.presentation.dto.response.ChatGroupRoomResponse;
 import com.sparta.ditto.common.response.ApiResponse;
@@ -26,7 +26,7 @@ public class ChatGroupRoomController {
 
     @PostMapping("/group")
     public ResponseEntity<ApiResponse<ChatGroupRoomResponse>> createGroupRoom(
-            // TODO: 인증 공통 모듈 확정 후 JWT 기반 사용자 ID 추출로 교체한다.
+            // Gateway JWT 필터가 전달한 사용자 ID를 사용한다.
             @RequestHeader("X-User-Id") UUID requesterId,
             @Valid @RequestBody ChatGroupRoomCreateRequest request
     ) {

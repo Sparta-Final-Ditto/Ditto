@@ -1,6 +1,6 @@
 package com.sparta.ditto.chat.application.room;
 
-import com.sparta.ditto.chat.application.room.dto.ChatRoomLeaveResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomLeaveResult;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;

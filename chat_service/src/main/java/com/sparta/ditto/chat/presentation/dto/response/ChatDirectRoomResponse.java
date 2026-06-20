@@ -1,6 +1,6 @@
 package com.sparta.ditto.chat.presentation.dto.response;
 
-import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import java.util.UUID;
 

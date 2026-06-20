@@ -6,8 +6,8 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.sparta.ditto.chat.application.room.dto.ChatRoomDetailResult;
-import com.sparta.ditto.chat.application.room.dto.ChatRoomSummaryResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomDetailResult;
+import com.sparta.ditto.chat.application.room.dto.result.ChatRoomSummaryResult;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
