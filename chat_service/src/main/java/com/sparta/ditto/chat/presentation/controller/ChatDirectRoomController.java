@@ -1,10 +1,11 @@
-package com.sparta.ditto.chat.presentation;
+package com.sparta.ditto.chat.presentation.controller;
 
-import com.sparta.ditto.chat.application.ChatDirectRoomService;
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomCreateCommand;
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.ChatDirectRoomService;
+import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.presentation.dto.request.ChatDirectRoomCreateRequest;
 import com.sparta.ditto.chat.presentation.dto.response.ChatDirectRoomResponse;
+import com.sparta.ditto.common.response.ApiResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +19,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/chat/rooms")
+@RequestMapping("/api/v1/chat/rooms")
 public class ChatDirectRoomController {
 
     private final ChatDirectRoomService chatDirectRoomService;
 
     @PostMapping("/direct")
-    public ResponseEntity<ChatDirectRoomResponse> createOrGetDirectRoom(
-            // TODO: 인증 공통 모듈 확정 후 JWT 기반 사용자 ID 추출로 교체한다.
+    public ResponseEntity<ApiResponse<ChatDirectRoomResponse>> createOrGetDirectRoom(
+            // Gateway JWT 필터가 전달한 사용자 ID를 사용한다.
             @RequestHeader("X-User-Id") UUID requesterId,
             @Valid @RequestBody ChatDirectRoomCreateRequest request
     ) {
@@ -36,6 +37,14 @@ public class ChatDirectRoomController {
 
         return ResponseEntity
                 .status(status)
-                .body(ChatDirectRoomResponse.from(result));
+                .body(responseBody(result));
+    }
+
+    private ApiResponse<ChatDirectRoomResponse> responseBody(ChatDirectRoomResult result) {
+        ChatDirectRoomResponse response = ChatDirectRoomResponse.from(result);
+        if (result.created()) {
+            return ApiResponse.created(response);
+        }
+        return ApiResponse.success(response);
     }
 }

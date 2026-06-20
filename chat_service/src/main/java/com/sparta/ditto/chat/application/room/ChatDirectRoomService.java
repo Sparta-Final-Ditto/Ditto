@@ -1,7 +1,7 @@
-package com.sparta.ditto.chat.application;
+package com.sparta.ditto.chat.application.room;
 
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomCreateCommand;
-import com.sparta.ditto.chat.application.dto.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
@@ -12,8 +12,9 @@ import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
 import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.chat.infrastructure.jpa.DirectChatPairRepository;
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,7 +31,9 @@ public class ChatDirectRoomService {
     private final TransactionTemplate transactionTemplate;
 
     public ChatDirectRoomResult createOrGetDirectRoom(ChatDirectRoomCreateCommand command) {
-        Objects.requireNonNull(command, "command must not be null");
+        if (command == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         UUID requesterId = command.requesterId();
         UUID targetUserId = command.targetUserId();
         validateDirectTarget(requesterId, targetUserId);
@@ -102,7 +105,7 @@ public class ChatDirectRoomService {
     }
 
     private ChatDirectRoomResult createDirectRoom(UUID requesterId, UUID targetUserId) {
-        ChatRoom chatRoom = chatRoomRepository.saveAndFlush(ChatRoom.createDirect(requesterId));
+        ChatRoom chatRoom = chatRoomRepository.saveAndFlush(ChatRoom.createDirect());
         // 1:1 채팅방은 별도 방장 없이 두 사용자를 모두 MEMBER로 생성한다.
         chatRoomParticipantRepository.saveAll(List.of(
                 ChatRoomParticipant.join(chatRoom.getId(), requesterId, ParticipantRole.MEMBER),
