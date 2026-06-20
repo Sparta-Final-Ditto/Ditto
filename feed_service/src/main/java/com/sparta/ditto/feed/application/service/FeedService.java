@@ -43,9 +43,10 @@ public class FeedService {
         }
 
         // size+1개 조회
-        List<Post> posts = (cursorAt == null)
-                ? postRepository.findFeedByLocationScope(List.of(LocationScope.PUBLIC), PageRequest.of(0, size + 1))
-                : postRepository.findFeedByLocationScopeWithCursor(List.of(LocationScope.PUBLIC), cursorAt, cursorId, PageRequest.of(0, size + 1));
+        List<Post> posts = postRepository.findFeedByLocationScopeWithCursor(
+                List.of(LocationScope.PUBLIC), cursorAt, cursorId,
+                PageRequest.of(0, size + 1)
+        );
 
         // hasNext 판단
         boolean hasNext = posts.size() > size;

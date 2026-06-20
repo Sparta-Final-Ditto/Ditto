@@ -14,45 +14,33 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
-    @Query("""
-            SELECT p FROM Post p
-            WHERE p.deletedAt IS NULL
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
-    List<Post> findFeed(Pageable pageable);
-
-    @Query("""
-            SELECT p FROM Post p
-            WHERE p.deletedAt IS NULL
-              AND ((p.createdAt < :cursorAt)
-               OR (p.createdAt = :cursorAt AND p.id < :cursorId))
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
+    @Query(value = """
+            SELECT * FROM posts
+            WHERE deleted_at IS NULL
+              AND (
+                CAST(:cursorAt AS timestamptz) IS NULL
+                OR created_at < CAST(:cursorAt AS timestamptz)
+                OR (created_at = CAST(:cursorAt AS timestamptz) AND id < CAST(:cursorId AS uuid))
+              )
+            ORDER BY created_at DESC, id DESC
+            """, nativeQuery = true)
     List<Post> findFeedWithCursor(
             @Param("cursorAt") Instant cursorAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
 
-    @Query("""
-            SELECT p FROM Post p
-            WHERE p.locationScope IN :scopes
-              AND p.deletedAt IS NULL
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
-    List<Post> findFeedByLocationScope(
-            @Param("scopes") List<LocationScope> scopes,
-            Pageable pageable
-    );
-
-    @Query("""
-            SELECT p FROM Post p
-            WHERE p.locationScope IN :scopes
-              AND p.deletedAt IS NULL
-              AND ((p.createdAt < :cursorAt)
-               OR (p.createdAt = :cursorAt AND p.id < :cursorId))
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
+    @Query(value = """
+            SELECT * FROM posts
+            WHERE location_scope IN (:#{#scopes.![name()]})
+              AND deleted_at IS NULL
+              AND (
+                CAST(:cursorAt AS timestamptz) IS NULL
+                OR created_at < CAST(:cursorAt AS timestamptz)
+                OR (created_at = CAST(:cursorAt AS timestamptz) AND id < CAST(:cursorId AS uuid))
+              )
+            ORDER BY created_at DESC, id DESC
+            """, nativeQuery = true)
     List<Post> findFeedByLocationScopeWithCursor(
             @Param("scopes") List<LocationScope> scopes,
             @Param("cursorAt") Instant cursorAt,
@@ -60,15 +48,17 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
             Pageable pageable
     );
 
-    @Query("""
-            SELECT p FROM Post p
-            WHERE p.userId = :userId
-              AND p.deletedAt IS NULL
-              AND ((:cursorAt IS NULL AND :cursorId IS NULL)
-               OR (p.createdAt < :cursorAt)
-               OR (p.createdAt = :cursorAt AND p.id < :cursorId))
-            ORDER BY p.createdAt DESC, p.id DESC
-            """)
+    @Query(value = """
+            SELECT * FROM posts
+            WHERE user_id = CAST(:userId AS uuid)
+              AND deleted_at IS NULL
+              AND (
+                CAST(:cursorAt AS timestamptz) IS NULL
+                OR created_at < CAST(:cursorAt AS timestamptz)
+                OR (created_at = CAST(:cursorAt AS timestamptz) AND id < CAST(:cursorId AS uuid))
+              )
+            ORDER BY created_at DESC, id DESC
+            """, nativeQuery = true)
     List<Post> findByUserIdWithCursor(
             @Param("userId") UUID userId,
             @Param("cursorAt") Instant cursorAt,
