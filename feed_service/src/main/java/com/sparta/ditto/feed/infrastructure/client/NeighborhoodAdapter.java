@@ -9,6 +9,7 @@ import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
+/** NeighborhoodPort 구현체 — Redis 캐시 후 Kakao API 호출 */
 public class NeighborhoodAdapter implements NeighborhoodPort {
 
     private static final String CACHE_KEY_PREFIX = "geo:";

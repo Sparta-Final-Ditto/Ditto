@@ -15,6 +15,12 @@ import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
+/**
+ * S3Port 구현체 — AWS SDK v2를 통한 S3 파일 업로드·존재 확인.
+ * generatePresignedPutUrl()은 유효시간 10분의 Presigned PUT URL을 발급한다.
+ * doesObjectExist()는 HeadObject 요청으로 파일 존재 여부를 확인하며,
+ * NoSuchKeyException 발생 시 false를 반환한다.
+ */
 public class S3Adapter implements S3Port {
 
     private final S3Presigner s3Presigner;

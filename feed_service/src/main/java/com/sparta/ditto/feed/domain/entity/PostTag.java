@@ -11,7 +11,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -33,6 +33,7 @@ import org.hibernate.annotations.CreationTimestamp;
                 @Index(name = "idx_post_tags_post_id", columnList = "post_id")
         }
 )
+/** 게시글 태그 엔티티 */
 public class PostTag {
 
     @Id
@@ -49,7 +50,7 @@ public class PostTag {
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public PostTag(Post post, String tag) {
         this.post = post;

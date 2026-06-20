@@ -6,6 +6,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
+/** Redis 연결 및 직렬화 설정 */
 public class RedisConfig {
 
     @Bean

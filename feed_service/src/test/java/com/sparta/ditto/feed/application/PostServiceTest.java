@@ -1,17 +1,14 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.application.dto.request.CreatePostRequest.MediaFileRequest;
+import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.port.NeighborhoodPort;
-import com.sparta.ditto.feed.domain.port.S3Port;
-import com.sparta.ditto.feed.domain.port.UserPort;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,8 +18,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.transaction.support.TransactionCallback;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -32,32 +27,17 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
-
-    @Mock
-    private TransactionTemplate transactionTemplate;
 
     @Mock
     private PostRepository postRepository;
 
     @Mock
     private OutboxEventRepository outboxEventRepository;
-
-    @Mock
-    private S3Port s3Port;
-
-    @Mock
-    private NeighborhoodPort neighborhoodPort;
-
-    @Mock
-    private UserPort userPort;
 
     @InjectMocks
     private PostService postService;
@@ -69,11 +49,6 @@ class PostServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(postService, "cloudfrontDomain", CLOUDFRONT_DOMAIN);
 
-        lenient().when(transactionTemplate.execute(any())).thenAnswer(inv ->
-                ((TransactionCallback<?>) inv.getArgument(0)).doInTransaction(null));
-        lenient().when(s3Port.doesObjectExist(anyString())).thenReturn(true);
-        lenient().when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn("서울 성동구");
-        lenient().when(userPort.getNickname(any(UUID.class))).thenReturn("새벽러너");
         lenient().when(postRepository.save(any(Post.class))).thenAnswer(invocation -> {
             Post post = invocation.getArgument(0);
             ReflectionTestUtils.setField(post, "id", UUID.randomUUID());
@@ -103,7 +78,7 @@ class PostServiceTest {
         CreatePostRequest request = defaultRequest();
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.postId()).isNotNull();
@@ -123,7 +98,7 @@ class PostServiceTest {
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.postId()).isNotNull();
@@ -143,7 +118,7 @@ class PostServiceTest {
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.postId()).isNotNull();
@@ -163,13 +138,13 @@ class PostServiceTest {
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.content()).isEqualTo("오늘 새벽 러닝 완료!");
         assertThat(response.tags()).containsExactlyInAnyOrder("#새벽운동", "#러닝");
         assertThat(response.showLocation()).isFalse();
-        assertThat(response.neighborhood()).isEqualTo("서울 성동구");
+        assertThat(response.neighborhood()).isNull(); // showLocation=false이면 neighborhood=null 반환 (DATA_MODEL)
         assertThat(response.likeCount()).isZero();
         assertThat(response.isLiked()).isFalse();
         assertThat(response.commentCount()).isZero();
@@ -189,7 +164,7 @@ class PostServiceTest {
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        postService.createPost(userId, request);
+        postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         verify(postRepository).save(captor.capture());
@@ -210,112 +185,11 @@ class PostServiceTest {
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        postService.createPost(userId, request);
+        postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         verify(postRepository).save(captor.capture());
         assertThat(captor.getValue().getShowLocation()).isTrue();
-    }
-
-    @Test
-    @DisplayName("tags=[] → 400, VALIDATION_ERROR 태그는 최소 1개 이상 입력해주세요.")
-    void tags_비어있음_TAG_MIN_REQUIRED() {
-        // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of(),
-                37.5563, 127.0374,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    BusinessException be = (BusinessException) e;
-                    assertThat(be.getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                    assertThat(be.getErrorCode().getMessage()).isEqualTo("태그는 최소 1개 이상 입력해주세요.");
-                });
-    }
-
-    @Test
-    @DisplayName("태그 11개 → 400, VALIDATION_ERROR 태그는 최대 10개까지 입력할 수 있습니다.")
-    void 태그11개_TAG_MAX_EXCEEDED() {
-        // given
-        List<String> tags = List.of("#1", "#2", "#3", "#4", "#5", "#6", "#7", "#8", "#9", "#10", "#11");
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", tags,
-                37.5563, 127.0374,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    BusinessException be = (BusinessException) e;
-                    assertThat(be.getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                    assertThat(be.getErrorCode().getMessage()).isEqualTo("태그는 최대 10개까지 입력할 수 있습니다.");
-                });
-    }
-
-    @Test
-    @DisplayName("latitude 누락 → 400, VALIDATION_ERROR 위치 정보는 필수입니다.")
-    void latitude_누락_LOCATION_REQUIRED() {
-        // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
-                null, 127.0374,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    BusinessException be = (BusinessException) e;
-                    assertThat(be.getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                    assertThat(be.getErrorCode().getMessage()).isEqualTo("위치 정보는 필수입니다.");
-                });
-    }
-
-    @Test
-    @DisplayName("longitude 누락 → 400, VALIDATION_ERROR 위치 정보는 필수입니다.")
-    void longitude_누락_LOCATION_REQUIRED() {
-        // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
-                37.5563, null,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    BusinessException be = (BusinessException) e;
-                    assertThat(be.getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                    assertThat(be.getErrorCode().getMessage()).isEqualTo("위치 정보는 필수입니다.");
-                });
-    }
-
-    @Test
-    @DisplayName("content 501자 → 400, VALIDATION_ERROR 게시글 본문은 500자 이내로 입력해주세요.")
-    void content_501자_CONTENT_TOO_LONG() {
-        // given
-        CreatePostRequest request = new CreatePostRequest(
-                "A".repeat(501), List.of("#태그"),
-                37.5563, 127.0374,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    BusinessException be = (BusinessException) e;
-                    assertThat(be.getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                    assertThat(be.getErrorCode().getMessage()).isEqualTo("게시글 본문은 500자 이내로 입력해주세요.");
-                });
     }
 
     @Test
@@ -329,7 +203,7 @@ class PostServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
+        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -350,7 +224,7 @@ class PostServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
+        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -360,57 +234,23 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("S3 객체 없음 → 400, S3_OBJECT_NOT_FOUND 업로드된 파일을 찾을 수 없습니다.")
-    void S3객체_없음_S3_OBJECT_NOT_FOUND() {
-        // given
-        when(s3Port.doesObjectExist(anyString())).thenReturn(false);
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, defaultRequest()))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    BusinessException be = (BusinessException) e;
-                    assertThat(be.getErrorCode().getCode()).isEqualTo("S3_OBJECT_NOT_FOUND");
-                    assertThat(be.getErrorCode().getMessage()).isEqualTo("업로드된 파일을 찾을 수 없습니다.");
-                });
-    }
-
-    @Test
-    @DisplayName("S3 객체 존재 → 201, 게시글 생성")
-    void S3객체_존재_게시글생성() {
-        // given
-        when(s3Port.doesObjectExist("feeds/test-uuid.mp4")).thenReturn(true);
-
+    @DisplayName("전달받은 neighborhood 값이 응답에 반영")
+    void neighborhood_값_응답에_반영() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest());
+        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.postId()).isNotNull();
-    }
-
-    @Test
-    @DisplayName("neighborhoodPort.resolveNeighborhood 호출 → 결과가 응답 neighborhood에 반영")
-    void neighborhoodPort_호출_neighborhood_응답에_반영() {
-        // given
-        when(neighborhoodPort.resolveNeighborhood(37.5563, 127.0374)).thenReturn("서울 성동구");
-
-        // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest());
-
-        // then
-        verify(neighborhoodPort).resolveNeighborhood(37.5563, 127.0374);
         assertThat(response.neighborhood()).isEqualTo("서울 성동구");
     }
 
     @Test
-    @DisplayName("neighborhoodPort.resolveNeighborhood 호출 → 결과가 Post에 저장됨")
-    void neighborhoodPort_호출_결과_Post에_저장() {
+    @DisplayName("전달받은 neighborhood 결과가 Post에 저장됨")
+    void neighborhood_결과_Post에_저장() {
         // given
-        when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn("서울 성동구");
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        postService.createPost(userId, defaultRequest());
+        postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
 
         // then
         verify(postRepository).save(captor.capture());
@@ -418,13 +258,10 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("Kakao API 실패 (neighborhoodPort null 반환) → 201, neighborhood=null")
-    void neighborhoodPort_null_반환_neighborhood_null_게시글생성() {
-        // given
-        when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn(null);
-
+    @DisplayName("neighborhood 값이 null인 경우 응답에 null로 설정")
+    void neighborhood_null_응답_게시글생성() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest());
+        CreatePostResponse response = postService.createPost(userId, defaultRequest(), null, "새벽러너");
 
         // then
         assertThat(response.postId()).isNotNull();
@@ -456,7 +293,7 @@ class PostServiceTest {
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.mediaFiles()).hasSize(1);
@@ -470,7 +307,7 @@ class PostServiceTest {
     @DisplayName("정상 생성 → 응답에 createdAt 포함")
     void 정상생성_createdAt_포함() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest());
+        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.createdAt()).isNotNull();
@@ -483,7 +320,7 @@ class PostServiceTest {
         ArgumentCaptor<OutboxEvent> captor = ArgumentCaptor.forClass(OutboxEvent.class);
 
         // when
-        postService.createPost(userId, defaultRequest());
+        postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
 
         // then
         verify(outboxEventRepository).save(captor.capture());
@@ -503,7 +340,7 @@ class PostServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
+        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -527,7 +364,7 @@ class PostServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
+        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
@@ -546,7 +383,7 @@ class PostServiceTest {
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.tags()).containsExactlyInAnyOrder("#러닝", "#새벽");
@@ -572,7 +409,7 @@ class PostServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
+        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
@@ -594,59 +431,18 @@ class PostServiceTest {
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
+        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
                 });
     }
-
-    @Test
-    @DisplayName("latitude 유효 범위 초과 (91.0) → 400, VALIDATION_ERROR")
-    void latitude_범위초과_예외() {
-        // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
-                91.0, 127.0374,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                });
-    }
-
-    @Test
-    @DisplayName("longitude 유효 범위 초과 (181.0) → 400, VALIDATION_ERROR")
-    void longitude_범위초과_예외() {
-        // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
-                37.5563, 181.0,
-                "PUBLIC", true, List.of()
-        );
-
-        // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> {
-                    assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
-                });
-    }
-
-    // TC-002-27: X-User-Id 헤더 누락 → 401 은 Controller 계층 테스트 대상 (서비스 테스트 범위 제외)
 
     @Test
     @DisplayName("정상 생성 → 응답에 author.userId, author.nickname 포함")
     void 정상생성_author_포함() {
-        // given
-        when(userPort.getNickname(userId)).thenReturn("새벽러너");
-
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest());
+        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
 
         // then
         assertThat(response.author()).isNotNull();
@@ -655,13 +451,10 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("user-service 호출 실패 → 201, author.nickname=null")
+    @DisplayName("user-service 호출 실패 → 닉네임 null 전달 시 null 반영")
     void userService_실패_nickname_null_게시글생성() {
-        // given
-        when(userPort.getNickname(any(UUID.class))).thenReturn(null);
-
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest());
+        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", null);
 
         // then
         assertThat(response.postId()).isNotNull();

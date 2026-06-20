@@ -2,12 +2,12 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.service.PostService;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse.AuthorResponse;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse.MediaFileResponse;
+import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.application.dto.request.CreatePostRequest.MediaFileRequest;
+import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
+import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.AuthorResponse;
+import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.MediaFileResponse;
+import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ class PostControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private PostService postService;
+    private PostCreateFacade postCreateFacade;
 
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
@@ -81,23 +81,10 @@ class PostControllerTest {
         return objectMapper.writeValueAsString(request);
     }
 
-    // TC-002-27: X-User-Id 헤더 누락 → 401, COMMON-002
-    // GlobalExceptionHandler에 MissingRequestHeaderException 핸들러 추가 후 활성화
-    // @Test
-    // @DisplayName("X-User-Id 헤더 누락 → 401, COMMON-002")
-    // void tc002_27_X_User_Id_헤더_누락_401() throws Exception {
-    //     mockMvc.perform(post("/posts")
-    //                     .contentType(MediaType.APPLICATION_JSON)
-    //                     .content(validRequestBody()))
-    //             .andExpect(status().isUnauthorized())
-    //             .andExpect(jsonPath("$.status").value(401))
-    //             .andExpect(jsonPath("$.code").value("COMMON-002"));
-    // }
-
     @Test
     @DisplayName("POST /posts 정상 요청 → 201, API_SPEC 응답 형식 검증")
     void createPost_정상요청_201_응답형식_검증() throws Exception {
-        when(postService.createPost(any(UUID.class), any(CreatePostRequest.class)))
+        when(postCreateFacade.createPost(any(UUID.class), any(CreatePostRequest.class)))
                 .thenReturn(successResponse);
 
         mockMvc.perform(post("/posts")

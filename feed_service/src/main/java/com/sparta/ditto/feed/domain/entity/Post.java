@@ -1,7 +1,11 @@
 package com.sparta.ditto.feed.domain.entity;
 
 import com.sparta.ditto.common.entity.BaseEntity;
+import com.sparta.ditto.feed.domain.exception.DuplicateSortOrderException;
+import com.sparta.ditto.feed.domain.exception.ImageCountExceededException;
+import com.sparta.ditto.feed.domain.exception.VideoCountExceededException;
 import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.MediaType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -36,6 +40,7 @@ import lombok.NoArgsConstructor;
                         columnList = "location_scope, created_at DESC, id DESC")
         }
 )
+/** 게시글 엔티티 */
 public class Post extends BaseEntity {
 
     @Id
@@ -45,6 +50,10 @@ public class Post extends BaseEntity {
 
     @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID userId;
+
+    // 게시글 생성 시점의 닉네임을 비정규화 저장 (User Service 닉네임 변경과 무관하게 유지)
+    @Column(length = 50)
+    private String authorNickname;
 
     @Column(length = 500)
     private String content;
@@ -88,16 +97,34 @@ public class Post extends BaseEntity {
     )
     private List<PostTag> tags = new ArrayList<>();
 
-    public Post(UUID userId, String content, String neighborhood,
+    public Post(UUID userId, String authorNickname, String content, String neighborhood,
             Double latitude, Double longitude,
             LocationScope locationScope, Boolean showLocation) {
         this.userId = userId;
+        this.authorNickname = authorNickname;
         this.content = content;
         this.neighborhood = neighborhood;
         this.latitude = latitude;
         this.longitude = longitude;
         this.locationScope = locationScope != null ? locationScope : LocationScope.PUBLIC;
         this.showLocation = showLocation != null ? showLocation : true;
+    }
+
+    public void addMedia(PostMedia media) {
+        boolean hasDuplicateSortOrder = this.mediaList.stream()
+                .anyMatch(m -> m.getSortOrder().equals(media.getSortOrder()));
+        if (hasDuplicateSortOrder) {
+            throw new DuplicateSortOrderException();
+        }
+        long imageCount = this.mediaList.stream().filter(m -> m.getMediaType() == MediaType.IMAGE).count();
+        long videoCount = this.mediaList.stream().filter(m -> m.getMediaType() == MediaType.VIDEO).count();
+        if (media.getMediaType() == MediaType.IMAGE && imageCount >= 5) {
+            throw new ImageCountExceededException();
+        }
+        if (media.getMediaType() == MediaType.VIDEO && videoCount >= 1) {
+            throw new VideoCountExceededException();
+        }
+        this.mediaList.add(media);
     }
 
     public void incrementLikeCount() {

@@ -1,12 +1,13 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
-import com.sparta.ditto.feed.application.service.PostService;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
+import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
+import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -20,14 +21,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class PostController {
 
-    private final PostService postService;
+    private final PostCreateFacade postCreateFacade;
 
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestBody CreatePostRequest request
+            @Valid @RequestBody CreatePostRequest request
     ) {
-        CreatePostResponse response = postService.createPost(userId, request);
+        CreatePostResponse response = postCreateFacade.createPost(userId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
     }
 }

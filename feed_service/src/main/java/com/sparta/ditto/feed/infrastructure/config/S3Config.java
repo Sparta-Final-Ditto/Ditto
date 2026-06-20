@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
+/** AWS S3 클라이언트 빈 설정 */
 public class S3Config {
 
     @Value("${cloud.aws.region.static}")

@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 @Component
+/** 카카오 Local API REST 클라이언트 (역지오코딩) */
 public class KakaoLocalClient {
 
     private final RestClient restClient;

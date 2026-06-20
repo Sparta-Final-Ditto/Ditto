@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+/** 좋아요 JPA 레포지토리 */
 public interface LikeRepository extends JpaRepository<Like, UUID> {
 
     Optional<Like> findByPostIdAndUserId(UUID postId, UUID userId);

@@ -1,5 +1,6 @@
 package com.sparta.ditto.feed.domain.entity;
 
+import com.sparta.ditto.feed.domain.exception.InvalidPostMediaTypeException;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,7 +15,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -37,6 +38,7 @@ import org.hibernate.annotations.CreationTimestamp;
                         columnList = "post_id, sort_order")
         }
 )
+/** 게시글 미디어(이미지·영상) 엔티티 */
 public class PostMedia {
 
     @Id
@@ -60,12 +62,24 @@ public class PostMedia {
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     public PostMedia(Post post, String s3Key, MediaType mediaType, Integer sortOrder) {
         this.post = post;
         this.s3Key = s3Key;
         this.mediaType = mediaType;
         this.sortOrder = sortOrder;
+    }
+
+    public PostMedia(Post post, String s3Key, String rawMediaType, Integer sortOrder) {
+        this(post, s3Key, parseMediaType(rawMediaType), sortOrder);
+    }
+
+    private static MediaType parseMediaType(String rawMediaType) {
+        try {
+            return MediaType.valueOf(rawMediaType);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidPostMediaTypeException();
+        }
     }
 }

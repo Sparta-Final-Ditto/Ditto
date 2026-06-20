@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Component
+/** UserPort 구현체 — User Service OpenFeign 클라이언트 */
 public class UserAdapter implements UserPort {
 
     private final RestClient restClient;
