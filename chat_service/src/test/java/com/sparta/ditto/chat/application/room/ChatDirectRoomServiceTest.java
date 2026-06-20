@@ -1,4 +1,4 @@
-package com.sparta.ditto.chat.application;
+package com.sparta.ditto.chat.application.room;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -7,7 +7,6 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import com.sparta.ditto.chat.application.room.ChatDirectRoomService;
 import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.ChatDirectRoomResult;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;

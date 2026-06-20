@@ -63,6 +63,18 @@ class ChatRoomTest {
     }
 
     @Test
+    @DisplayName("실패 - 마지막 메시지 ID는 비어 있을 수 없다")
+    void updateLastMessage_fail_blank_message_id() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant messageCreatedAt = Instant.parse("2026-06-18T00:00:00Z");
+
+        // when & then
+        assertThatThrownBy(() -> chatRoom.updateLastMessage(" ", messageCreatedAt))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("성공 - 채팅방을 비활성화한 뒤 재활성화한다")
     void inactivate_and_reactivate_success() {
         // given
