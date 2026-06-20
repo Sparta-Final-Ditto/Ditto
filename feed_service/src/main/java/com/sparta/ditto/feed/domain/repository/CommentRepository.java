@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** 댓글 JPA 레포지토리 */
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
 
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);

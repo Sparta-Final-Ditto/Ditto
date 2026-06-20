@@ -8,7 +8,12 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-/** 카카오 Local API REST 클라이언트 (역지오코딩) */
+/**
+ * 카카오 Local API REST 클라이언트 (역지오코딩).
+ * 위경도 좌표를 coord2address 엔드포인트에 전달해 시·구 단위 동네명(region_1depth + region_2depth)으로 변환한다.
+ * Authorization 헤더에 REST API 키를 KakaoAK 접두어와 함께 사용한다.
+ * 직접 호출하지 않고 NeighborhoodAdapter를 통해 Redis 캐시와 함께 사용한다.
+ */
 public class KakaoLocalClient {
 
     private final RestClient restClient;

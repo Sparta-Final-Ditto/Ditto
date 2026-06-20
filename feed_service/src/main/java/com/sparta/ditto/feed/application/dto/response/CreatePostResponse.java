@@ -24,10 +24,13 @@ public record CreatePostResponse(
     public record MediaFileResponse(String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
 
     public static CreatePostResponse from(Post savedPost, String nickname, String cloudfrontDomain) {
+        String domain = cloudfrontDomain.endsWith("/")
+                ? cloudfrontDomain.substring(0, cloudfrontDomain.length() - 1)
+                : cloudfrontDomain;
         List<MediaFileResponse> mediaFiles = savedPost.getMediaList().stream()
                 .map(m -> new MediaFileResponse(
                         m.getS3Key(),
-                        cloudfrontDomain + "/" + m.getS3Key(),
+                        domain + "/" + m.getS3Key(),
                         m.getMediaType().name(),
                         m.getSortOrder()
                 ))

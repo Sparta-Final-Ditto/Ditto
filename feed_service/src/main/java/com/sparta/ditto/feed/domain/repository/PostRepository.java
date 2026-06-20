@@ -10,16 +10,22 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** 게시글 JPA 레포지토리 (커서 페이지네이션 쿼리 포함) */
 public interface PostRepository extends JpaRepository<Post, UUID> {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
     @Query("""
             SELECT p FROM Post p
-            WHERE (:cursorAt IS NULL AND :cursorId IS NULL)
-               OR (p.createdAt < :cursorAt)
-               OR (p.createdAt = :cursorAt AND p.id < :cursorId)
+            WHERE p.deletedAt IS NULL
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<Post> findFeed(Pageable pageable);
+
+    @Query("""
+            SELECT p FROM Post p
+            WHERE p.deletedAt IS NULL
+              AND ((p.createdAt < :cursorAt)
+               OR (p.createdAt = :cursorAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
     List<Post> findFeedWithCursor(
@@ -31,8 +37,19 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     @Query("""
             SELECT p FROM Post p
             WHERE p.locationScope IN :scopes
-              AND ((:cursorAt IS NULL AND :cursorId IS NULL)
-               OR (p.createdAt < :cursorAt)
+              AND p.deletedAt IS NULL
+            ORDER BY p.createdAt DESC, p.id DESC
+            """)
+    List<Post> findFeedByLocationScope(
+            @Param("scopes") List<LocationScope> scopes,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT p FROM Post p
+            WHERE p.locationScope IN :scopes
+              AND p.deletedAt IS NULL
+              AND ((p.createdAt < :cursorAt)
                OR (p.createdAt = :cursorAt AND p.id < :cursorId))
             ORDER BY p.createdAt DESC, p.id DESC
             """)
@@ -46,6 +63,7 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     @Query("""
             SELECT p FROM Post p
             WHERE p.userId = :userId
+              AND p.deletedAt IS NULL
               AND ((:cursorAt IS NULL AND :cursorId IS NULL)
                OR (p.createdAt < :cursorAt)
                OR (p.createdAt = :cursorAt AND p.id < :cursorId))
