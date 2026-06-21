@@ -1,4 +1,5 @@
 from uuid import UUID
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserProfileEmbedding
 from app.embedding.domain.model.user_profile import UserProfile
@@ -39,6 +40,10 @@ class PgUserProfileRepository(UserProfileRepository):
                 last_processed_record_id=last_processed_record_id,
             ))
         await self.db.commit()
+
+    async def find_all_user_ids(self) -> list[UUID]:
+        result = await self.db.execute(select(UserProfileEmbedding.user_id))
+        return [row[0] for row in result.all()]
 
     @staticmethod
     def _to_domain(row: UserProfileEmbedding) -> UserProfile:

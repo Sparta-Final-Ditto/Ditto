@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, date
 from uuid import UUID
-from sqlalchemy import select, func
+from sqlalchemy import select, func, update, distinct
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserPostEmbedding
 from app.embedding.domain.model.post_embedding import PostEmbedding
@@ -56,6 +56,33 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
             )
         )
         return [row[0] for row in result.all()]
+
+    async def find_all_done_vectors_ordered(self, user_id: UUID) -> list[list[float]]:
+        result = await self.db.execute(
+            select(UserPostEmbedding.vector)
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                UserPostEmbedding.embedding_status == "DONE",
+            )
+            .order_by(UserPostEmbedding.embedded_at.asc())
+        )
+        return [row[0] for row in result.all()]
+
+    async def find_all_user_ids_with_done_embeddings(self) -> list[UUID]:
+        result = await self.db.execute(
+            select(distinct(UserPostEmbedding.user_id))
+            .where(UserPostEmbedding.embedding_status == "DONE")
+        )
+        return [row[0] for row in result.all()]
+
+    async def reset_failed_to_done(self) -> int:
+        result = await self.db.execute(
+            update(UserPostEmbedding)
+            .where(UserPostEmbedding.embedding_status == "FAILED")
+            .values(embedding_status="DONE")
+        )
+        await self.db.commit()
+        return result.rowcount  # type: ignore[return-value]
 
     @staticmethod
     def _to_domain(row: UserPostEmbedding) -> PostEmbedding:
