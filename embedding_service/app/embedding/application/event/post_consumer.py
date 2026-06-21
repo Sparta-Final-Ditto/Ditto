@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 from uuid import UUID
@@ -38,10 +39,21 @@ class PostConsumer(KafkaConsumerBase):
             return
 
         async with AsyncSessionLocal() as db:
+            post_repo = PgPostEmbeddingRepository(db)
             svc = EmbeddingService(
-                post_repo=PgPostEmbeddingRepository(db),
+                post_repo=post_repo,
                 profile_repo=PgUserProfileRepository(db),
                 model=ModelLoader(),
             )
-            await svc.embed_and_store(post_id, user_id, content, hashtags)
-            logger.info(f"[PostConsumer] 임베딩 완료: post_id={post_id}, user_id={user_id}")
+            for attempt in range(1, 4):
+                try:
+                    await svc.embed_and_store(post_id, user_id, content, hashtags)
+                    logger.info(f"[PostConsumer] 임베딩 완료: post_id={post_id}, user_id={user_id}")
+                    break
+                except Exception as e:
+                    logger.warning(f"[PostConsumer] 임베딩 실패 (시도 {attempt}/3): post_id={post_id}, error={e}")
+                    if attempt == 3:
+                        logger.error(f"[PostConsumer] 최대 재시도 초과 → FAILED: post_id={post_id}")
+                        await post_repo.update_status(post_id, "FAILED")
+                    else:
+                        await asyncio.sleep(5)

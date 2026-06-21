@@ -27,6 +27,10 @@ class KafkaConsumerBase:
                 if msg.value is None:
                     continue
                 try:
+                    # 파티션 내 순차 처리 — EMA 계산 순서 보장을 위해 의도적으로 순차 처리.
+                    # 스케일 아웃: feed_service에서 user_id를 partition key로 설정 후
+                    #              embedding_service 인스턴스를 파티션 수만큼 띄우면
+                    #              인스턴스 간 병렬 처리 + 유저별 순서 보장 동시 달성.
                     await self.handle(msg.value)
                 except Exception as e:
                     logger.error(f"[{self.__class__.__name__}] 메시지 처리 실패: {e}")
