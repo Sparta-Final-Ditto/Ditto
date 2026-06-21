@@ -7,12 +7,21 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PostRepository extends JpaRepository<Post, UUID> {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
+
+    @Modifying
+    @Query("UPDATE Post p SET p.likeCount = p.likeCount + 1 WHERE p.id = :postId")
+    void incrementLikeCount(@Param("postId") UUID postId);
+
+    @Modifying
+    @Query("UPDATE Post p SET p.likeCount = GREATEST(p.likeCount - 1, 0) WHERE p.id = :postId")
+    void decrementLikeCount(@Param("postId") UUID postId);
 
     @Query(value = """
             SELECT * FROM posts
