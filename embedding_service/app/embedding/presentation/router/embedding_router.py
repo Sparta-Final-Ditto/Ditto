@@ -135,3 +135,42 @@ async def embed_post(body: PostEmbedRequest) -> ApiResponse[EmbedTestResponse]:
     return ApiResponse.success(
         EmbedTestResponse(input_text=text, dimension=len(vector), sample=vector[:7].tolist())
     )
+
+
+class EmbedAndStoreRequest(BaseModel):
+    user_id: UUID
+    content: str
+    hashtags: list[str]
+
+
+class EmbedAndStoreResponse(BaseModel):
+    post_id: UUID
+    user_id: UUID
+    record_count: int
+    active: bool
+
+
+@router.post(
+    "/test/embed-and-store",
+    summary="[테스트] embed_and_store 직접 호출",
+    description="게시글 저장 + 프로필 record_count/active 갱신 로직을 직접 실행한다. "
+                "post_id는 자동 생성되며, 결과 프로필 상태를 반환한다.",
+    response_model=ApiResponse[EmbedAndStoreResponse],
+    status_code=201,
+)
+async def embed_and_store_test(
+    body: EmbedAndStoreRequest,
+    svc: EmbeddingService = Depends(get_service),
+) -> ApiResponse[EmbedAndStoreResponse]:
+    import uuid as _uuid
+    post_id = _uuid.uuid4()
+    await svc.embed_and_store(post_id, body.user_id, body.content, body.hashtags)
+    profile = await svc.profile_repo.find_by_user_id(body.user_id)
+    return ApiResponse.success(
+        EmbedAndStoreResponse(
+            post_id=post_id,
+            user_id=body.user_id,
+            record_count=profile.record_count if profile else 0,
+            active=profile.active if profile else False,
+        )
+    )
