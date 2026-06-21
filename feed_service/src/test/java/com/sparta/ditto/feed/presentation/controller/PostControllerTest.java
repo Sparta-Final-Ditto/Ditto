@@ -9,6 +9,7 @@ import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.AuthorR
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.MediaFileResponse;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +27,7 @@ import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -99,6 +101,36 @@ class PostControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("TC-008-7: 게시글 존재하지 않음 → 404, POST_NOT_FOUND")
+    void removeLike_게시글없음_404_POST_NOT_FOUND() throws Exception {
+        // given
+        when(postInteractionService.removeLike(any(UUID.class), any(UUID.class)))
+                .thenThrow(new PostNotFoundException());
+
+        // when & then
+        mockMvc.perform(delete("/posts/{postId}/likes", postId)
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("TC-008-2: 좋아요하지 않은 게시글 취소 → 404, LIKE_NOT_FOUND")
+    void removeLike_좋아요없음_404_LIKE_NOT_FOUND() throws Exception {
+        // given
+        when(postInteractionService.removeLike(any(UUID.class), any(UUID.class)))
+                .thenThrow(new LikeNotFoundException());
+
+        // when & then
+        mockMvc.perform(delete("/posts/{postId}/likes", postId)
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("LIKE_NOT_FOUND"));
     }
 
     @Test
