@@ -1,13 +1,16 @@
+import logging
 from uuid import UUID
 
 from app.config.settings import settings
 from app.embedding.application.port.embedding_model_port import EmbeddingModelPort
-from app.embedding.domain.algorithm.ema_calculator import average_vectors, update_profile
+from app.embedding.domain.algorithm.ema_calculator import average_vectors
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
 from app.embedding.domain.algorithm.profile_builder import build_initial_text
 from app.embedding.domain.model.post_embedding import PostEmbedding
 from app.embedding.domain.repository.post_embedding_repository import PostEmbeddingRepository
 from app.embedding.domain.repository.user_profile_repository import UserProfileRepository
+
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingService:
@@ -29,27 +32,34 @@ class EmbeddingService:
         content: str,
         hashtags: list[str],
     ) -> None:
-        """게시글 임베딩 생성 및 EMA 프로필 업데이트."""
+        """게시글 임베딩 저장 + active 갱신. EMA 벡터 재계산은 새벽 배치에서 처리."""
         text = build_post_text(content, hashtags)
         vector = self.model.encode(text)
-
         await self.post_repo.save(post_id, user_id, vector)
 
-        existing = await self.profile_repo.find_by_user_id(user_id)
-        if existing:
-            new_vector = update_profile(existing.vector, vector, settings.EMA_ALPHA)
-            new_count = existing.record_count + 1
-        else:
-            new_vector = vector
-            new_count = 1
-
-        await self.profile_repo.upsert(
-            user_id=user_id,
-            vector=new_vector,
-            record_count=new_count,
-            active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
-            last_processed_record_id=post_id,
-        )
+        try:
+            existing = await self.profile_repo.find_by_user_id(user_id)
+            if existing:
+                new_count = existing.record_count + 1
+                await self.profile_repo.upsert(
+                    user_id=user_id,
+                    vector=existing.vector,  # 벡터는 유지, 배치에서 EMA 재계산
+                    record_count=new_count,
+                    active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
+                    last_processed_record_id=post_id,
+                )
+            else:
+                # 첫 게시글: 배치 전까지 임시 벡터로 프로필 생성
+                await self.profile_repo.upsert(
+                    user_id=user_id,
+                    vector=vector,
+                    record_count=1,
+                    active=False,
+                    last_processed_record_id=post_id,
+                )
+        except Exception as e:
+            # 프로필 갱신 실패는 게시글 임베딩 성공과 무관 — 새벽 배치에서 보정
+            logger.warning(f"[EmbeddingService] 프로필 카운트 갱신 실패 (배치에서 복구 예정): {e}")
 
     async def create_initial_profile(
         self,
