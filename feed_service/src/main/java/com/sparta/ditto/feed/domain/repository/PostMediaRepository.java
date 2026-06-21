@@ -5,7 +5,6 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-/** 게시글 미디어 JPA 레포지토리 */
 public interface PostMediaRepository extends JpaRepository<PostMedia, UUID> {
 
     List<PostMedia> findByPostIdOrderBySortOrder(UUID postId);
