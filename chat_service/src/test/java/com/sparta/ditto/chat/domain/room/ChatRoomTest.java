@@ -3,6 +3,7 @@ package com.sparta.ditto.chat.domain.room;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.sparta.ditto.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -17,27 +18,20 @@ class ChatRoomTest {
     @Test
     @DisplayName("성공 - 1:1 채팅방을 생성한다")
     void createDirect_success() {
-        // given
-        UUID createdBy = USER_ID;
-
         // when
-        ChatRoom chatRoom = ChatRoom.createDirect(createdBy);
+        ChatRoom chatRoom = ChatRoom.createDirect();
 
         // then
         assertThat(chatRoom.getRoomType()).isEqualTo(RoomType.DIRECT);
         assertThat(chatRoom.getRoomName()).isNull();
         assertThat(chatRoom.getStatus()).isEqualTo(RoomStatus.ACTIVE);
-        assertThat(chatRoom.getCreatedBy()).isEqualTo(createdBy);
     }
 
     @Test
     @DisplayName("성공 - 그룹 채팅방을 생성한다")
     void createGroup_success() {
-        // given
-        UUID createdBy = USER_ID;
-
         // when
-        ChatRoom chatRoom = ChatRoom.createGroup("스터디방", createdBy);
+        ChatRoom chatRoom = ChatRoom.createGroup("스터디방");
 
         // then
         assertThat(chatRoom.getRoomType()).isEqualTo(RoomType.GROUP);
@@ -48,19 +42,16 @@ class ChatRoomTest {
     @Test
     @DisplayName("실패 - 그룹 채팅방 이름은 비어 있을 수 없다")
     void createGroup_fail_blank_room_name() {
-        // given
-        UUID createdBy = USER_ID;
-
         // when & then
-        assertThatThrownBy(() -> ChatRoom.createGroup(" ", createdBy))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> ChatRoom.createGroup(" "))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
     @DisplayName("성공 - 마지막 메시지 정보를 갱신한다")
     void updateLastMessage_success() {
         // given
-        ChatRoom chatRoom = ChatRoom.createDirect(USER_ID);
+        ChatRoom chatRoom = ChatRoom.createDirect();
         Instant messageCreatedAt = Instant.parse("2026-06-18T00:00:00Z");
 
         // when
@@ -72,11 +63,23 @@ class ChatRoomTest {
     }
 
     @Test
+    @DisplayName("실패 - 마지막 메시지 ID는 비어 있을 수 없다")
+    void updateLastMessage_fail_blank_message_id() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant messageCreatedAt = Instant.parse("2026-06-18T00:00:00Z");
+
+        // when & then
+        assertThatThrownBy(() -> chatRoom.updateLastMessage(" ", messageCreatedAt))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
     @DisplayName("성공 - 채팅방을 비활성화한 뒤 재활성화한다")
     void inactivate_and_reactivate_success() {
         // given
         UUID userId = USER_ID;
-        ChatRoom chatRoom = ChatRoom.createDirect(userId);
+        ChatRoom chatRoom = ChatRoom.createDirect();
 
         // when
         chatRoom.inactivate(userId);
@@ -93,19 +96,5 @@ class ChatRoomTest {
         assertThat(chatRoom.getStatus()).isEqualTo(RoomStatus.ACTIVE);
         assertThat(chatRoom.getInactivatedBy()).isNull();
         assertThat(chatRoom.getInactivatedAt()).isNull();
-    }
-
-    @Test
-    @DisplayName("성공 - 저장 전 생성/수정 시각을 초기화한다")
-    void prePersist_success() {
-        // given
-        ChatRoom chatRoom = ChatRoom.createDirect(USER_ID);
-
-        // when
-        chatRoom.prePersist();
-
-        // then
-        assertThat(chatRoom.getCreatedAt()).isNotNull();
-        assertThat(chatRoom.getUpdatedAt()).isNotNull();
     }
 }

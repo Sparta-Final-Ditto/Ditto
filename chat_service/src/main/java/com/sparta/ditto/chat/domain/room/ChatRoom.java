@@ -1,5 +1,8 @@
 package com.sparta.ditto.chat.domain.room;
 
+import com.sparta.ditto.common.entity.BaseEntity;
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,11 +10,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -28,7 +28,7 @@ import org.hibernate.annotations.UuidGenerator;
         )
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ChatRoom {
+public class ChatRoom extends BaseEntity {
 
     @Id
     @GeneratedValue
@@ -46,16 +46,6 @@ public class ChatRoom {
     @Column(name = "status", nullable = false, length = 20)
     private RoomStatus status;
 
-    @Column(name = "created_by", nullable = false)
-    private UUID createdBy;
-
-    // 서버 시간대 차이를 피하기 위해 서비스 시각은 Instant로 저장한다.
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
-
     // 메시지 ID는 chat-service가 생성한 UUID v7/ULID 문자열이며 MongoDB _id로 저장된다.
     @Column(name = "last_message_id", length = 50)
     private String lastMessageId;
@@ -69,35 +59,40 @@ public class ChatRoom {
     @Column(name = "inactivated_by")
     private UUID inactivatedBy;
 
-    private ChatRoom(RoomType roomType, String roomName, UUID createdBy) {
-        this.roomType = Objects.requireNonNull(roomType, "roomType must not be null");
+    private ChatRoom(RoomType roomType, String roomName) {
+        if (roomType == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.roomType = roomType;
         this.roomName = roomName;
         this.status = RoomStatus.ACTIVE;
-        this.createdBy = Objects.requireNonNull(createdBy, "createdBy must not be null");
     }
 
-    public static ChatRoom createDirect(UUID createdBy) {
-        return new ChatRoom(RoomType.DIRECT, null, createdBy);
+    public static ChatRoom createDirect() {
+        return new ChatRoom(RoomType.DIRECT, null);
     }
 
-    public static ChatRoom createGroup(String roomName, UUID createdBy) {
+    public static ChatRoom createGroup(String roomName) {
         if (roomName == null || roomName.isBlank()) {
-            throw new IllegalArgumentException("roomName must not be blank");
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
-        return new ChatRoom(RoomType.GROUP, roomName, createdBy);
+        return new ChatRoom(RoomType.GROUP, roomName);
     }
 
     public void updateLastMessage(String messageId, Instant messageCreatedAt) {
-        this.lastMessageId = Objects.requireNonNull(messageId, "messageId must not be null");
-        this.lastMessageAt = Objects.requireNonNull(
-                messageCreatedAt,
-                "messageCreatedAt must not be null"
-        );
+        if (messageId == null || messageId.isBlank() || messageCreatedAt == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.lastMessageId = messageId;
+        this.lastMessageAt = messageCreatedAt;
     }
 
     public void inactivate(UUID userId) {
+        if (userId == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         this.status = RoomStatus.INACTIVE;
-        this.inactivatedBy = Objects.requireNonNull(userId, "userId must not be null");
+        this.inactivatedBy = userId;
         this.inactivatedAt = Instant.now();
     }
 
@@ -106,20 +101,5 @@ public class ChatRoom {
         // 재활성화된 방은 현재 활성 상태이므로 비활성화 메타데이터를 초기화한다.
         this.inactivatedBy = null;
         this.inactivatedAt = null;
-    }
-
-    @PrePersist
-    void prePersist() {
-        Instant now = Instant.now();
-        this.createdAt = now;
-        this.updatedAt = now;
-        if (this.status == null) {
-            this.status = RoomStatus.ACTIVE;
-        }
-    }
-
-    @PreUpdate
-    void preUpdate() {
-        this.updatedAt = Instant.now();
     }
 }

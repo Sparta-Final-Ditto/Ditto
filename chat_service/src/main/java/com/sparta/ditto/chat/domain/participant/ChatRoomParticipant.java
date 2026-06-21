@@ -1,5 +1,7 @@
 package com.sparta.ditto.chat.domain.participant;
 
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,7 +13,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
-import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -78,9 +79,12 @@ public class ChatRoomParticipant {
     private boolean notificationEnabled;
 
     private ChatRoomParticipant(UUID roomId, UUID userId, ParticipantRole role) {
-        this.roomId = Objects.requireNonNull(roomId, "roomId must not be null");
-        this.userId = Objects.requireNonNull(userId, "userId must not be null");
-        this.role = Objects.requireNonNull(role, "role must not be null");
+        if (roomId == null || userId == null || role == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.roomId = roomId;
+        this.userId = userId;
+        this.role = role;
         this.hidden = false;
         this.notificationEnabled = true;
     }
@@ -100,11 +104,11 @@ public class ChatRoomParticipant {
     }
 
     public void updateLastRead(String lastReadMessageId, Instant lastReadAt) {
-        this.lastReadMessageId = Objects.requireNonNull(
-                lastReadMessageId,
-                "lastReadMessageId must not be null"
-        );
-        this.lastReadAt = Objects.requireNonNull(lastReadAt, "lastReadAt must not be null");
+        if (lastReadMessageId == null || lastReadAt == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.lastReadMessageId = lastReadMessageId;
+        this.lastReadAt = lastReadAt;
     }
 
     public void hide() {
@@ -113,6 +117,10 @@ public class ChatRoomParticipant {
 
     public void changeNotificationEnabled(boolean enabled) {
         this.notificationEnabled = enabled;
+    }
+
+    public void assignOwnerRole() {
+        this.role = ParticipantRole.OWNER;
     }
 
     @PrePersist
