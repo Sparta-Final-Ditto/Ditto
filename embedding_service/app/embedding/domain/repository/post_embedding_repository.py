@@ -16,3 +16,6 @@ class PostEmbeddingRepository(ABC):
 
     @abstractmethod
     async def update_status(self, post_id: UUID, status: str) -> None: ...
+
+    @abstractmethod
+    async def find_today_vectors(self, user_id: UUID) -> list[list[float]]: ...

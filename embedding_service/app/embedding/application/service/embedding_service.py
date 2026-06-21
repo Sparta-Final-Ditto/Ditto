@@ -2,7 +2,7 @@ from uuid import UUID
 
 from app.config.settings import settings
 from app.embedding.application.port.embedding_model_port import EmbeddingModelPort
-from app.embedding.domain.algorithm.ema_calculator import update_profile
+from app.embedding.domain.algorithm.ema_calculator import average_vectors, update_profile
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
 from app.embedding.domain.algorithm.profile_builder import build_initial_text
 from app.embedding.domain.model.post_embedding import PostEmbedding
@@ -70,6 +70,17 @@ class EmbeddingService:
 
     async def get_embedding_status(self, post_id: UUID) -> PostEmbedding | None:
         return await self.post_repo.find_by_post_id(post_id)
+
+    async def get_profile_vector(self, user_id: UUID):
+        """match_service 연동용 — V_batch(프로필)와 V_today(오늘 게시글 평균) 반환."""
+        profile = await self.profile_repo.find_by_user_id(user_id)
+        if profile is None:
+            return None, None
+
+        today_vectors = await self.post_repo.find_today_vectors(user_id)
+        today_vector = average_vectors(today_vectors) if today_vectors else None
+
+        return profile, today_vector
 
     async def retry_embedding(
         self,

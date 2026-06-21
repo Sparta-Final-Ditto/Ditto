@@ -1,6 +1,6 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserPostEmbedding
 from app.embedding.domain.model.post_embedding import PostEmbedding
@@ -45,6 +45,17 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         if row:
             row.embedding_status = status
             await self.db.commit()
+
+    async def find_today_vectors(self, user_id: UUID) -> list[list[float]]:
+        result = await self.db.execute(
+            select(UserPostEmbedding.vector)
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                func.date(UserPostEmbedding.embedded_at) == date.today(),
+                UserPostEmbedding.embedding_status == "DONE",
+            )
+        )
+        return [row[0] for row in result.all()]
 
     @staticmethod
     def _to_domain(row: UserPostEmbedding) -> PostEmbedding:

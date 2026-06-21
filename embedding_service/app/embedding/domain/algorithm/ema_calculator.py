@@ -12,3 +12,10 @@ def update_profile(
     updated = alpha * embedding + (1 - alpha) * profile
     norm = np.linalg.norm(updated)
     return (updated / norm).tolist() if norm > 0 else updated.tolist()
+
+
+def average_vectors(vectors: list[list[float]]) -> list[float]:
+    """벡터 리스트의 산술 평균을 계산하고 단위 벡터로 정규화한다."""
+    arr = np.mean([np.array(v) for v in vectors], axis=0)
+    norm = np.linalg.norm(arr)
+    return (arr / norm).tolist() if norm > 0 else arr.tolist()

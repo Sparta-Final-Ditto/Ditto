@@ -21,11 +21,16 @@ from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.presentation.router.embedding_router import router as embedding_router
+from app.embedding.presentation.router.internal_router import router as internal_router
 
 TAGS_METADATA = [
     {
         "name": "Embedding",
         "description": "게시글 임베딩 벡터 생성 및 유저 프로필 관리 API",
+    },
+    {
+        "name": "Internal",
+        "description": "서비스 간 내부 통신용 API (match_service OpenFeign)",
     },
     {
         "name": "Health",
@@ -51,8 +56,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_exception_handler(BusinessException, business_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(BusinessException, business_exception_handler)  # type: ignore[arg-type]
+app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.add_middleware(BaseHTTPMiddleware, dispatch=logging_middleware)
@@ -65,3 +70,4 @@ app.add_middleware(
 
 app.include_router(health_router, prefix="/health")
 app.include_router(embedding_router, prefix="/api/v1/embedding")
+app.include_router(internal_router, prefix="/api/v1/internal/embedding")
