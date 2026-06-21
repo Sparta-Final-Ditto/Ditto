@@ -8,6 +8,8 @@ import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.AuthorResponse;
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.MediaFileResponse;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -40,6 +42,9 @@ class PostControllerTest {
 
     @MockBean
     private PostCreateFacade postCreateFacade;
+
+    @MockBean
+    private PostInteractionService postInteractionService;
 
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
@@ -79,6 +84,21 @@ class PostControllerTest {
                 List.of(new MediaFileRequest("feeds/test-uuid.mp4", "VIDEO", 1))
         );
         return objectMapper.writeValueAsString(request);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 게시글 좋아요 → 404, POST_NOT_FOUND")
+    void addLike_게시글없음_404_POST_NOT_FOUND() throws Exception {
+        // given
+        when(postInteractionService.addLike(any(UUID.class), any(UUID.class)))
+                .thenThrow(new PostNotFoundException());
+
+        // when & then
+        mockMvc.perform(post("/posts/{postId}/likes", postId)
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
     }
 
     @Test
