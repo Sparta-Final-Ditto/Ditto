@@ -77,12 +77,13 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    private User(String email, String password, String nickname, LoginProvider loginProvider) {
+    private User(String email, String password, String nickname, Gender gender, String birthdate, LoginProvider loginProvider) {
         this.email = Objects.requireNonNull(email, "email must not be null");
         this.password = password;
         this.nickname = Objects.requireNonNull(nickname, "nickname must not be null");
-        this.loginProvider = Objects.requireNonNull(loginProvider,
-                "loginProvider must not be null");
+        this.gender = Objects.requireNonNull(gender, "gender must not be null");
+        this.birthdate = birthdate;
+        this.loginProvider = Objects.requireNonNull(loginProvider, "loginProvider must not be null");
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
     }
