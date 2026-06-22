@@ -7,19 +7,16 @@ import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserBannedException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
-import com.sparta.ditto.user.infrastructure.repository.RefreshTokenRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
-import com.sparta.ditto.user.infrastructure.security.JwtProperties;
-import com.sparta.ditto.user.infrastructure.security.JwtUtil;
+import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.AuthLoginRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthSignupRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -27,10 +24,8 @@ import java.util.UUID;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
-    private final JwtProperties jwtProperties;
-    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public void signup(AuthSignupRequest request) {
@@ -64,17 +59,10 @@ public class AuthService {
         }
 
         user.updateLastLoginAt();
-        return issueTokens(user);
-    }
-
-    private AuthTokenResponse issueTokens(User user) {
-        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getRole(), user.getNickname());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getRole(), user.getNickname());
-        refreshTokenRepository.save(user.getId(), refreshToken, jwtProperties.refreshTokenValidity());
-        return new AuthTokenResponse(accessToken, refreshToken);
+        return tokenManager.issueTokens(user);
     }
 
     public void logout(UUID userId) {
-        refreshTokenRepository.delete(userId);
+        tokenManager.deleteToken(userId);
     }
 }

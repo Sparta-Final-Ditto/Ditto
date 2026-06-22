@@ -3,6 +3,7 @@ package com.sparta.ditto.user.presentation.controller;
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.user.application.AuthService;
 import com.sparta.ditto.user.presentation.dto.request.AuthLoginRequest;
+import com.sparta.ditto.user.presentation.dto.request.AuthReissueRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthSignupRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import jakarta.validation.Valid;
@@ -38,5 +39,10 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader("X-User-Id") UUID userId) {
         authService.logout(userId);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @PostMapping("/reissue")
+    public ResponseEntity<ApiResponse<AuthTokenResponse>> reissue(@Valid @RequestBody AuthReissueRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.reissue(request)));
     }
 }
