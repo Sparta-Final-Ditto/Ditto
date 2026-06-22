@@ -1,7 +1,9 @@
 package com.sparta.ditto.feed.application.service;
 
+import com.sparta.ditto.feed.application.dto.CommentListResult;
 import com.sparta.ditto.feed.application.dto.CommentResult;
 import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
+import com.sparta.ditto.feed.application.dto.GetCommentsQuery;
 import com.sparta.ditto.feed.application.dto.GetLikesQuery;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import com.sparta.ditto.feed.application.dto.LikeResult;
@@ -121,13 +123,47 @@ public class PostInteractionService {
     }
 
     // -------------------------------------------------------
+    // 댓글 목록 조회
+    // -------------------------------------------------------
+    @Transactional(readOnly = true)
+    public CommentListResult getComments(GetCommentsQuery query) {
+        Post post = postRepository.findById(query.postId())
+                .orElseThrow(PostNotFoundException::new);
+
+        Instant cursorAt = null;
+        UUID cursorId = null;
+        if (query.cursor() != null) {
+            Comment cursorComment = commentRepository.findById(query.cursor()).orElse(null);
+            if (cursorComment != null) {
+                cursorAt = cursorComment.getCreatedAt();
+                cursorId = query.cursor();
+            }
+        }
+
+        List<Comment> fetched = commentRepository.findByPostIdWithCursor(
+                query.postId(), cursorAt, cursorId, query.size() + 1);
+
+        boolean hasNext = fetched.size() > query.size();
+        List<Comment> pageResult = hasNext ? fetched.subList(0, query.size()) : fetched;
+        UUID nextCursor = hasNext ? pageResult.get(pageResult.size() - 1).getId() : null;
+
+        List<CommentResult> comments = pageResult.stream()
+                .map(c -> CommentResult.fromList(
+                        c, query.requesterId(), post.getUserId(), query.requesterRole()))
+                .toList();
+
+        return new CommentListResult(comments, nextCursor, hasNext);
+    }
+
+    // -------------------------------------------------------
     // 댓글 생성
     // -------------------------------------------------------
     @Transactional
     public CommentResult createComment(
             UUID userId, String nickname, UUID postId, CreateCommentCommand command) {
         Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
-        Comment comment = commentRepository.save(new Comment(postId, userId, command.content()));
+        Comment comment = commentRepository.save(
+                new Comment(postId, userId, nickname, command.content()));
         postRepository.incrementCommentCount(postId);
         if (!userId.equals(post.getUserId())) {
             outboxEventRepository.save(

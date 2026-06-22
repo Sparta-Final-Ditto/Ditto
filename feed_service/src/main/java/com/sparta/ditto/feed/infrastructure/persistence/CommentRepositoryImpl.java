@@ -22,6 +22,11 @@ public class CommentRepositoryImpl implements CommentRepository {
     }
 
     @Override
+    public Optional<Comment> findById(UUID id) {
+        return jpaRepository.findById(id);
+    }
+
+    @Override
     public Optional<Comment> findByIdAndDeletedAtIsNull(UUID id) {
         return jpaRepository.findByIdAndDeletedAtIsNull(id);
     }

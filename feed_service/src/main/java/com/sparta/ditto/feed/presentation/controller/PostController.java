@@ -1,9 +1,11 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
+import com.sparta.ditto.feed.application.dto.CommentListResult;
 import com.sparta.ditto.feed.application.dto.CommentResult;
 import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.GetCommentsQuery;
 import com.sparta.ditto.feed.application.dto.GetLikesQuery;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import com.sparta.ditto.feed.application.dto.LikeResult;
@@ -12,6 +14,7 @@ import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.presentation.dto.response.CommentListResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
@@ -88,6 +91,19 @@ public class PostController {
     ) {
         LikeResult result = postInteractionService.removeLike(userId, postId);
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
+    }
+
+    @GetMapping("/{postId}/comments")
+    public ResponseEntity<ApiResponse<CommentListResponse>> getComments(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId,
+            @RequestParam(required = false) UUID cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
+    ) {
+        CommentListResult result = postInteractionService.getComments(
+                new GetCommentsQuery(postId, userId, userRole, cursor, size));
+        return ResponseEntity.ok(ApiResponse.success(CommentListResponse.from(result)));
     }
 
     @GetMapping("/{postId}/likes")

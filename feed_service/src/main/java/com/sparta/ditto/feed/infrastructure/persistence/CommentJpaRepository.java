@@ -14,15 +14,18 @@ public interface CommentJpaRepository extends JpaRepository<Comment, UUID> {
 
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
 
-    @Query("""
-            SELECT c FROM Comment c
-            WHERE c.postId = :postId
-              AND c.deletedAt IS NULL
-              AND ((:cursorAt IS NULL AND :cursorId IS NULL)
-               OR (c.createdAt > :cursorAt)
-               OR (c.createdAt = :cursorAt AND c.id > :cursorId))
-            ORDER BY c.createdAt ASC, c.id ASC
-            """)
+    @Query(value = """
+            SELECT * FROM comments
+            WHERE post_id = CAST(:postId AS uuid)
+              AND deleted_at IS NULL
+              AND (
+                CAST(:cursorAt AS timestamptz) IS NULL
+                OR created_at > CAST(:cursorAt AS timestamptz)
+                OR (created_at = CAST(:cursorAt AS timestamptz)
+                    AND id > CAST(:cursorId AS uuid))
+              )
+            ORDER BY created_at ASC, id ASC
+            """, nativeQuery = true)
     List<Comment> findByPostIdWithCursor(
             @Param("postId") UUID postId,
             @Param("cursorAt") Instant cursorAt,

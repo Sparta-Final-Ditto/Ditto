@@ -36,12 +36,20 @@ public class Comment extends BaseEntity {
     @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID userId;
 
+    @Column(name = "user_nickname", length = 50, nullable = false, updatable = false)
+    private String userNickname;
+
     @Column(length = 200, nullable = false)
     private String content;
 
-    public Comment(UUID postId, UUID userId, String content) {
+    public Comment(UUID postId, UUID userId, String userNickname, String content) {
         this.postId = postId;
         this.userId = userId;
+        this.userNickname = userNickname;
         this.content = content;
+    }
+
+    public Comment(UUID postId, UUID userId, String content) {
+        this(postId, userId, "", content);
     }
 }

@@ -15,14 +15,28 @@ public record CommentResult(
         Instant createdAt
 ) {
     public static CommentResult fromCreation(Comment comment, String nickname) {
+        return of(comment, nickname, true, true);
+    }
+
+    public static CommentResult fromList(
+            Comment comment, UUID requesterId, UUID postOwnerId, String requesterRole) {
+        boolean isMyComment = requesterId.equals(comment.getUserId());
+        boolean isDeletable = isMyComment
+                || requesterId.equals(postOwnerId)
+                || "ADMIN".equals(requesterRole);
+        return of(comment, comment.getUserNickname(), isMyComment, isDeletable);
+    }
+
+    private static CommentResult of(
+            Comment comment, String nickname, boolean isMyComment, boolean isDeletable) {
         return new CommentResult(
                 comment.getId(),
                 comment.getPostId(),
                 comment.getUserId(),
                 nickname,
                 comment.getContent(),
-                true,
-                true,
+                isMyComment,
+                isDeletable,
                 comment.getCreatedAt()
         );
     }
