@@ -25,16 +25,10 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
         StompCommand command = accessor.getCommand();
 
-        if (StompCommand.CONNECT.equals(command)) {
-            // TODO: JWT 검증으로 교체. 현재는 X-User-Id 헤더로 임시 사용자 식별.
-            String userId = accessor.getFirstNativeHeader("X-User-Id");
-            if (userId != null && !userId.isBlank()) {
-                accessor.setUser(() -> userId);
-            }
-        } else if (StompCommand.SUBSCRIBE.equals(command)) {
+        if (StompCommand.SUBSCRIBE.equals(command)) {
             UUID roomId = extractRoomId(accessor.getDestination());
             if (roomId != null) {
-                // room 구독은 인증 필수: user 없으면 통과시키지 않고 막는다.
+                // room 구독은 인증 필수: Principal(=handshake에서 확정) 없으면 막는다.
                 UUID userId = resolveUserId(accessor.getUser());
                 chatParticipantValidator.ensureActiveParticipant(roomId, userId);
             }
