@@ -22,3 +22,8 @@ class UserProfileRepository(ABC):
     async def find_all_user_ids(self) -> list[UUID]:
         """배치용: 프로필이 존재하는 모든 유저 ID 목록."""
         ...
+
+    @abstractmethod
+    async def find_active_user_ids(self) -> list[UUID]:
+        """match_service 배치용: active=True인 유저 ID 목록."""
+        ...

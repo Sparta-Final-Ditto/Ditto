@@ -6,8 +6,11 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
+import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -35,19 +38,31 @@ class ChatRoomLeaveServiceTest {
     private static final UUID SECOND_MEMBER_USER_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final String LAST_MESSAGE_ID = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f70";
+    private static final String SYSTEM_LEAVE_MESSAGE_ID =
+            "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f71";
+    private static final String SYSTEM_LEAVE_CONTENT = "사용자가 채팅방을 나갔습니다.";
 
+    private ChatMessageSendService chatMessageSendService;
     private ChatRoomRepository chatRoomRepository;
     private ChatRoomParticipantRepository chatRoomParticipantRepository;
     private ChatRoomLeaveService chatRoomLeaveService;
 
     @BeforeEach
     void setUp() {
+        chatMessageSendService = mock(ChatMessageSendService.class);
         chatRoomRepository = mock(ChatRoomRepository.class);
         chatRoomParticipantRepository = mock(ChatRoomParticipantRepository.class);
         chatRoomLeaveService = new ChatRoomLeaveService(
+                chatMessageSendService,
                 chatRoomRepository,
                 chatRoomParticipantRepository
         );
+        given(chatMessageSendService.saveSystemMessage(
+                ROOM_ID,
+                REQUESTER_ID,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        )).willReturn(systemLeaveMessage());
     }
 
     @Test
@@ -69,7 +84,13 @@ class ChatRoomLeaveServiceTest {
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
-        assertThat(requester.getLastVisibleMessageId()).isEqualTo(LAST_MESSAGE_ID);
+        assertThat(requester.getLastVisibleMessageId()).isEqualTo(SYSTEM_LEAVE_MESSAGE_ID);
+        verify(chatMessageSendService).saveSystemMessage(
+                ROOM_ID,
+                REQUESTER_ID,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        );
         verify(chatRoom).inactivate(REQUESTER_ID);
     }
 
@@ -93,7 +114,13 @@ class ChatRoomLeaveServiceTest {
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
-        assertThat(requester.getLastVisibleMessageId()).isEqualTo(LAST_MESSAGE_ID);
+        assertThat(requester.getLastVisibleMessageId()).isEqualTo(SYSTEM_LEAVE_MESSAGE_ID);
+        verify(chatMessageSendService).saveSystemMessage(
+                ROOM_ID,
+                REQUESTER_ID,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        );
         assertThat(owner.getRole()).isEqualTo(ParticipantRole.OWNER);
     }
 
@@ -126,6 +153,13 @@ class ChatRoomLeaveServiceTest {
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
+        assertThat(requester.getLastVisibleMessageId()).isEqualTo(SYSTEM_LEAVE_MESSAGE_ID);
+        verify(chatMessageSendService).saveSystemMessage(
+                ROOM_ID,
+                REQUESTER_ID,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        );
         verify(firstMember).assignOwnerRole();
     }
 
@@ -148,6 +182,13 @@ class ChatRoomLeaveServiceTest {
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
+        assertThat(requester.getLastVisibleMessageId()).isEqualTo(SYSTEM_LEAVE_MESSAGE_ID);
+        verify(chatMessageSendService).saveSystemMessage(
+                ROOM_ID,
+                REQUESTER_ID,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        );
         verify(chatRoom).inactivate(REQUESTER_ID);
     }
 
@@ -208,5 +249,19 @@ class ChatRoomLeaveServiceTest {
         given(participant.getRole()).willReturn(role);
         given(participant.getJoinedAt()).willReturn(joinedAt);
         return participant;
+    }
+
+    private SentMessage systemLeaveMessage() {
+        return new SentMessage(
+                SYSTEM_LEAVE_MESSAGE_ID,
+                ROOM_ID,
+                null,
+                REQUESTER_ID,
+                null,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT,
+                Instant.parse("2026-06-22T00:00:00Z"),
+                null
+        );
     }
 }

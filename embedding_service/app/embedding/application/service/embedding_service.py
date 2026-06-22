@@ -98,6 +98,15 @@ class EmbeddingService:
 
         return profile, today_vector
 
+    async def get_profiles_batch(self, user_ids: list[UUID]) -> list[tuple]:
+        """match_service Spring Batch용 — 최대 100명 일괄 조회."""
+        results = []
+        for user_id in user_ids:
+            profile, today_vector = await self.get_profile_vector(user_id)
+            if profile is not None:
+                results.append((profile, today_vector))
+        return results
+
     async def retry_embedding(
         self,
         post_id: UUID,
