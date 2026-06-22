@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.application.dto.request.CreatePostRequest.MediaFileRequest;
+import com.sparta.ditto.feed.application.dto.response.CommentResponse;
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.AuthorResponse;
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.MediaFileResponse;
@@ -11,6 +12,9 @@ import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,12 +24,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
-import com.sparta.ditto.feed.application.dto.response.CommentResponse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -170,6 +168,33 @@ class PostControllerTest {
     // ============================================================
     // POST /posts/{postId}/comments (댓글 등록)
     // ============================================================
+
+    @Test
+    @DisplayName("정상 요청 → 201 CREATED, commentId 반환")
+    void createComment_정상요청_201_commentId_반환() throws Exception {
+        UUID commentId = UUID.randomUUID();
+        CommentResponse commentResponse = new CommentResponse(
+                commentId,
+                postId,
+                new CommentResponse.AuthorResponse(userId, "닉네임"),
+                "댓글 내용",
+                true,
+                true,
+                Instant.now()
+        );
+        when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any()))
+                .thenReturn(commentResponse);
+
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"댓글 내용\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.message").value("CREATED"))
+                .andExpect(jsonPath("$.data.commentId").value(commentId.toString()));
+    }
 
     @Test
     @DisplayName("content 누락 → 400, COMMON-001")

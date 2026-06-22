@@ -264,7 +264,7 @@ class PostInteractionServiceTest {
 
         // then
         assertThat(result.isMyComment()).isTrue();
-        assertThat(result.canDelete()).isTrue();
+        assertThat(result.isDeletable()).isTrue();
         assertThat(result.postId()).isEqualTo(postId);
     }
 
