@@ -56,6 +56,7 @@ class ChatMessageVisibilityServiceTest {
         assertThat(result.joinedAt()).isEqualTo(JOINED_AT);
         assertThat(result.lastVisibleMessageId()).isNull();
         assertThat(result.left()).isFalse();
+        assertThat(result.empty()).isFalse();
         assertThat(result.hasUpperBound()).isFalse();
     }
 
@@ -77,6 +78,7 @@ class ChatMessageVisibilityServiceTest {
         assertThat(result.joinedAt()).isEqualTo(JOINED_AT);
         assertThat(result.lastVisibleMessageId()).isEqualTo(LAST_VISIBLE_MESSAGE_ID);
         assertThat(result.left()).isTrue();
+        assertThat(result.empty()).isFalse();
         assertThat(result.hasUpperBound()).isTrue();
     }
 
@@ -95,7 +97,7 @@ class ChatMessageVisibilityServiceTest {
     }
 
     @Test
-    @DisplayName("joinedAt이 없으면 메시지 조회 하한을 만들 수 없다")
+    @DisplayName("joinedAt이 없으면 메시지 조회 범위를 만들 수 없다")
     void getVisibilityRange_fail_missing_joinedAt() {
         // given
         ChatRoomParticipant participant = participant(null, null, null);
@@ -109,17 +111,24 @@ class ChatMessageVisibilityServiceTest {
     }
 
     @Test
-    @DisplayName("나간 참여자의 lastVisibleMessageId가 없으면 조회 상한을 만들 수 없다")
-    void getVisibilityRange_fail_left_without_lastVisibleMessageId() {
+    @DisplayName("나간 참여자의 lastVisibleMessageId가 없으면 빈 조회 범위를 반환한다")
+    void getVisibilityRange_left_without_lastVisibleMessageId_returns_empty_range() {
         // given
         ChatRoomParticipant participant = participant(JOINED_AT, LEFT_AT, null);
         given(chatParticipantValidator.getParticipant(ROOM_ID, USER_ID)).willReturn(participant);
 
-        // when & then
-        assertThatThrownBy(() -> chatMessageVisibilityService.getVisibilityRange(ROOM_ID, USER_ID))
-                .isInstanceOfSatisfying(BusinessException.class, exception ->
-                        assertThat(exception.getErrorCode())
-                                .isEqualTo(CommonErrorCode.INVALID_INPUT));
+        // when
+        ChatMessageVisibilityRange result =
+                chatMessageVisibilityService.getVisibilityRange(ROOM_ID, USER_ID);
+
+        // then
+        assertThat(result.roomId()).isEqualTo(ROOM_ID);
+        assertThat(result.userId()).isEqualTo(USER_ID);
+        assertThat(result.joinedAt()).isEqualTo(JOINED_AT);
+        assertThat(result.lastVisibleMessageId()).isNull();
+        assertThat(result.left()).isTrue();
+        assertThat(result.empty()).isTrue();
+        assertThat(result.hasUpperBound()).isFalse();
     }
 
     private ChatRoomParticipant participant(
