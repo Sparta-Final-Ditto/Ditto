@@ -9,6 +9,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
+import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.message.port.ChatMessagePublisher;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
@@ -16,15 +19,11 @@ import com.sparta.ditto.chat.domain.message.MessageIdGenerator;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
 import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
-import com.sparta.ditto.chat.presentation.dto.response.ChatMessageResponse;
-import com.sparta.ditto.chat.presentation.dto.stomp.ChatMessageAckResponse;
-import com.sparta.ditto.chat.presentation.dto.stomp.ChatMessageSendRequest;
 import com.sparta.ditto.common.exception.BusinessException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 @DisplayName("ChatMessageSendService 테스트")
 class ChatMessageSendServiceTest {
@@ -38,7 +37,7 @@ class ChatMessageSendServiceTest {
     private ChatParticipantValidator chatParticipantValidator;
     private MessageIdGenerator messageIdGenerator;
     private ChatRoomMetadataService chatRoomMetadataService;
-    private SimpMessagingTemplate messagingTemplate;
+    private ChatMessagePublisher chatMessagePublisher;
     private ChatMessageSendService chatMessageSendService;
 
     @BeforeEach
@@ -47,10 +46,10 @@ class ChatMessageSendServiceTest {
         chatParticipantValidator = mock(ChatParticipantValidator.class);
         messageIdGenerator = mock(MessageIdGenerator.class);
         chatRoomMetadataService = mock(ChatRoomMetadataService.class);
-        messagingTemplate = mock(SimpMessagingTemplate.class);
+        chatMessagePublisher = mock(ChatMessagePublisher.class);
         chatMessageSendService = new ChatMessageSendService(
                 chatMessageMongoRepository, chatParticipantValidator,
-                messageIdGenerator, chatRoomMetadataService, messagingTemplate);
+                messageIdGenerator, chatRoomMetadataService, chatMessagePublisher);
     }
 
     @Test
@@ -62,16 +61,13 @@ class ChatMessageSendServiceTest {
                 .willAnswer(inv -> inv.getArgument(0));
 
         // when
-        chatMessageSendService.sendUserMessage(ROOM_ID, SENDER_ID, request());
+        chatMessageSendService.sendUserMessage(command());
 
         // then
         verify(chatMessageMongoRepository).save(any(ChatMessageDocument.class));
         verify(chatRoomMetadataService).updateLastMessage(eq(ROOM_ID), eq("msg-1"), any());
-        verify(messagingTemplate).convertAndSendToUser(
-                eq(SENDER_ID.toString()), eq("/sub/chat/messages/ack"),
-                any(ChatMessageAckResponse.class));
-        verify(messagingTemplate).convertAndSend(
-                eq("/sub/chat/rooms/" + ROOM_ID), any(ChatMessageResponse.class));
+        verify(chatMessagePublisher).ackToSender(eq(SENDER_ID), any(SentMessage.class));
+        verify(chatMessagePublisher).broadcast(eq(ROOM_ID), any(SentMessage.class));
     }
 
     @Test
@@ -82,8 +78,7 @@ class ChatMessageSendServiceTest {
                 .given(chatParticipantValidator).ensureActiveParticipant(any(), any());
 
         // when & then
-        assertThatThrownBy(() ->
-                chatMessageSendService.sendUserMessage(ROOM_ID, SENDER_ID, request()))
+        assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
                 .isInstanceOf(BusinessException.class);
         verify(chatMessageMongoRepository, never()).save(any());
     }
@@ -96,13 +91,13 @@ class ChatMessageSendServiceTest {
                 .given(chatParticipantValidator).ensureRoomActive(any());
 
         // when & then
-        assertThatThrownBy(() ->
-                chatMessageSendService.sendUserMessage(ROOM_ID, SENDER_ID, request()))
+        assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
                 .isInstanceOf(BusinessException.class);
         verify(chatMessageMongoRepository, never()).save(any());
     }
 
-    private ChatMessageSendRequest request() {
-        return new ChatMessageSendRequest(CLIENT_MESSAGE_ID, MessageType.TEXT, "hello");
+    private ChatMessageSendCommand command() {
+        return new ChatMessageSendCommand(
+                ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID, MessageType.TEXT, "hello");
     }
 }

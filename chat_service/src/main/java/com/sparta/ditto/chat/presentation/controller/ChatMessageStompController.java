@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.presentation.controller;
 
 import com.sparta.ditto.chat.application.message.ChatMessageSendService;
+import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.presentation.dto.stomp.ChatMessageSendRequest;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
@@ -28,6 +29,13 @@ public class ChatMessageStompController {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
         UUID senderId = UUID.fromString(principal.getName());
-        chatMessageSendService.sendUserMessage(roomId, senderId, request);
+        ChatMessageSendCommand command = new ChatMessageSendCommand(
+                roomId,
+                senderId,
+                request.clientMessageId(),
+                request.messageType(),
+                request.content()
+        );
+        chatMessageSendService.sendUserMessage(command);
     }
 }
