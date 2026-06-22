@@ -1,7 +1,8 @@
 package com.sparta.ditto.feed.application;
 
-import com.sparta.ditto.feed.presentation.dto.response.FeedItemResponse;
-import com.sparta.ditto.feed.presentation.dto.response.RandomFeedResponse;
+import com.sparta.ditto.feed.application.dto.FeedItemResult;
+import com.sparta.ditto.feed.application.dto.FeedResult;
+import com.sparta.ditto.feed.application.dto.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.service.FeedService;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
@@ -73,11 +74,11 @@ class FeedServiceTest {
                 .thenReturn(posts);
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds()).hasSize(1);
-        assertThat(response.hasNext()).isFalse();
+        assertThat(result.feeds()).hasSize(1);
+        assertThat(result.hasNext()).isFalse();
     }
 
     @Test
@@ -95,7 +96,7 @@ class FeedServiceTest {
                 .thenReturn(List.of());
 
         // when
-        feedService.getRandomFeed(userId, cursorPostId, 20);
+        feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursorPostId, 20));
 
         // then
         verify(postRepository).findFeedByLocationScopeWithCursor(
@@ -111,7 +112,7 @@ class FeedServiceTest {
                 .thenReturn(List.of());
 
         // when
-        feedService.getRandomFeed(userId, null, 20);
+        feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
         verify(postRepository).findFeedByLocationScopeWithCursor(
@@ -127,10 +128,10 @@ class FeedServiceTest {
                 .thenReturn(List.of(post));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds().get(0).neighborhood()).isNull();
+        assertThat(result.feeds().get(0).neighborhood()).isNull();
     }
 
     @Test
@@ -142,10 +143,10 @@ class FeedServiceTest {
                 .thenReturn(List.of(post));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds().get(0).neighborhood()).isEqualTo("서울 성동구");
+        assertThat(result.feeds().get(0).neighborhood()).isEqualTo("서울 성동구");
     }
 
     @Test
@@ -161,12 +162,12 @@ class FeedServiceTest {
                 .thenReturn(posts);
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, size);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, size));
 
         // then
-        assertThat(response.hasNext()).isTrue();
-        assertThat(response.feeds()).hasSize(size);
-        assertThat(response.nextCursor()).isEqualTo(posts.get(size - 1).getId());
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.feeds()).hasSize(size);
+        assertThat(result.nextCursor()).isEqualTo(posts.get(size - 1).getId());
     }
 
     @Test
@@ -178,11 +179,11 @@ class FeedServiceTest {
                 .thenReturn(posts);
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.hasNext()).isFalse();
-        assertThat(response.nextCursor()).isNull();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
     }
 
     @Test
@@ -196,10 +197,10 @@ class FeedServiceTest {
                 .thenReturn(List.of(post));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        FeedItemResponse.MediaFileResponse mediaFile = response.feeds().get(0).mediaFiles().get(0);
+        FeedItemResult.MediaResult mediaFile = result.feeds().get(0).mediaFiles().get(0);
         assertThat(mediaFile.s3Key()).isEqualTo("feeds/test.mp4");
         assertThat(mediaFile.mediaUrl()).isEqualTo(CLOUDFRONT_DOMAIN + "/feeds/test.mp4");
         assertThat(mediaFile.mediaType()).isEqualTo("VIDEO");
@@ -209,7 +210,7 @@ class FeedServiceTest {
     @DisplayName("003-13: 응답 DTO에 latitude, longitude 필드 없음")
     void tc003_13_latitude_longitude_없음() {
         // when
-        var componentNames = java.util.Arrays.stream(FeedItemResponse.class.getRecordComponents())
+        var componentNames = java.util.Arrays.stream(FeedItemResult.class.getRecordComponents())
                 .map(rc -> rc.getName())
                 .toList();
 
@@ -229,9 +230,9 @@ class FeedServiceTest {
                 .thenReturn(List.of(postId));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds().get(0).isLiked()).isTrue();
+        assertThat(result.feeds().get(0).isLiked()).isTrue();
     }
 }
