@@ -45,6 +45,16 @@ class PgUserProfileRepository(UserProfileRepository):
         result = await self.db.execute(select(UserProfileEmbedding.user_id))
         return [row[0] for row in result.all()]
 
+    async def find_active_user_ids(self) -> list[UUID]:
+        result = await self.db.execute(
+            select(UserProfileEmbedding.user_id)
+            .where(
+                UserProfileEmbedding.active.is_(True),
+                UserProfileEmbedding.deleted_at.is_(None),
+            )
+        )
+        return [row[0] for row in result.all()]
+
     @staticmethod
     def _to_domain(row: UserProfileEmbedding) -> UserProfile:
         return UserProfile(
