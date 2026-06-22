@@ -79,7 +79,8 @@ public class User extends BaseEntity {
         this.email = Objects.requireNonNull(email, "email must not be null");
         this.password = password;
         this.nickname = Objects.requireNonNull(nickname, "nickname must not be null");
-        this.loginProvider = Objects.requireNonNull(loginProvider, "loginProvider must not be null");
+        this.loginProvider = Objects.requireNonNull(loginProvider,
+                "loginProvider must not be null");
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
     }
