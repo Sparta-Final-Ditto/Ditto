@@ -1,5 +1,26 @@
 apply plugin: 'org.springframework.boot'
 
+def jacocoIncludes = [
+        '**/application/AuthService*',
+        '**/infrastructure/security/TokenManager*',
+]
+
+jacocoTestReport {
+    doFirst {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, include: jacocoIncludes)
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    doFirst {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, include: jacocoIncludes)
+        }))
+    }
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
