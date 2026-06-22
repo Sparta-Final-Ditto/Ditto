@@ -6,7 +6,6 @@ import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.application.port.NeighborhoodPort;
 import com.sparta.ditto.feed.application.port.S3Port;
-import com.sparta.ditto.feed.application.port.UserPort;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,9 +36,6 @@ class PostCreateFacadeTest {
     @Mock
     private NeighborhoodPort neighborhoodPort;
 
-    @Mock
-    private UserPort userPort;
-
     @InjectMocks
     private PostCreateFacade postCreateFacade;
 
@@ -48,6 +44,7 @@ class PostCreateFacadeTest {
     private CreatePostCommand defaultCommand() {
         return new CreatePostCommand(
                 userId,
+                "새벽러너",
                 "오늘 새벽 러닝 완료!",
                 List.of("#새벽운동", "#러닝"),
                 37.5563,
@@ -81,7 +78,6 @@ class PostCreateFacadeTest {
         CreatePostCommand command = defaultCommand();
         when(s3Port.doesObjectExist("feeds/test-uuid.mp4")).thenReturn(true);
         when(neighborhoodPort.resolveNeighborhood(37.5563, 127.0374)).thenReturn("서울 성동구");
-        when(userPort.getNickname(userId)).thenReturn("새벽러너");
 
         // when
         postCreateFacade.createPost(command);
@@ -89,7 +85,6 @@ class PostCreateFacadeTest {
         // then
         verify(s3Port).doesObjectExist("feeds/test-uuid.mp4");
         verify(neighborhoodPort).resolveNeighborhood(37.5563, 127.0374);
-        verify(userPort).getNickname(userId);
         verify(postService).createPost(command, "서울 성동구", "새벽러너");
     }
 
@@ -100,28 +95,11 @@ class PostCreateFacadeTest {
         CreatePostCommand command = defaultCommand();
         when(s3Port.doesObjectExist(anyString())).thenReturn(true);
         when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn(null);
-        when(userPort.getNickname(any(UUID.class))).thenReturn("새벽러너");
 
         // when
         postCreateFacade.createPost(command);
 
         // then
         verify(postService).createPost(command, null, "새벽러너");
-    }
-
-    @Test
-    @DisplayName("user-service 실패 (nickname null 반환) → null 전달하여 PostService 호출")
-    void user_service_실패_nickname_null_전달_PostService_호출() {
-        // given
-        CreatePostCommand command = defaultCommand();
-        when(s3Port.doesObjectExist(anyString())).thenReturn(true);
-        when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn("서울 성동구");
-        when(userPort.getNickname(any(UUID.class))).thenReturn(null);
-
-        // when
-        postCreateFacade.createPost(command);
-
-        // then
-        verify(postService).createPost(command, "서울 성동구", null);
     }
 }

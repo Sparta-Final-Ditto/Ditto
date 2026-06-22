@@ -67,7 +67,7 @@ class PostServiceTest {
 
     private CreatePostCommand defaultCommand() {
         return new CreatePostCommand(
-                userId,
+                userId, "새벽러너",
                 "오늘 새벽 러닝 완료!",
                 List.of("#새벽운동", "#러닝"),
                 37.5563,
@@ -94,7 +94,7 @@ class PostServiceTest {
     void content_null_mediaFiles_존재_게시글생성() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, null, List.of("#러닝"),
+                userId, "새벽러너", null, List.of("#러닝"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(new MediaFileItem("feeds/test.mp4", "VIDEO", 1))
@@ -113,7 +113,7 @@ class PostServiceTest {
     void mediaFiles_비어있고_content_존재_게시글생성() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "텍스트만 있는 게시글", List.of("#태그"),
+                userId, "새벽러너", "텍스트만 있는 게시글", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of()
@@ -132,7 +132,7 @@ class PostServiceTest {
     void 모든필드_전달_모든필드_반영() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId,
+                userId, "새벽러너",
                 "오늘 새벽 러닝 완료!",
                 List.of("#새벽운동", "#러닝"),
                 37.5563, 127.0374,
@@ -158,7 +158,7 @@ class PostServiceTest {
     void locationScope_누락_PUBLIC_기본값() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "공개 범위 없는 게시글", List.of("#태그"),
+                userId, "새벽러너", "공개 범위 없는 게시글", List.of("#태그"),
                 37.5563, 127.0374,
                 null, true, List.of()
         );
@@ -177,7 +177,7 @@ class PostServiceTest {
     void showLocation_누락_true_기본값() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "showLocation 없는 게시글", List.of("#태그"),
+                userId, "새벽러너", "showLocation 없는 게시글", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", null, List.of()
         );
@@ -196,7 +196,7 @@ class PostServiceTest {
     void locationScope_유효하지않음_INVALID_LOCATION_SCOPE() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "내용", List.of("#태그"),
+                userId, "새벽러너", "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "INVALID", true, List.of()
         );
@@ -216,7 +216,7 @@ class PostServiceTest {
     void mediaType_FILE_INVALID_POST_MEDIA_TYPE() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "내용", List.of("#태그"),
+                userId, "새벽러너", "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(new MediaFileItem("feeds/test.pdf", "FILE", 1))
@@ -284,7 +284,7 @@ class PostServiceTest {
     void 미디어포함_CloudFront_mediaUrl_반환() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "미디어 포함 게시글", List.of("#태그"),
+                userId, "새벽러너", "미디어 포함 게시글", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(new MediaFileItem("feeds/test-uuid.mp4", "VIDEO", 1))
@@ -332,7 +332,7 @@ class PostServiceTest {
     void content_비어있고_mediaFiles_비어있음_EMPTY_POST() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "", List.of("#태그"),
+                userId, "새벽러너", "", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true, List.of()
         );
@@ -352,7 +352,7 @@ class PostServiceTest {
     void sortOrder_중복_예외() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "내용", List.of("#태그"),
+                userId, "새벽러너", "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(
@@ -374,7 +374,7 @@ class PostServiceTest {
     void 중복태그_중복제거_저장() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "내용", List.of("#러닝", "#러닝", "#새벽"),
+                userId, "새벽러너", "내용", List.of("#러닝", "#러닝", "#새벽"),
                 37.5563, 127.0374,
                 "PUBLIC", true, List.of()
         );
@@ -392,7 +392,7 @@ class PostServiceTest {
     void 이미지6장_미디어개수초과_예외() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "내용", List.of("#태그"),
+                userId, "새벽러너", "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(
@@ -418,7 +418,7 @@ class PostServiceTest {
     void 영상2개_미디어개수초과_예외() {
         // given
         CreatePostCommand command = new CreatePostCommand(
-                userId, "내용", List.of("#태그"),
+                userId, "새벽러너", "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(

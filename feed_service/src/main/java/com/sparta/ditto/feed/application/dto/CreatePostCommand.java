@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record CreatePostCommand(
         UUID userId,
+        String nickname,
         String content,
         List<String> tags,
         Double latitude,

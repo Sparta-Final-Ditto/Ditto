@@ -143,6 +143,7 @@ class PostControllerTest {
 
         mockMvc.perform(post("/posts")
                         .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "새벽러너")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestBody()))
                 .andExpect(status().isCreated())

@@ -47,6 +47,7 @@ public class PostController {
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
             @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Nickname") String nickname,
             @Valid @RequestBody CreatePostRequest request
     ) {
         List<CreatePostCommand.MediaFileItem> mediaFileItems = request.mediaFiles() != null
@@ -56,6 +57,7 @@ public class PostController {
                 : List.of();
         CreatePostCommand command = new CreatePostCommand(
                 userId,
+                nickname,
                 request.content(),
                 request.tags(),
                 request.latitude(),
