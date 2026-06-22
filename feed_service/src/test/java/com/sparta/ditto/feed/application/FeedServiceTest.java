@@ -91,7 +91,7 @@ class FeedServiceTest {
 
         when(postRepository.findById(cursorPostId)).thenReturn(Optional.of(cursorPost));
         when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), any()))
+                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt()))
                 .thenReturn(List.of());
 
         // when
@@ -99,7 +99,7 @@ class FeedServiceTest {
 
         // then
         verify(postRepository).findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), any());
+                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt());
     }
 
     @Test
@@ -107,7 +107,7 @@ class FeedServiceTest {
     void tc003_3_PUBLIC만_조회() {
         // given
         when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), any(), any(), any()))
+                eq(List.of(LocationScope.PUBLIC)), any(), any(), anyInt()))
                 .thenReturn(List.of());
 
         // when
@@ -115,7 +115,7 @@ class FeedServiceTest {
 
         // then
         verify(postRepository).findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), any(), any(), any());
+                eq(List.of(LocationScope.PUBLIC)), any(), any(), anyInt());
     }
 
     @Test
@@ -123,7 +123,7 @@ class FeedServiceTest {
     void tc003_7_showLocation_false_neighborhood_null() {
         // given
         Post post = createPost(UUID.randomUUID(), false, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
@@ -138,7 +138,7 @@ class FeedServiceTest {
     void tc003_8_showLocation_true_neighborhood_반환() {
         // given
         Post post = createPost(UUID.randomUUID(), true, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
@@ -157,7 +157,7 @@ class FeedServiceTest {
         for (int i = 0; i < size + 1; i++) {
             posts.add(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
         }
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
@@ -174,7 +174,7 @@ class FeedServiceTest {
     void tc003_11_hasNext_false() {
         // given
         List<Post> posts = List.of(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
@@ -192,7 +192,7 @@ class FeedServiceTest {
         Post post = createPost(UUID.randomUUID(), true, LocationScope.PUBLIC);
         PostMedia media = new PostMedia(post, "feeds/test.mp4", MediaType.VIDEO, 1);
         ReflectionTestUtils.setField(post, "mediaList", List.of(media));
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
@@ -223,7 +223,7 @@ class FeedServiceTest {
         // given
         UUID postId = UUID.randomUUID();
         Post post = createPost(postId, true, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
         when(likeRepository.findPostIdsByUserIdAndPostIdIn(eq(userId), anyList()))
                 .thenReturn(List.of(postId));

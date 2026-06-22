@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,7 +43,7 @@ class OutboxPublishSchedulerTest {
     void publishPendingEvents_성공_PUBLISHED() {
         // given
         OutboxEvent event = pendingEvent();
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         when(kafkaTemplate.send(anyString(), anyString()))
                 .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
@@ -63,7 +62,7 @@ class OutboxPublishSchedulerTest {
     void publishPendingEvents_실패_retryCount_증가() {
         // given
         OutboxEvent event = pendingEvent();
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         when(kafkaTemplate.send(anyString(), anyString()))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Kafka 연결 실패")));
@@ -82,7 +81,7 @@ class OutboxPublishSchedulerTest {
     void publishPendingEvents_3회실패_FAILED() {
         // given
         OutboxEvent event = pendingEvent();
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         when(kafkaTemplate.send(anyString(), anyString()))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Kafka 연결 실패")));
@@ -102,7 +101,7 @@ class OutboxPublishSchedulerTest {
     @DisplayName("PENDING 이벤트 없음 → Kafka 발행 없음, 저장 없음")
     void publishPendingEvents_이벤트없음_발행안함() {
         // given
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, PageRequest.of(0, 100)))
+        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of());
 
         // when

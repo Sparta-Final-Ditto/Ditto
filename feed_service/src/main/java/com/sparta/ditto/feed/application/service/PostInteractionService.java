@@ -19,7 +19,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -90,7 +89,7 @@ public class PostInteractionService {
         }
 
         List<Like> fetched = likeRepository.findLikesWithCursor(
-                postId, cursorAt, cursorId, PageRequest.of(0, size + 1)
+                postId, cursorAt, cursorId, size + 1
         );
 
         boolean hasNext = fetched.size() > size;

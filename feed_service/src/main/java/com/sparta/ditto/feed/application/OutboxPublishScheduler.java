@@ -5,7 +5,6 @@ import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -20,7 +19,7 @@ public class OutboxPublishScheduler {
     @Scheduled(fixedDelay = 5000)
     public void publishPendingEvents() {
         List<OutboxEvent> pending = outboxEventRepository.findByStatusOrderByCreatedAt(
-                OutboxStatus.PENDING, PageRequest.of(0, 100));
+                OutboxStatus.PENDING, 100);
         for (OutboxEvent event : pending) {
             try {
                 kafkaTemplate.send(event.getTopic(), event.getPayload()).get();
