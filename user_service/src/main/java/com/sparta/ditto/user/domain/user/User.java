@@ -95,7 +95,8 @@ public class User extends BaseEntity {
         return new User(email, encodedPassword, nickname, gender, birthdate, LoginProvider.EMAIL);
     }
 
-    public static User createOAuthUser(String email, String nickname, Gender gender, String birthdate, LoginProvider provider) {
+    public static User createOAuthUser(String email, String nickname,
+                                       Gender gender, String birthdate, LoginProvider provider) {
         return new User(email, null, nickname, gender, birthdate, provider);
     }
 
