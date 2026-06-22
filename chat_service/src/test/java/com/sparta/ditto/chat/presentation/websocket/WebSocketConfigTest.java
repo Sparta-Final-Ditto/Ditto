@@ -47,4 +47,3 @@ class WebSocketConfigTest {
         verify(registry).setUserDestinationPrefix("/user");
     }
 }
-
