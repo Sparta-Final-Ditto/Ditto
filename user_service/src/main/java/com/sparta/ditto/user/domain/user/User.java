@@ -87,4 +87,12 @@ public class User extends BaseEntity {
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
     }
+
+    public static User createEmailUser(String email, String encodedPassword, String nickname, Gender gender, String birthdate) {
+        return new User(email, encodedPassword, nickname, gender, birthdate, LoginProvider.EMAIL);
+    }
+
+    public static User createOAuthUser(String email, String nickname, Gender gender, String birthdate, LoginProvider provider) {
+        return new User(email, null, nickname, gender, birthdate, provider);
+    }
 }

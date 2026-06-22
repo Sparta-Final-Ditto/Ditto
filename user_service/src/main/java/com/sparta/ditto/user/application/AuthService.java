@@ -26,6 +26,7 @@ public class AuthService {
         if (userRepository.existsByNickname(request.nickname())) {
             throw new NicknameAlreadyExistsException();
         }
+        // TODO: OAuth 추가 시 분기 추가 필요
         User user = User.createEmailUser(
                 request.email(),
                 passwordEncoder.encode(request.password()),
