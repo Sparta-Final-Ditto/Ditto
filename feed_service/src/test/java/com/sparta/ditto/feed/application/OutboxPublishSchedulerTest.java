@@ -1,22 +1,20 @@
 package com.sparta.ditto.feed.application;
 
+import com.sparta.ditto.feed.application.port.OutboxEventPublisher;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,7 +26,7 @@ class OutboxPublishSchedulerTest {
     private OutboxEventRepository outboxEventRepository;
 
     @Mock
-    private KafkaTemplate<String, String> kafkaTemplate;
+    private OutboxEventPublisher outboxEventPublisher;
 
     @InjectMocks
     private OutboxPublishScheduler scheduler;
@@ -39,14 +37,11 @@ class OutboxPublishSchedulerTest {
 
     @Test
     @DisplayName("PENDING 이벤트 발행 성공 → PUBLISHED 상태로 변경 및 저장")
-    @SuppressWarnings("unchecked")
     void publishPendingEvents_성공_PUBLISHED() {
         // given
         OutboxEvent event = pendingEvent();
         when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
-        when(kafkaTemplate.send(anyString(), anyString()))
-                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
 
         // when
         scheduler.publishPendingEvents();
@@ -64,8 +59,8 @@ class OutboxPublishSchedulerTest {
         OutboxEvent event = pendingEvent();
         when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
-        when(kafkaTemplate.send(anyString(), anyString()))
-                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Kafka 연결 실패")));
+        doThrow(new RuntimeException("Kafka 연결 실패"))
+                .when(outboxEventPublisher).publish(anyString(), anyString());
 
         // when
         scheduler.publishPendingEvents();
@@ -83,8 +78,8 @@ class OutboxPublishSchedulerTest {
         OutboxEvent event = pendingEvent();
         when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
-        when(kafkaTemplate.send(anyString(), anyString()))
-                .thenReturn(CompletableFuture.failedFuture(new RuntimeException("Kafka 연결 실패")));
+        doThrow(new RuntimeException("Kafka 연결 실패"))
+                .when(outboxEventPublisher).publish(anyString(), anyString());
 
         // when
         scheduler.publishPendingEvents();
@@ -108,7 +103,7 @@ class OutboxPublishSchedulerTest {
         scheduler.publishPendingEvents();
 
         // then
-        verify(kafkaTemplate, never()).send(anyString(), anyString());
+        verify(outboxEventPublisher, never()).publish(anyString(), anyString());
         verify(outboxEventRepository, never()).save(any());
     }
 }

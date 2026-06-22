@@ -1,11 +1,11 @@
 package com.sparta.ditto.feed.application;
 
+import com.sparta.ditto.feed.application.port.OutboxEventPublisher;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 public class OutboxPublishScheduler {
 
     private final OutboxEventRepository outboxEventRepository;
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     @Scheduled(fixedDelay = 5000)
     public void publishPendingEvents() {
@@ -22,7 +22,7 @@ public class OutboxPublishScheduler {
                 OutboxStatus.PENDING, 100);
         for (OutboxEvent event : pending) {
             try {
-                kafkaTemplate.send(event.getTopic(), event.getPayload()).get();
+                outboxEventPublisher.publish(event.getTopic(), event.getPayload());
                 event.markPublished();
             } catch (Exception e) {
                 event.incrementRetryCount();
