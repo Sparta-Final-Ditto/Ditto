@@ -1,6 +1,7 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from uuid import UUID
-from sqlalchemy import select
+from sqlalchemy import select, func, update, distinct
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserPostEmbedding
 from app.embedding.domain.model.post_embedding import PostEmbedding
@@ -13,13 +14,22 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         self.db = db
 
     async def save(self, post_id: UUID, user_id: UUID, vector: list[float]) -> None:
-        self.db.add(UserPostEmbedding(
-            post_id=post_id,
-            user_id=user_id,
-            vector=vector,
-            embedding_status="DONE",
-            embedded_at=datetime.now(timezone.utc),
-        ))
+        now = datetime.now(timezone.utc)
+        stmt = (
+            insert(UserPostEmbedding)
+            .values(
+                post_id=post_id,
+                user_id=user_id,
+                vector=vector,
+                embedding_status="DONE",
+                embedded_at=now,
+            )
+            .on_conflict_do_update(
+                constraint="uq_user_posts_embeddings_post_id",
+                set_={"vector": vector, "embedding_status": "DONE", "embedded_at": now},
+            )
+        )
+        await self.db.execute(stmt)
         await self.db.commit()
 
     async def find_by_post_id(self, post_id: UUID) -> PostEmbedding | None:
@@ -45,6 +55,44 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         if row:
             row.embedding_status = status
             await self.db.commit()
+
+    async def find_today_vectors(self, user_id: UUID) -> list[list[float]]:
+        result = await self.db.execute(
+            select(UserPostEmbedding.vector)
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                func.date(UserPostEmbedding.embedded_at) == date.today(),
+                UserPostEmbedding.embedding_status == "DONE",
+            )
+        )
+        return [row[0] for row in result.all()]
+
+    async def find_all_done_vectors_ordered(self, user_id: UUID) -> list[list[float]]:
+        result = await self.db.execute(
+            select(UserPostEmbedding.vector)
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                UserPostEmbedding.embedding_status == "DONE",
+            )
+            .order_by(UserPostEmbedding.embedded_at.asc())
+        )
+        return [row[0] for row in result.all()]
+
+    async def find_all_user_ids_with_done_embeddings(self) -> list[UUID]:
+        result = await self.db.execute(
+            select(distinct(UserPostEmbedding.user_id))
+            .where(UserPostEmbedding.embedding_status == "DONE")
+        )
+        return [row[0] for row in result.all()]
+
+    async def reset_failed_to_done(self) -> int:
+        result = await self.db.execute(
+            update(UserPostEmbedding)
+            .where(UserPostEmbedding.embedding_status == "FAILED")
+            .values(embedding_status="DONE")
+        )
+        await self.db.commit()
+        return result.rowcount  # type: ignore[return-value]
 
     @staticmethod
     def _to_domain(row: UserPostEmbedding) -> PostEmbedding:

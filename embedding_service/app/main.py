@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
@@ -10,6 +11,9 @@ logging.basicConfig(
     format="%(levelname)s: %(message)s",
 )
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
+
 from app.config.settings import settings
 from app.common.exception.business_exception import BusinessException
 from app.common.exception.exception_handler import (
@@ -20,12 +24,19 @@ from app.common.exception.exception_handler import (
 from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
+from app.embedding.application.event.post_consumer import PostConsumer
+from app.embedding.application.service.batch_service import run_nightly_batch
 from app.embedding.presentation.router.embedding_router import router as embedding_router
+from app.embedding.presentation.router.internal_router import router as internal_router
 
 TAGS_METADATA = [
     {
         "name": "Embedding",
         "description": "게시글 임베딩 벡터 생성 및 유저 프로필 관리 API",
+    },
+    {
+        "name": "Internal",
+        "description": "서비스 간 내부 통신용 API (match_service OpenFeign)",
     },
     {
         "name": "Health",
@@ -35,10 +46,18 @@ TAGS_METADATA = [
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_: FastAPI):
     ModelLoader.load()
-    # TODO: DB 초기화, Kafka Consumer, Scheduler 순서로 추가
+    consumer_task = asyncio.create_task(PostConsumer().start())
+
+    scheduler = AsyncIOScheduler()
+    scheduler.add_job(run_nightly_batch, CronTrigger(hour=3, minute=0, timezone="Asia/Seoul"))
+    scheduler.start()
+
     yield
+
+    consumer_task.cancel()
+    scheduler.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -51,8 +70,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_exception_handler(BusinessException, business_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(BusinessException, business_exception_handler)  # type: ignore[arg-type]
+app.add_exception_handler(RequestValidationError, validation_exception_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.add_middleware(BaseHTTPMiddleware, dispatch=logging_middleware)
@@ -65,3 +84,4 @@ app.add_middleware(
 
 app.include_router(health_router, prefix="/health")
 app.include_router(embedding_router, prefix="/api/v1/embedding")
+app.include_router(internal_router, prefix="/api/v1/internal/embedding")
