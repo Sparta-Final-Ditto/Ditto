@@ -13,3 +13,30 @@ class RetryRequest(BaseModel):
     user_id: UUID
     content: str
     hashtags: list[str]
+
+
+class ProfileVectorResponse(BaseModel):
+    user_id: UUID
+    profile_vector: list[float]
+    today_vector: list[float] | None
+    active: bool
+    record_count: int
+
+
+class ActiveUserIdsResponse(BaseModel):
+    user_ids: list[UUID]
+    count: int
+
+
+class ProfileBatchRequest(BaseModel):
+    user_ids: list[UUID]
+
+
+class ProfileBatchItem(BaseModel):
+    user_id: UUID
+    profile_vector: list[float]
+    today_vector: list[float] | None
+
+
+class ProfileBatchResponse(BaseModel):
+    profiles: list[ProfileBatchItem]
