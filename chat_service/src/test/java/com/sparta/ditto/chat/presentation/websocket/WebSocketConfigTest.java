@@ -13,7 +13,7 @@ import org.springframework.web.socket.config.annotation.StompWebSocketEndpointRe
 @DisplayName("WebSocketConfig 테스트")
 class WebSocketConfigTest {
 
-    private final WebSocketConfig config = new WebSocketConfig();
+    private final WebSocketConfig config = new WebSocketConfig(mock(StompChannelInterceptor.class));
 
     @Test
     @DisplayName("STOMP 엔드포인트(/ws-chat)를 등록한다")
@@ -47,3 +47,4 @@ class WebSocketConfigTest {
         verify(registry).setUserDestinationPrefix("/user");
     }
 }
+
