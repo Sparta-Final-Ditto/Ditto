@@ -21,12 +21,12 @@ public class NeighborhoodAdapter implements NeighborhoodPort {
     public String resolveNeighborhood(double latitude, double longitude) {
         String cacheKey = buildCacheKey(latitude, longitude);
 
-        String cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
         try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+
             String neighborhood = kakaoLocalClient.reverseGeocode(latitude, longitude);
             if (neighborhood != null) {
                 redisTemplate.opsForValue().set(cacheKey, neighborhood, TTL);
