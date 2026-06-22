@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.PostResult;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
@@ -65,112 +65,107 @@ class PostServiceTest {
                 .thenReturn(new OutboxEvent("post-events", "POST_CREATED", "{}"));
     }
 
-    private CreatePostRequest defaultRequest() {
-        return new CreatePostRequest(
+    private CreatePostCommand defaultCommand() {
+        return new CreatePostCommand(
+                userId,
                 "오늘 새벽 러닝 완료!",
                 List.of("#새벽운동", "#러닝"),
                 37.5563,
                 127.0374,
                 "PUBLIC",
                 true,
-                List.of(new MediaFileRequest("feeds/test-uuid.mp4", "VIDEO", 1))
+                List.of(new MediaFileItem("feeds/test-uuid.mp4", "VIDEO", 1))
         );
     }
 
     @Test
     @DisplayName("필수 필드와 content 전달 → 201, 게시글 생성")
     void 필수필드와_content_전달_게시글생성() {
-        // given
-        CreatePostRequest request = defaultRequest();
-
         // when
-        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(defaultCommand(), "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.postId()).isNotNull();
-        assertThat(response.content()).isEqualTo("오늘 새벽 러닝 완료!");
+        assertThat(result.postId()).isNotNull();
+        assertThat(result.content()).isEqualTo("오늘 새벽 러닝 완료!");
     }
 
     @Test
     @DisplayName("content=null, mediaFiles 1개 이상 → 201, 게시글 생성")
     void content_null_mediaFiles_존재_게시글생성() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                null,
-                List.of("#러닝"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, null, List.of("#러닝"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
-                List.of(new MediaFileRequest("feeds/test.mp4", "VIDEO", 1))
+                List.of(new MediaFileItem("feeds/test.mp4", "VIDEO", 1))
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.postId()).isNotNull();
-        assertThat(response.content()).isNull();
+        assertThat(result.postId()).isNotNull();
+        assertThat(result.content()).isNull();
     }
 
     @Test
     @DisplayName("mediaFiles=[], content 존재 → 201, 게시글 생성")
     void mediaFiles_비어있고_content_존재_게시글생성() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "텍스트만 있는 게시글",
-                List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "텍스트만 있는 게시글", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of()
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.postId()).isNotNull();
-        assertThat(response.mediaFiles()).isEmpty();
+        assertThat(result.postId()).isNotNull();
+        assertThat(result.mediaFiles()).isEmpty();
     }
 
     @Test
     @DisplayName("모든 필드 전달 → 201, 모든 필드 반영")
     void 모든필드_전달_모든필드_반영() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
+        CreatePostCommand command = new CreatePostCommand(
+                userId,
                 "오늘 새벽 러닝 완료!",
                 List.of("#새벽운동", "#러닝"),
                 37.5563, 127.0374,
                 "FOLLOWERS_ONLY", false,
-                List.of(new MediaFileRequest("feeds/test.mp4", "VIDEO", 1))
+                List.of(new MediaFileItem("feeds/test.mp4", "VIDEO", 1))
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.content()).isEqualTo("오늘 새벽 러닝 완료!");
-        assertThat(response.tags()).containsExactlyInAnyOrder("#새벽운동", "#러닝");
-        assertThat(response.showLocation()).isFalse();
-        assertThat(response.neighborhood()).isNull(); // showLocation=false이면 neighborhood=null 반환 (DATA_MODEL)
-        assertThat(response.likeCount()).isZero();
-        assertThat(response.isLiked()).isFalse();
-        assertThat(response.commentCount()).isZero();
+        assertThat(result.content()).isEqualTo("오늘 새벽 러닝 완료!");
+        assertThat(result.tags()).containsExactlyInAnyOrder("#새벽운동", "#러닝");
+        assertThat(result.showLocation()).isFalse();
+        assertThat(result.neighborhood()).isNull(); // showLocation=false이면 neighborhood=null 반환 (DATA_MODEL)
+        assertThat(result.likeCount()).isZero();
+        assertThat(result.isLiked()).isFalse();
+        assertThat(result.commentCount()).isZero();
     }
 
     @Test
     @DisplayName("locationScope 누락 → PUBLIC으로 저장")
     void locationScope_누락_PUBLIC_기본값() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "공개 범위 없는 게시글",
-                List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "공개 범위 없는 게시글", List.of("#태그"),
                 37.5563, 127.0374,
-                null, true,
-                List.of()
+                null, true, List.of()
         );
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
         verify(postRepository).save(captor.capture());
@@ -181,17 +176,15 @@ class PostServiceTest {
     @DisplayName("showLocation 누락 → true로 저장")
     void showLocation_누락_true_기본값() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "showLocation 없는 게시글",
-                List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "showLocation 없는 게시글", List.of("#태그"),
                 37.5563, 127.0374,
-                "PUBLIC", null,
-                List.of()
+                "PUBLIC", null, List.of()
         );
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
         verify(postRepository).save(captor.capture());
@@ -202,14 +195,14 @@ class PostServiceTest {
     @DisplayName("locationScope=INVALID → 400, VALIDATION_ERROR 공개 범위는 PUBLIC, FOLLOWERS_ONLY, PRIVATE 중 선택해주세요.")
     void locationScope_유효하지않음_INVALID_LOCATION_SCOPE() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "INVALID", true, List.of()
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
+        assertThatThrownBy(() -> postService.createPost(command, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -222,15 +215,15 @@ class PostServiceTest {
     @DisplayName("mediaType=FILE → 400, VALIDATION_ERROR 미디어 타입은 IMAGE, VIDEO 중 선택해주세요.")
     void mediaType_FILE_INVALID_POST_MEDIA_TYPE() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
-                List.of(new MediaFileRequest("feeds/test.pdf", "FILE", 1))
+                List.of(new MediaFileItem("feeds/test.pdf", "FILE", 1))
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
+        assertThatThrownBy(() -> postService.createPost(command, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -243,10 +236,10 @@ class PostServiceTest {
     @DisplayName("전달받은 neighborhood 값이 응답에 반영")
     void neighborhood_값_응답에_반영() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(defaultCommand(), "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.neighborhood()).isEqualTo("서울 성동구");
+        assertThat(result.neighborhood()).isEqualTo("서울 성동구");
     }
 
     @Test
@@ -256,7 +249,7 @@ class PostServiceTest {
         ArgumentCaptor<Post> captor = ArgumentCaptor.forClass(Post.class);
 
         // when
-        postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
+        postService.createPost(defaultCommand(), "서울 성동구", "새벽러너");
 
         // then
         verify(postRepository).save(captor.capture());
@@ -267,18 +260,18 @@ class PostServiceTest {
     @DisplayName("neighborhood 값이 null인 경우 응답에 null로 설정")
     void neighborhood_null_응답_게시글생성() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest(), null, "새벽러너");
+        PostResult result = postService.createPost(defaultCommand(), null, "새벽러너");
 
         // then
-        assertThat(response.postId()).isNotNull();
-        assertThat(response.neighborhood()).isNull();
+        assertThat(result.postId()).isNotNull();
+        assertThat(result.neighborhood()).isNull();
     }
 
     @Test
     @DisplayName("정상 생성 → 응답에 latitude, longitude 필드 없음")
     void 응답에_latitude_longitude_필드_없음() {
         // when
-        var componentNames = Arrays.stream(CreatePostResponse.class.getRecordComponents())
+        var componentNames = Arrays.stream(PostResult.class.getRecordComponents())
                 .map(rc -> rc.getName())
                 .toList();
 
@@ -290,33 +283,32 @@ class PostServiceTest {
     @DisplayName("미디어 포함 → mediaUrl이 CloudFront URL로 반환")
     void 미디어포함_CloudFront_mediaUrl_반환() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "미디어 포함 게시글",
-                List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "미디어 포함 게시글", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
-                List.of(new MediaFileRequest("feeds/test-uuid.mp4", "VIDEO", 1))
+                List.of(new MediaFileItem("feeds/test-uuid.mp4", "VIDEO", 1))
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.mediaFiles()).hasSize(1);
-        assertThat(response.mediaFiles().get(0).s3Key()).isEqualTo("feeds/test-uuid.mp4");
-        assertThat(response.mediaFiles().get(0).mediaUrl())
+        assertThat(result.mediaFiles()).hasSize(1);
+        assertThat(result.mediaFiles().get(0).s3Key()).isEqualTo("feeds/test-uuid.mp4");
+        assertThat(result.mediaFiles().get(0).mediaUrl())
                 .isEqualTo(CLOUDFRONT_DOMAIN + "/feeds/test-uuid.mp4");
-        assertThat(response.mediaFiles().get(0).mediaType()).isEqualTo("VIDEO");
+        assertThat(result.mediaFiles().get(0).mediaType()).isEqualTo("VIDEO");
     }
 
     @Test
     @DisplayName("정상 생성 → 응답에 createdAt 포함")
     void 정상생성_createdAt_포함() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(defaultCommand(), "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.createdAt()).isNotNull();
+        assertThat(result.createdAt()).isNotNull();
     }
 
     @Test
@@ -326,7 +318,7 @@ class PostServiceTest {
         ArgumentCaptor<OutboxEvent> captor = ArgumentCaptor.forClass(OutboxEvent.class);
 
         // when
-        postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
+        postService.createPost(defaultCommand(), "서울 성동구", "새벽러너");
 
         // then
         verify(outboxEventRepository).save(captor.capture());
@@ -339,14 +331,14 @@ class PostServiceTest {
     @DisplayName("content 비어 있고 mediaFiles=[] → 400, VALIDATION_ERROR 이미지, 영상, 텍스트 중 하나는 반드시 입력해주세요.")
     void content_비어있고_mediaFiles_비어있음_EMPTY_POST() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "", List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true, List.of()
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
+        assertThatThrownBy(() -> postService.createPost(command, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -359,18 +351,18 @@ class PostServiceTest {
     @DisplayName("mediaFiles 내 sortOrder 중복 → 400, VALIDATION_ERROR")
     void sortOrder_중복_예외() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(
-                        new MediaFileRequest("feeds/img1.jpg", "IMAGE", 1),
-                        new MediaFileRequest("feeds/img2.jpg", "IMAGE", 1)
+                        new MediaFileItem("feeds/img1.jpg", "IMAGE", 1),
+                        new MediaFileItem("feeds/img2.jpg", "IMAGE", 1)
                 )
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
+        assertThatThrownBy(() -> postService.createPost(command, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
@@ -381,41 +373,40 @@ class PostServiceTest {
     @DisplayName("tags 내 중복 태그 포함 → 201, 중복 제거 후 저장")
     void 중복태그_중복제거_저장() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용",
-                List.of("#러닝", "#러닝", "#새벽"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "내용", List.of("#러닝", "#러닝", "#새벽"),
                 37.5563, 127.0374,
                 "PUBLIC", true, List.of()
         );
 
         // when
-        CreatePostResponse response = postService.createPost(userId, request, "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(command, "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.tags()).containsExactlyInAnyOrder("#러닝", "#새벽");
-        assertThat(response.tags()).doesNotHaveDuplicates();
+        assertThat(result.tags()).containsExactlyInAnyOrder("#러닝", "#새벽");
+        assertThat(result.tags()).doesNotHaveDuplicates();
     }
 
     @Test
     @DisplayName("이미지 6장 → 400, VALIDATION_ERROR 미디어 개수 초과")
     void 이미지6장_미디어개수초과_예외() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(
-                        new MediaFileRequest("feeds/1.jpg", "IMAGE", 1),
-                        new MediaFileRequest("feeds/2.jpg", "IMAGE", 2),
-                        new MediaFileRequest("feeds/3.jpg", "IMAGE", 3),
-                        new MediaFileRequest("feeds/4.jpg", "IMAGE", 4),
-                        new MediaFileRequest("feeds/5.jpg", "IMAGE", 5),
-                        new MediaFileRequest("feeds/6.jpg", "IMAGE", 6)
+                        new MediaFileItem("feeds/1.jpg", "IMAGE", 1),
+                        new MediaFileItem("feeds/2.jpg", "IMAGE", 2),
+                        new MediaFileItem("feeds/3.jpg", "IMAGE", 3),
+                        new MediaFileItem("feeds/4.jpg", "IMAGE", 4),
+                        new MediaFileItem("feeds/5.jpg", "IMAGE", 5),
+                        new MediaFileItem("feeds/6.jpg", "IMAGE", 6)
                 )
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
+        assertThatThrownBy(() -> postService.createPost(command, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
@@ -426,18 +417,18 @@ class PostServiceTest {
     @DisplayName("영상 2개 → 400, VALIDATION_ERROR 미디어 개수 초과")
     void 영상2개_미디어개수초과_예외() {
         // given
-        CreatePostRequest request = new CreatePostRequest(
-                "내용", List.of("#태그"),
+        CreatePostCommand command = new CreatePostCommand(
+                userId, "내용", List.of("#태그"),
                 37.5563, 127.0374,
                 "PUBLIC", true,
                 List.of(
-                        new MediaFileRequest("feeds/1.mp4", "VIDEO", 1),
-                        new MediaFileRequest("feeds/2.mp4", "VIDEO", 2)
+                        new MediaFileItem("feeds/1.mp4", "VIDEO", 1),
+                        new MediaFileItem("feeds/2.mp4", "VIDEO", 2)
                 )
         );
 
         // when & then
-        assertThatThrownBy(() -> postService.createPost(userId, request, "서울 성동구", "새벽러너"))
+        assertThatThrownBy(() -> postService.createPost(command, "서울 성동구", "새벽러너"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     assertThat(((BusinessException) e).getErrorCode().getCode()).isEqualTo("VALIDATION_ERROR");
@@ -448,23 +439,22 @@ class PostServiceTest {
     @DisplayName("정상 생성 → 응답에 author.userId, author.nickname 포함")
     void 정상생성_author_포함() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", "새벽러너");
+        PostResult result = postService.createPost(defaultCommand(), "서울 성동구", "새벽러너");
 
         // then
-        assertThat(response.author()).isNotNull();
-        assertThat(response.author().userId()).isEqualTo(userId);
-        assertThat(response.author().nickname()).isEqualTo("새벽러너");
+        assertThat(result.authorUserId()).isEqualTo(userId);
+        assertThat(result.authorNickname()).isEqualTo("새벽러너");
     }
 
     @Test
     @DisplayName("user-service 호출 실패 → 닉네임 null 전달 시 null 반영")
     void userService_실패_nickname_null_게시글생성() {
         // when
-        CreatePostResponse response = postService.createPost(userId, defaultRequest(), "서울 성동구", null);
+        PostResult result = postService.createPost(defaultCommand(), "서울 성동구", null);
 
         // then
-        assertThat(response.postId()).isNotNull();
-        assertThat(response.author().userId()).isEqualTo(userId);
-        assertThat(response.author().nickname()).isNull();
+        assertThat(result.postId()).isNotNull();
+        assertThat(result.authorUserId()).isEqualTo(userId);
+        assertThat(result.authorNickname()).isNull();
     }
 }

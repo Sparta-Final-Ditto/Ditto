@@ -2,12 +2,12 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.PostResult.MediaFileResult;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
 import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse.AuthorResponse;
-import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse.MediaFileResponse;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
@@ -51,17 +51,18 @@ class PostControllerTest {
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
 
-    private CreatePostResponse successResponse;
+    private PostResult successResult;
 
     @BeforeEach
     void setUp() {
-        successResponse = new CreatePostResponse(
+        successResult = new PostResult(
                 postId,
-                new AuthorResponse(userId, "새벽러너"),
+                userId,
+                "새벽러너",
                 "오늘 새벽 러닝 완료!",
                 "서울 성동구",
                 List.of("#새벽운동", "#러닝"),
-                List.of(new MediaFileResponse(
+                List.of(new MediaFileResult(
                         "feeds/test-uuid.mp4",
                         "https://cdn.example.com/feeds/test-uuid.mp4",
                         "VIDEO",
@@ -136,8 +137,8 @@ class PostControllerTest {
     @Test
     @DisplayName("POST /posts 정상 요청 → 201, API_SPEC 응답 형식 검증")
     void createPost_정상요청_201_응답형식_검증() throws Exception {
-        when(postCreateFacade.createPost(any(UUID.class), any(CreatePostRequest.class)))
-                .thenReturn(successResponse);
+        when(postCreateFacade.createPost(any(CreatePostCommand.class)))
+                .thenReturn(successResult);
 
         mockMvc.perform(post("/posts")
                         .header("X-User-Id", userId.toString())

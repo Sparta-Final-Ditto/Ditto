@@ -1,7 +1,6 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
-import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.entity.PostTag;
+import com.sparta.ditto.feed.application.dto.PostResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -23,37 +22,22 @@ public record CreatePostResponse(
     public record AuthorResponse(UUID userId, String nickname) {}
     public record MediaFileResponse(String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
 
-    public static CreatePostResponse from(Post savedPost, String nickname, String cloudfrontDomain) {
-        String domain = cloudfrontDomain.endsWith("/")
-                ? cloudfrontDomain.substring(0, cloudfrontDomain.length() - 1)
-                : cloudfrontDomain;
-        List<MediaFileResponse> mediaFiles = savedPost.getMediaList().stream()
-                .map(m -> new MediaFileResponse(
-                        m.getS3Key(),
-                        domain + "/" + m.getS3Key(),
-                        m.getMediaType().name(),
-                        m.getSortOrder()
-                ))
+    public static CreatePostResponse from(PostResult result) {
+        List<MediaFileResponse> mediaFiles = result.mediaFiles().stream()
+                .map(m -> new MediaFileResponse(m.s3Key(), m.mediaUrl(), m.mediaType(), m.sortOrder()))
                 .toList();
-
-        List<String> tags = savedPost.getTags().stream()
-                .map(PostTag::getTag)
-                .toList();
-
-        String neighborhood = savedPost.getShowLocation() ? savedPost.getNeighborhood() : null;
-
         return new CreatePostResponse(
-                savedPost.getId(),
-                new AuthorResponse(savedPost.getUserId(), nickname),
-                savedPost.getContent(),
-                neighborhood,
-                tags,
+                result.postId(),
+                new AuthorResponse(result.authorUserId(), result.authorNickname()),
+                result.content(),
+                result.neighborhood(),
+                result.tags(),
                 mediaFiles,
-                savedPost.getLikeCount(),
-                false,
-                savedPost.getCommentCount(),
-                savedPost.getShowLocation(),
-                savedPost.getCreatedAt()
+                result.likeCount(),
+                result.isLiked(),
+                result.commentCount(),
+                result.showLocation(),
+                result.createdAt()
         );
     }
 }

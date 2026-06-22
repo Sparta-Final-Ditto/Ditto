@@ -1,6 +1,8 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.PostResult;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
@@ -12,6 +14,7 @@ import com.sparta.ditto.feed.application.service.PostInteractionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -41,8 +44,23 @@ public class PostController {
             @RequestHeader("X-User-Id") UUID userId,
             @Valid @RequestBody CreatePostRequest request
     ) {
-        CreatePostResponse response = postCreateFacade.createPost(userId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
+        List<CreatePostCommand.MediaFileItem> mediaFileItems = request.mediaFiles() != null
+                ? request.mediaFiles().stream()
+                        .map(m -> new CreatePostCommand.MediaFileItem(m.s3Key(), m.mediaType(), m.sortOrder()))
+                        .toList()
+                : List.of();
+        CreatePostCommand command = new CreatePostCommand(
+                userId,
+                request.content(),
+                request.tags(),
+                request.latitude(),
+                request.longitude(),
+                request.locationScope(),
+                request.showLocation(),
+                mediaFileItems
+        );
+        PostResult result = postCreateFacade.createPost(command);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CreatePostResponse.from(result)));
     }
 
     @PostMapping("/{postId}/likes")

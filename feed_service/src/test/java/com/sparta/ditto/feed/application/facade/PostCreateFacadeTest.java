@@ -1,8 +1,8 @@
 package com.sparta.ditto.feed.application.facade;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.application.port.NeighborhoodPort;
 import com.sparta.ditto.feed.application.port.S3Port;
@@ -45,15 +45,16 @@ class PostCreateFacadeTest {
 
     private final UUID userId = UUID.randomUUID();
 
-    private CreatePostRequest defaultRequest() {
-        return new CreatePostRequest(
+    private CreatePostCommand defaultCommand() {
+        return new CreatePostCommand(
+                userId,
                 "오늘 새벽 러닝 완료!",
                 List.of("#새벽운동", "#러닝"),
                 37.5563,
                 127.0374,
                 "PUBLIC",
                 true,
-                List.of(new MediaFileRequest("feeds/test-uuid.mp4", "VIDEO", 1))
+                List.of(new MediaFileItem("feeds/test-uuid.mp4", "VIDEO", 1))
         );
     }
 
@@ -64,7 +65,7 @@ class PostCreateFacadeTest {
         when(s3Port.doesObjectExist(anyString())).thenReturn(false);
 
         // when & then
-        assertThatThrownBy(() -> postCreateFacade.createPost(userId, defaultRequest()))
+        assertThatThrownBy(() -> postCreateFacade.createPost(defaultCommand()))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> {
                     BusinessException be = (BusinessException) e;
@@ -77,50 +78,50 @@ class PostCreateFacadeTest {
     @DisplayName("S3 객체 존재 및 외부 API 성공 → 정상 호출 위임")
     void S3객체_존재_외부API_성공_정상호출() {
         // given
-        CreatePostRequest request = defaultRequest();
+        CreatePostCommand command = defaultCommand();
         when(s3Port.doesObjectExist("feeds/test-uuid.mp4")).thenReturn(true);
         when(neighborhoodPort.resolveNeighborhood(37.5563, 127.0374)).thenReturn("서울 성동구");
         when(userPort.getNickname(userId)).thenReturn("새벽러너");
 
         // when
-        postCreateFacade.createPost(userId, request);
+        postCreateFacade.createPost(command);
 
         // then
         verify(s3Port).doesObjectExist("feeds/test-uuid.mp4");
         verify(neighborhoodPort).resolveNeighborhood(37.5563, 127.0374);
         verify(userPort).getNickname(userId);
-        verify(postService).createPost(userId, request, "서울 성동구", "새벽러너");
+        verify(postService).createPost(command, "서울 성동구", "새벽러너");
     }
 
     @Test
     @DisplayName("Kakao API 실패 (neighborhoodPort null 반환) → null 전달하여 PostService 호출")
     void neighborhoodPort_null_반환_null_전달_PostService_호출() {
         // given
-        CreatePostRequest request = defaultRequest();
+        CreatePostCommand command = defaultCommand();
         when(s3Port.doesObjectExist(anyString())).thenReturn(true);
         when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn(null);
         when(userPort.getNickname(any(UUID.class))).thenReturn("새벽러너");
 
         // when
-        postCreateFacade.createPost(userId, request);
+        postCreateFacade.createPost(command);
 
         // then
-        verify(postService).createPost(userId, request, null, "새벽러너");
+        verify(postService).createPost(command, null, "새벽러너");
     }
 
     @Test
     @DisplayName("user-service 실패 (nickname null 반환) → null 전달하여 PostService 호출")
     void user_service_실패_nickname_null_전달_PostService_호출() {
         // given
-        CreatePostRequest request = defaultRequest();
+        CreatePostCommand command = defaultCommand();
         when(s3Port.doesObjectExist(anyString())).thenReturn(true);
         when(neighborhoodPort.resolveNeighborhood(anyDouble(), anyDouble())).thenReturn("서울 성동구");
         when(userPort.getNickname(any(UUID.class))).thenReturn(null);
 
         // when
-        postCreateFacade.createPost(userId, request);
+        postCreateFacade.createPost(command);
 
         // then
-        verify(postService).createPost(userId, request, "서울 성동구", null);
+        verify(postService).createPost(command, "서울 성동구", null);
     }
 }
