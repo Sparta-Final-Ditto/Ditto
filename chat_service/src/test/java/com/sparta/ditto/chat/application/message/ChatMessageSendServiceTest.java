@@ -71,6 +71,30 @@ class ChatMessageSendServiceTest {
     }
 
     @Test
+    @DisplayName("성공 - 시스템 메시지 저장 후 lastMessage를 갱신하고 브로드캐스트한다")
+    void success_save_system_message() {
+        // given
+        given(messageIdGenerator.generate()).willReturn("system-msg-1");
+        given(chatMessageMongoRepository.save(any()))
+                .willAnswer(inv -> inv.getArgument(0));
+
+        // when
+        chatMessageSendService.saveSystemMessage(
+                ROOM_ID,
+                SENDER_ID,
+                MessageType.SYSTEM_LEAVE,
+                "사용자가 채팅방을 나갔습니다."
+        );
+
+        // then
+        verify(chatMessageMongoRepository).save(any(ChatMessageDocument.class));
+        verify(chatRoomMetadataService)
+                .updateLastMessage(eq(ROOM_ID), eq("system-msg-1"), any());
+        verify(chatMessagePublisher, never()).ackToSender(any(), any());
+        verify(chatMessagePublisher).broadcast(eq(ROOM_ID), any(SentMessage.class));
+    }
+
+    @Test
     @DisplayName("실패 - 참여자가 아니면 저장 없이 예외가 발생한다")
     void fail_not_participant() {
         // given
