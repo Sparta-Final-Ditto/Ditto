@@ -1,8 +1,11 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.feed.application.dto.request.CreateCommentRequest;
+import com.sparta.ditto.feed.application.dto.response.CommentResponse;
 import com.sparta.ditto.feed.application.dto.response.LikeResponse;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
@@ -20,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -188,6 +192,119 @@ class PostInteractionServiceTest {
         postInteractionService.removeLike(likerId, postId);
 
         // then
+        verify(outboxEventRepository, never()).save(any());
+    }
+
+    // ============================================================
+    // POST /posts/{postId}/comments (댓글 등록)
+    // ============================================================
+
+    private Comment createSavedComment(UUID commentPostId, UUID userId, String content) {
+        Comment comment = new Comment(commentPostId, userId, content);
+        ReflectionTestUtils.setField(comment, "id", UUID.randomUUID());
+        ReflectionTestUtils.setField(comment, "createdAt", Instant.now());
+        return comment;
+    }
+
+    @Test
+    @DisplayName("정상 요청 → commentId 반환, comments 저장 확인")
+    void createComment_정상요청_commentId_반환() {
+        // given
+        UUID commenterId = UUID.randomUUID();
+        Post post = createPost(ownerId, 0);
+        Comment savedComment = createSavedComment(postId, commenterId, "댓글 내용");
+
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(outboxEventPort.buildPostCommented(any(), any(), any()))
+                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", "{}"));
+        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        // when
+        CommentResponse result = postInteractionService.createComment(
+                commenterId, "닉네임", postId, new CreateCommentRequest("댓글 내용"));
+
+        // then
+        assertThat(result.commentId()).isNotNull();
+        assertThat(result.postId()).isEqualTo(postId);
+        verify(commentRepository).save(any(Comment.class));
+    }
+
+    @Test
+    @DisplayName("없는 postId → 404, POST_NOT_FOUND")
+    void createComment_없는postId_PostNotFoundException() {
+        // given
+        when(postRepository.findById(postId)).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> postInteractionService.createComment(
+                UUID.randomUUID(), "닉네임", postId, new CreateCommentRequest("댓글")))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                        .isEqualTo("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("정상 생성 응답 → isMyComment=true, canDelete=true, postId 일치")
+    void createComment_응답필드_검증() {
+        // given
+        UUID commenterId = UUID.randomUUID();
+        Post post = createPost(ownerId, 0);
+        Comment savedComment = createSavedComment(postId, commenterId, "댓글 내용");
+
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(outboxEventPort.buildPostCommented(any(), any(), any()))
+                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", "{}"));
+        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        // when
+        CommentResponse result = postInteractionService.createComment(
+                commenterId, "닉네임", postId, new CreateCommentRequest("댓글 내용"));
+
+        // then
+        assertThat(result.isMyComment()).isTrue();
+        assertThat(result.canDelete()).isTrue();
+        assertThat(result.postId()).isEqualTo(postId);
+    }
+
+    @Test
+    @DisplayName("타인 게시글 댓글 → POST_COMMENTED Outbox 이벤트 저장")
+    void createComment_타인게시글_outbox_저장() {
+        // given
+        UUID commenterId = UUID.randomUUID();
+        Post post = createPost(ownerId, 0);
+        Comment savedComment = createSavedComment(postId, commenterId, "댓글");
+        OutboxEvent outboxEvent = new OutboxEvent("post-events", "POST_COMMENTED", "{}");
+
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+        when(outboxEventPort.buildPostCommented(any(), any(), any())).thenReturn(outboxEvent);
+        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
+
+        // when
+        postInteractionService.createComment(commenterId, "닉네임", postId, new CreateCommentRequest("댓글"));
+
+        // then
+        verify(outboxEventPort).buildPostCommented(any(Post.class), any(Comment.class), any(UUID.class));
+        verify(outboxEventRepository).save(outboxEvent);
+    }
+
+    @Test
+    @DisplayName("본인 게시글 댓글 → Outbox 이벤트 생성 없음")
+    void createComment_본인게시글_outbox_미생성() {
+        // given
+        Post post = createPost(ownerId, 0);
+        Comment savedComment = createSavedComment(postId, ownerId, "댓글");
+
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
+
+        // when
+        postInteractionService.createComment(ownerId, "닉네임", postId, new CreateCommentRequest("댓글"));
+
+        // then
+        verify(outboxEventPort, never()).buildPostCommented(any(), any(), any());
         verify(outboxEventRepository, never()).save(any());
     }
 }

@@ -25,7 +25,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.sparta.ditto.feed.application.dto.response.CommentResponse;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -163,5 +165,66 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.createdAt").value("2026-06-16T05:30:00Z"))
                 .andExpect(jsonPath("$.data.latitude").doesNotExist())
                 .andExpect(jsonPath("$.data.longitude").doesNotExist());
+    }
+
+    // ============================================================
+    // POST /posts/{postId}/comments (댓글 등록)
+    // ============================================================
+
+    @Test
+    @DisplayName("content 누락 → 400, COMMON-001")
+    void createComment_content_누락_400_COMMON_001() throws Exception {
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMMON-001"));
+    }
+
+    @Test
+    @DisplayName("공백만 입력 → 400, COMMON-001")
+    void createComment_공백입력_400_COMMON_001() throws Exception {
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMMON-001"));
+    }
+
+    @Test
+    @DisplayName("201자 입력 → 400, COMMON-001")
+    void createComment_201자_입력_400_COMMON_001() throws Exception {
+        String over200 = "a".repeat(201);
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"" + over200 + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMMON-001"));
+    }
+
+    @Test
+    @DisplayName("없는 postId → 404, POST_NOT_FOUND")
+    void createComment_없는postId_404_POST_NOT_FOUND() throws Exception {
+        when(postInteractionService.createComment(
+                any(UUID.class), anyString(), any(UUID.class), any()))
+                .thenThrow(new PostNotFoundException());
+
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"댓글 내용\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
     }
 }
