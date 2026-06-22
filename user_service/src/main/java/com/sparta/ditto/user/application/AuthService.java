@@ -19,6 +19,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.UUID;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -70,5 +72,9 @@ public class AuthService {
         String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getRole(), user.getNickname());
         refreshTokenRepository.save(user.getId(), refreshToken, jwtProperties.refreshTokenValidity());
         return new AuthTokenResponse(accessToken, refreshToken);
+    }
+
+    public void logout(UUID userId) {
+        refreshTokenRepository.delete(userId);
     }
 }
