@@ -1,8 +1,6 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
-import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
@@ -34,8 +32,8 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         } else if (StompCommand.SUBSCRIBE.equals(command)) {
             UUID roomId = extractRoomId(accessor.getDestination());
             if (roomId != null) {
-                // room 구독은 인증 필수: user 없으면 통과시키지 않고 막는다.
-                UUID userId = resolveUserId(accessor.getUser());
+                // room 구독은 인증된 활성 참여자만 허용한다.
+                UUID userId = StompPrincipalResolver.resolveUserId(accessor.getUser());
                 chatParticipantValidator.ensureActiveParticipant(roomId, userId);
             }
         }
@@ -51,18 +49,6 @@ public class StompChannelInterceptor implements ChannelInterceptor {
             return UUID.fromString(roomId);
         } catch (IllegalArgumentException ex) {
             return null;
-        }
-    }
-
-    private UUID resolveUserId(java.security.Principal principal) {
-        if (principal == null || principal.getName() == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
-        try {
-            return UUID.fromString(principal.getName());
-        } catch (IllegalArgumentException ex) {
-            // Principal 이름이 UUID 형식이 아닌 경우도 인증 실패로 처리
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
     }
 }

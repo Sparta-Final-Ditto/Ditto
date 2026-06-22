@@ -1,8 +1,8 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
-import com.sparta.ditto.chat.application.room.ChatPresenceService;
-import com.sparta.ditto.chat.application.room.dto.command.ChatPresenceCommand;
-import com.sparta.ditto.chat.presentation.dto.stomp.ChatPresenceRequest;
+import com.sparta.ditto.chat.application.room.ChatReadService;
+import com.sparta.ditto.chat.application.room.dto.command.ChatReadCommand;
+import com.sparta.ditto.chat.presentation.dto.stomp.ChatReadRequest;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.UUID;
@@ -14,23 +14,23 @@ import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
-public class ChatPresenceStompController {
+public class ChatReadStompController {
 
-    private final ChatPresenceService chatPresenceService;
+    private final ChatReadService chatReadService;
 
-    @MessageMapping("/chat/rooms/{roomId}/presence")
-    public void updatePresence(
+    @MessageMapping("/chat/rooms/{roomId}/read")
+    public void updateReadState(
             Principal principal,
             @DestinationVariable UUID roomId,
-            @Valid @Payload ChatPresenceRequest request
+            @Valid @Payload ChatReadRequest request
     ) {
         UUID requesterId = StompPrincipalResolver.resolveUserId(principal);
-        ChatPresenceCommand command = ChatPresenceCommand.of(
+        ChatReadCommand command = ChatReadCommand.of(
                 requesterId,
                 roomId,
-                request.status()
+                request.lastReadMessageId()
         );
 
-        chatPresenceService.updatePresence(command);
+        chatReadService.updateReadState(command);
     }
 }
