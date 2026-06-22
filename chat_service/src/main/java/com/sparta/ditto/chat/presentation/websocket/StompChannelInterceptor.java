@@ -28,8 +28,8 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         if (StompCommand.SUBSCRIBE.equals(command)) {
             UUID roomId = extractRoomId(accessor.getDestination());
             if (roomId != null) {
-                // room 구독은 인증 필수: Principal(=handshake에서 확정) 없으면 막는다.
-                UUID userId = resolveUserId(accessor.getUser());
+                // room 구독은 인증된 활성 참여자만 허용한다.
+                UUID userId = StompPrincipalResolver.resolveUserId(accessor.getUser());
                 chatParticipantValidator.ensureActiveParticipant(roomId, userId);
             }
         }
@@ -44,19 +44,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         try {
             return UUID.fromString(roomId);
         } catch (IllegalArgumentException ex) {
-            return null;
-        }
-    }
-
-    private UUID resolveUserId(java.security.Principal principal) {
-        if (principal == null || principal.getName() == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
-        try {
-            return UUID.fromString(principal.getName());
-        } catch (IllegalArgumentException ex) {
-            // Principal 이름이 UUID 형식이 아닌 경우도 인증 실패로 처리
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
     }
 }
