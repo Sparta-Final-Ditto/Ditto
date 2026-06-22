@@ -9,4 +9,7 @@ public interface ChatMessageDedupStore {
 
     // 저장 성공 후 dedup 값을 messageId로 확정
     void complete(UUID roomId, UUID senderId, UUID clientMessageId, String messageId);
+
+    // 저장 실패 등으로 처리를 못 끝냈을 때 PROCESSING 잠금 해제
+    void release(UUID roomId, UUID senderId, UUID clientMessageId);
 }

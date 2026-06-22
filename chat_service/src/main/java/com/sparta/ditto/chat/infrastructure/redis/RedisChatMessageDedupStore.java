@@ -43,4 +43,9 @@ public class RedisChatMessageDedupStore implements ChatMessageDedupStore {
     private String key(UUID roomId, UUID senderId, UUID clientMessageId) {
         return KEY_PREFIX + roomId + ":" + senderId + ":" + clientMessageId;
     }
+
+    @Override
+    public void release(UUID roomId, UUID senderId, UUID clientMessageId) {
+        stringRedisTemplate.delete(key(roomId, senderId, clientMessageId));
+    }
 }

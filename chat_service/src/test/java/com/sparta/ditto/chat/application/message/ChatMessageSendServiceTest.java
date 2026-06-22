@@ -140,6 +140,24 @@ class ChatMessageSendServiceTest {
         verify(chatMessageMongoRepository, never()).save(any());
     }
 
+    @Test
+    @DisplayName("저장 실패 - dedup 잠금을 해제하고 예외를 전파한다")
+    void release_dedup_when_save_fails() {
+        // given
+        given(chatMessageDedupStore.begin(any(), any(), any()))
+                .willReturn(DedupBeginResult.newRequest());
+        given(messageIdGenerator.generate()).willReturn("msg-1");
+        given(chatMessageMongoRepository.save(any()))
+                .willThrow(new RuntimeException("mongo down"));
+
+        // when & then
+        assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
+                .isInstanceOf(RuntimeException.class);
+        verify(chatMessageDedupStore)
+                .release(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID));
+        verify(chatMessageDedupStore, never()).complete(any(), any(), any(), any());
+    }
+
     private ChatMessageSendCommand command() {
         return new ChatMessageSendCommand(
                 ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID, MessageType.TEXT, "hello");

@@ -67,26 +67,36 @@ public class ChatMessageSendService {
     }
 
     private SentMessage saveAndPublish(ChatMessageSendCommand command) {
-        String messageId = messageIdGenerator.generate();
-        ChatMessageDocument saved = chatMessageMongoRepository.save(
-                ChatMessageDocument.createUserMessage(
-                        messageId,
-                        command.roomId(),
-                        command.senderId(),
-                        command.clientMessageId(),
-                        command.messageType(),
-                        command.content()
-                )
-        );
+        ChatMessageDocument saved;
+        try {
+            String messageId = messageIdGenerator.generate();
+            saved = chatMessageMongoRepository.save(
+                    ChatMessageDocument.createUserMessage(
+                            messageId,
+                            command.roomId(),
+                            command.senderId(),
+                            command.clientMessageId(),
+                            command.messageType(),
+                            command.content()
+                    )
+            );
+        } catch (RuntimeException ex) {
+            // 저장 실패 → PROCESSING 잠금 해제해 즉시 재시도 가능하게 한다.
+            chatMessageDedupStore.release(
+                    command.roomId(), command.senderId(), command.clientMessageId());
+            throw ex;
+        }
 
-        chatRoomMetadataService.updateLastMessage(
-                command.roomId(), saved.getMessageId(), saved.getCreatedAt());
+        // 저장 성공 시점에 dedup을 확정한다.
+        // 이후 단계가 실패해도 재시도는 기존 messageId ACK로 멱등 처리된다.
         chatMessageDedupStore.complete(
                 command.roomId(), command.senderId(),
                 command.clientMessageId(), saved.getMessageId());
 
+        chatRoomMetadataService.updateLastMessage(
+                command.roomId(), saved.getMessageId(), saved.getCreatedAt());
+
         SentMessage sentMessage = SentMessage.from(saved);
-        // ACK(발신자) 먼저 그 다음 브로드캐스트
         chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
         chatMessagePublisher.broadcast(command.roomId(), sentMessage);
         return sentMessage;
