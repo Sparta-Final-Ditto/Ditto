@@ -1,6 +1,8 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.Message;
@@ -24,7 +26,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         StompCommand command = accessor.getCommand();
 
         if (StompCommand.CONNECT.equals(command)) {
-            // TODO: JWT 검증으로 교체. 현재는 X-User-Id 헤더로 임시 사용자 식별.
+            // TODO: Gateway WebSocket 라우팅/handshake 확정 후 X-User-Id Principal 세팅 방식으로 교체한다.
             String userId = accessor.getFirstNativeHeader("X-User-Id");
             if (userId != null && !userId.isBlank()) {
                 accessor.setUser(() -> userId);
@@ -48,7 +50,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         try {
             return UUID.fromString(roomId);
         } catch (IllegalArgumentException ex) {
-            return null;
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
     }
 }
