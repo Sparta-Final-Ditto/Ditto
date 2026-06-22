@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.application.dto.request.CreateCommentRequest;
-import com.sparta.ditto.feed.application.dto.response.CommentResponse;
-import com.sparta.ditto.feed.application.dto.response.LikeResponse;
+import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
+import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
+import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;

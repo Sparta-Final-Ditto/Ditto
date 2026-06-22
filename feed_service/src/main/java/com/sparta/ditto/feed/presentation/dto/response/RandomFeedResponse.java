@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.dto.response;
+package com.sparta.ditto.feed.presentation.dto.response;
 
 import java.util.List;
 import java.util.UUID;

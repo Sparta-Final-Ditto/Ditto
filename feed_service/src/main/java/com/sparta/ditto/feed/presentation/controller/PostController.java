@@ -1,12 +1,12 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
-import com.sparta.ditto.feed.application.dto.request.CreateCommentRequest;
-import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.application.dto.response.CommentResponse;
-import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
-import com.sparta.ditto.feed.application.dto.response.LikeListResponse;
-import com.sparta.ditto.feed.application.dto.response.LikeResponse;
+import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
+import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
+import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
+import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
+import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import jakarta.validation.Valid;

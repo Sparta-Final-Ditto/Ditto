@@ -19,7 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
-import com.sparta.ditto.feed.application.dto.response.RandomFeedResponse;
+import com.sparta.ditto.feed.presentation.dto.response.RandomFeedResponse;
 
 import java.util.UUID;
 

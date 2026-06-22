@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.application;
 
-import com.sparta.ditto.feed.application.dto.response.FeedItemResponse;
-import com.sparta.ditto.feed.application.dto.response.RandomFeedResponse;
+import com.sparta.ditto.feed.presentation.dto.response.FeedItemResponse;
+import com.sparta.ditto.feed.presentation.dto.response.RandomFeedResponse;
 import com.sparta.ditto.feed.application.service.FeedService;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;

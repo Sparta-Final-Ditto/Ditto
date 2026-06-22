@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.dto.response;
+package com.sparta.ditto.feed.presentation.dto.response;
 
 import com.sparta.ditto.feed.domain.entity.Post;
 

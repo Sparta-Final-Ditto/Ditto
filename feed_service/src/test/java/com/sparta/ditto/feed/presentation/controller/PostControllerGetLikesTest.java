@@ -9,7 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.dto.response.LikeListResponse;
+import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;

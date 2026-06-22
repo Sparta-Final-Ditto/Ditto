@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.request.CreateCommentRequest;
-import com.sparta.ditto.feed.application.dto.response.CommentResponse;
-import com.sparta.ditto.feed.application.dto.response.LikeListResponse;
-import com.sparta.ditto.feed.application.dto.response.LikeResponse;
+import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
+import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
+import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
+import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.Post;

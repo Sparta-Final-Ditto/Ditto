@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.dto.request;
+package com.sparta.ditto.feed.presentation.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;

@@ -1,8 +1,8 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.application.dto.request.CreatePostRequest.MediaFileRequest;
-import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
+import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
+import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.entity.PostTag;
