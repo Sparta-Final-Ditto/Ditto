@@ -28,6 +28,9 @@ public class ChatMessageStompController {
         if (principal == null) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
+        if (request == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         UUID senderId = UUID.fromString(principal.getName());
         ChatMessageSendCommand command = new ChatMessageSendCommand(
                 roomId,

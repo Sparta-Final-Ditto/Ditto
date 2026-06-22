@@ -27,6 +27,9 @@ public class ChatMessageSendService {
 
     // 사용자 메시지 전송: 검증 → 저장 → last message 갱신 → ACK → 브로드캐스트
     public SentMessage sendUserMessage(ChatMessageSendCommand command) {
+        if (command == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
         chatParticipantValidator.ensureActiveParticipant(command.roomId(), command.senderId());
         chatParticipantValidator.ensureRoomActive(command.roomId());
         validateUserContent(command);
