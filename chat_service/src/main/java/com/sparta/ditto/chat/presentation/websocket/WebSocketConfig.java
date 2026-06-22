@@ -1,17 +1,19 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-/* WebSocket / STOMP 설정
- 채팅 서비스의 실시간 통신을 위한 WebSocket endpoint와 STOMP 메시지 브로커를 설정한다. */
-
 @Configuration
+@RequiredArgsConstructor
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+    private final StompChannelInterceptor stompChannelInterceptor;
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
@@ -28,7 +30,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.enableSimpleBroker("/sub", "/user/sub");
 
         // 개인 destination prefix (ACK, error 수신용)
-        // /user/sub/chat/messages/ack, /user/sub/chat/errors 처럼 사용
         registry.setUserDestinationPrefix("/user");
+    }
+
+    @Override
+    public void configureClientInboundChannel(ChannelRegistration registration) {
+        registration.interceptors(stompChannelInterceptor);
     }
 }
