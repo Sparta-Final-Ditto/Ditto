@@ -5,19 +5,20 @@ def jacocoIncludes = [
         '**/infrastructure/security/TokenManager*',
 ]
 
-jacocoTestReport {
-    doFirst {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, include: jacocoIncludes)
-        }))
+afterEvaluate {
+    jacocoTestReport {
+        classDirectories.setFrom(
+            sourceSets.main.output.asFileTree.matching {
+                include jacocoIncludes
+            }
+        )
     }
-}
-
-jacocoTestCoverageVerification {
-    doFirst {
-        classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it, include: jacocoIncludes)
-        }))
+    jacocoTestCoverageVerification {
+        classDirectories.setFrom(
+            sourceSets.main.output.asFileTree.matching {
+                include jacocoIncludes
+            }
+        )
     }
 }
 
