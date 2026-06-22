@@ -35,7 +35,13 @@ class EmbeddingService:
         """게시글 임베딩 저장 + active 갱신. EMA 벡터 재계산은 새벽 배치에서 처리."""
         text = build_post_text(content, hashtags)
         vector = self.model.encode(text)
+
+        is_new = await self.post_repo.find_by_post_id(post_id) is None
         await self.post_repo.save(post_id, user_id, vector)
+
+        if not is_new:
+            # 재처리(retry/수정): 벡터만 갱신, record_count는 변경 없음
+            return
 
         try:
             existing = await self.profile_repo.find_by_user_id(user_id)
