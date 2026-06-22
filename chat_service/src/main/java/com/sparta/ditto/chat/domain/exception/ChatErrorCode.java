@@ -16,7 +16,8 @@ public enum ChatErrorCode implements ErrorCode {
     CHAT_MESSAGE_SAVE_FAILED("CHAT-006", "메시지 저장에 실패했습니다.", 500),
     CHAT_INVALID_PRESENCE_STATUS("CHAT-007", "잘못된 채팅 접속 상태입니다.", 400),
     CHAT_INVALID_DIRECT_TARGET("CHAT-008", "1:1 채팅 상대가 올바르지 않습니다.", 400),
-    CHAT_BLOCKED_USER("CHAT-009", "차단 관계인 사용자와 채팅할 수 없습니다.", 403);
+    CHAT_BLOCKED_USER("CHAT-009", "차단 관계인 사용자와 채팅할 수 없습니다.", 403),
+    CHAT_INVALID_GROUP_PARTICIPANTS("CHAT-010", "그룹 채팅방은 본인을 포함해 3명 이상이어야 합니다.", 400);
 
     private final String code;
     private final String message;

@@ -3,6 +3,7 @@ package com.sparta.ditto.chat.domain.room;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.sparta.ditto.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -43,7 +44,7 @@ class ChatRoomTest {
     void createGroup_fail_blank_room_name() {
         // when & then
         assertThatThrownBy(() -> ChatRoom.createGroup(" "))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
@@ -59,6 +60,18 @@ class ChatRoomTest {
         // then
         assertThat(chatRoom.getLastMessageId()).isEqualTo(MESSAGE_ID);
         assertThat(chatRoom.getLastMessageAt()).isEqualTo(messageCreatedAt);
+    }
+
+    @Test
+    @DisplayName("실패 - 마지막 메시지 ID는 비어 있을 수 없다")
+    void updateLastMessage_fail_blank_message_id() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant messageCreatedAt = Instant.parse("2026-06-18T00:00:00Z");
+
+        // when & then
+        assertThatThrownBy(() -> chatRoom.updateLastMessage(" ", messageCreatedAt))
+                .isInstanceOf(BusinessException.class);
     }
 
     @Test
