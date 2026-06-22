@@ -1,10 +1,19 @@
 package com.sparta.ditto.user.application;
 
 import com.sparta.ditto.user.domain.user.User;
+import com.sparta.ditto.user.domain.user.enums.UserStatus;
 import com.sparta.ditto.user.domain.user.exception.EmailAlreadyExistsException;
+import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
+import com.sparta.ditto.user.domain.user.exception.UserBannedException;
+import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
+import com.sparta.ditto.user.infrastructure.repository.RefreshTokenRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
+import com.sparta.ditto.user.infrastructure.security.JwtProperties;
+import com.sparta.ditto.user.infrastructure.security.JwtUtil;
+import com.sparta.ditto.user.presentation.dto.request.AuthLoginRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthSignupRequest;
+import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -17,6 +26,9 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
+    private final JwtProperties jwtProperties;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     @Transactional
     public void signup(AuthSignupRequest request) {
@@ -35,5 +47,28 @@ public class AuthService {
                 request.birthdate()
         );
         userRepository.save(user);
+    }
+
+    @Transactional
+    public AuthTokenResponse login(AuthLoginRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(UserNotFoundException::new);
+
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new UserBannedException();
+        }
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new InvalidPasswordException();
+        }
+
+        user.updateLastLoginAt();
+        return issueTokens(user);
+    }
+
+    private AuthTokenResponse issueTokens(User user) {
+        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getRole(), user.getNickname());
+        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getRole(), user.getNickname());
+        refreshTokenRepository.save(user.getId(), refreshToken, jwtProperties.refreshTokenValidity());
+        return new AuthTokenResponse(accessToken, refreshToken);
     }
 }

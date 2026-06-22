@@ -95,4 +95,8 @@ public class User extends BaseEntity {
     public static User createOAuthUser(String email, String nickname, Gender gender, String birthdate, LoginProvider provider) {
         return new User(email, null, nickname, gender, birthdate, provider);
     }
+
+    public void updateLastLoginAt() {
+        this.lastLoginAt = Instant.now();
+    }
 }
