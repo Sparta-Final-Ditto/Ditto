@@ -83,6 +83,7 @@ async def test_flow1_initial_profile() -> uuid.UUID:
         profile = await db.get(UserProfileEmbedding, user_id)
 
     check(profile is not None, "user_profile_embeddings 레코드 생성됨")
+    assert profile is not None
     check(profile.record_count == 0, f"record_count=0 (실제: {profile.record_count})")
     check(profile.active is False, f"active=False (실제: {profile.active})")
     check(len(profile.vector) == 768, f"벡터 768차원 (실제: {len(profile.vector)})")
@@ -120,6 +121,7 @@ async def test_flow2_post_embedding(user_id: uuid.UUID) -> None:
             )
             status = post_row.scalar()
 
+        assert profile is not None
         print(f"\n  [{i}번째 게시글] \"{content[:20]}...\"")
         check(status == "DONE", f"user_posts_embeddings status=DONE (실제: {status})")
         check(profile.record_count == i, f"record_count={i} (실제: {profile.record_count})")
@@ -133,30 +135,38 @@ async def test_flow2_post_embedding(user_id: uuid.UUID) -> None:
 
     print(f"\n  3번째 게시글 업로드 후 active=True 전환 확인 완료")
 
-    # unique 제약 검증 - 동일 post_id 재삽입 시도
-    print(f"\n  [unique 제약 검증] 동일 post_id 재삽입 시도")
-    duplicate_post_id = uuid.uuid4()
+    # upsert 검증 - 동일 post_id 재처리 시 record_count 불변
+    print(f"\n  [upsert/retry 검증] 동일 post_id 재처리 시 record_count 불변")
+    retry_post_id = uuid.uuid4()
     async with AsyncSessionLocal() as db:
         svc = EmbeddingService(
             post_repo=PgPostEmbeddingRepository(db),
             profile_repo=PgUserProfileRepository(db),
             model=ModelLoader(),
         )
-        await svc.embed_and_store(duplicate_post_id, user_id, "중복 테스트", [])
+        await svc.embed_and_store(retry_post_id, user_id, "최초 게시글", [])
 
-    raised = False
-    try:
-        async with AsyncSessionLocal() as db:
-            svc = EmbeddingService(
-                post_repo=PgPostEmbeddingRepository(db),
-                profile_repo=PgUserProfileRepository(db),
-                model=ModelLoader(),
-            )
-            await svc.embed_and_store(duplicate_post_id, user_id, "중복 테스트", [])
-    except Exception:
-        raised = True
+    async with AsyncSessionLocal() as db:
+        before_profile = await db.get(UserProfileEmbedding, user_id)
+    assert before_profile is not None
+    count_before = before_profile.record_count
 
-    check(raised, "동일 post_id 재삽입 시 DB 예외 발생 (unique 제약 동작)")
+    async with AsyncSessionLocal() as db:
+        svc = EmbeddingService(
+            post_repo=PgPostEmbeddingRepository(db),
+            profile_repo=PgUserProfileRepository(db),
+            model=ModelLoader(),
+        )
+        await svc.embed_and_store(retry_post_id, user_id, "수정된 게시글", [])
+
+    async with AsyncSessionLocal() as db:
+        after_profile = await db.get(UserProfileEmbedding, user_id)
+    assert after_profile is not None
+
+    check(
+        after_profile.record_count == count_before,
+        f"retry 후 record_count 불변 (before={count_before}, after={after_profile.record_count})",
+    )
 
 
 # ── Flow 3 ──────────────────────────────────────────────────────────────
@@ -203,6 +213,7 @@ async def test_flow3_nightly_batch() -> uuid.UUID:
 
     check(remaining_failed == 0, f"FAILED 레코드 전부 DONE으로 복구 (남은 FAILED: {remaining_failed})")
     check(profile is not None, "user_profile_embeddings 생성됨")
+    assert profile is not None
     check(profile.record_count == 5, f"record_count=5 (DONE 3 + 복구 2, 실제: {profile.record_count})")
     check(profile.active is True, f"active=True (실제: {profile.active})")
     check(len(profile.vector) == 768, f"EMA 벡터 768차원 (실제: {len(profile.vector)})")
