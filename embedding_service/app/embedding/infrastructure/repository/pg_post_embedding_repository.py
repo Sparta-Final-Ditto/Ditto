@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, date
 from uuid import UUID
 from sqlalchemy import select, func, update, distinct
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserPostEmbedding
 from app.embedding.domain.model.post_embedding import PostEmbedding
@@ -13,13 +14,22 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         self.db = db
 
     async def save(self, post_id: UUID, user_id: UUID, vector: list[float]) -> None:
-        self.db.add(UserPostEmbedding(
-            post_id=post_id,
-            user_id=user_id,
-            vector=vector,
-            embedding_status="DONE",
-            embedded_at=datetime.now(timezone.utc),
-        ))
+        now = datetime.now(timezone.utc)
+        stmt = (
+            insert(UserPostEmbedding)
+            .values(
+                post_id=post_id,
+                user_id=user_id,
+                vector=vector,
+                embedding_status="DONE",
+                embedded_at=now,
+            )
+            .on_conflict_do_update(
+                constraint="uq_user_posts_embeddings_post_id",
+                set_={"vector": vector, "embedding_status": "DONE", "embedded_at": now},
+            )
+        )
+        await self.db.execute(stmt)
         await self.db.commit()
 
     async def find_by_post_id(self, post_id: UUID) -> PostEmbedding | None:
