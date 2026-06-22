@@ -12,7 +12,7 @@ class UserPostEmbedding(Base, BaseEntity):
     __tablename__ = "user_posts_embeddings"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    post_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    post_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True)
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
     vector: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
     embedding_status: Mapped[str] = mapped_column(String(10), nullable=False, default="PENDING", index=True)
