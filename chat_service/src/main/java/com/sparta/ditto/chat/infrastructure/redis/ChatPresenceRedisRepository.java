@@ -29,8 +29,10 @@ public class ChatPresenceRedisRepository {
                 .set(activeRoomKey(userId), roomId.toString(), ACTIVE_ROOM_TTL);
     }
 
-    public void leaveRoom(UUID userId) {
-        stringRedisTemplate.delete(activeRoomKey(userId));
+    public void leaveRoomIfCurrent(UUID userId, UUID roomId) {
+        findActiveRoomId(userId)
+                .filter(roomId::equals)
+                .ifPresent(activeRoomId -> deleteActiveRoom(userId));
     }
 
     public void refreshActiveRoomTtlIfPresent(UUID userId) {
@@ -59,5 +61,9 @@ public class ChatPresenceRedisRepository {
 
     private String activeRoomKey(UUID userId) {
         return ACTIVE_ROOM_KEY_PREFIX + userId;
+    }
+
+    private void deleteActiveRoom(UUID userId) {
+        stringRedisTemplate.delete(activeRoomKey(userId));
     }
 }

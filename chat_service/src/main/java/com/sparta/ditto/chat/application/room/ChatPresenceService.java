@@ -57,7 +57,10 @@ public class ChatPresenceService {
                 "leave",
                 command.requesterId(),
                 command.roomId(),
-                () -> chatPresenceRedisRepository.leaveRoom(command.requesterId())
+                () -> chatPresenceRedisRepository.leaveRoomIfCurrent(
+                        command.requesterId(),
+                        command.roomId()
+                )
         );
         return ChatPresenceResult.of(command.roomId(), command.status());
     }

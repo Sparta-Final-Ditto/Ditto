@@ -68,7 +68,7 @@ class ChatPresenceServiceTest {
                 chatPresenceService.updatePresence(command(ChatPresenceStatus.LEAVE));
 
         // then
-        verify(chatPresenceRedisRepository).leaveRoom(REQUESTER_ID);
+        verify(chatPresenceRedisRepository).leaveRoomIfCurrent(REQUESTER_ID, ROOM_ID);
         verifyNoInteractions(chatParticipantValidator);
         assertThat(result.roomId()).isEqualTo(ROOM_ID);
         assertThat(result.status()).isEqualTo(ChatPresenceStatus.LEAVE);
