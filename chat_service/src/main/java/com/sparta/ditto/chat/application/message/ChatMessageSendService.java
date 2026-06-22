@@ -2,15 +2,19 @@ package com.sparta.ditto.chat.application.message;
 
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.message.port.ChatMessageDedupStore;
 import com.sparta.ditto.chat.application.message.port.ChatMessagePublisher;
+import com.sparta.ditto.chat.application.message.port.DedupBeginResult;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
+import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.message.MessageIdGenerator;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
 import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,8 +28,9 @@ public class ChatMessageSendService {
     private final MessageIdGenerator messageIdGenerator;
     private final ChatRoomMetadataService chatRoomMetadataService;
     private final ChatMessagePublisher chatMessagePublisher;
+    private final ChatMessageDedupStore chatMessageDedupStore;
 
-    // 사용자 메시지 전송: 검증 → 저장 → last message 갱신 → ACK → 브로드캐스트
+    // 사용자 메시지 전송: 검증 → 중복 확인 → 저장 → last message 갱신 → ACK → 브로드캐스트
     public SentMessage sendUserMessage(ChatMessageSendCommand command) {
         if (command == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
@@ -34,26 +39,15 @@ public class ChatMessageSendService {
         chatParticipantValidator.ensureRoomActive(command.roomId());
         validateUserContent(command);
 
-        String messageId = messageIdGenerator.generate();
-        ChatMessageDocument saved = chatMessageMongoRepository.save(
-                ChatMessageDocument.createUserMessage(
-                        messageId,
-                        command.roomId(),
-                        command.senderId(),
-                        command.clientMessageId(),
-                        command.messageType(),
-                        command.content()
-                )
-        );
+        DedupBeginResult dedup = chatMessageDedupStore.begin(
+                command.roomId(), command.senderId(), command.clientMessageId());
 
-        chatRoomMetadataService.updateLastMessage(
-                command.roomId(), saved.getMessageId(), saved.getCreatedAt());
-
-        SentMessage sentMessage = SentMessage.from(saved);
-        // ACK(발신자) 먼저 그 다음 브로드캐스트
-        chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
-        chatMessagePublisher.broadcast(command.roomId(), sentMessage);
-        return sentMessage;
+        return switch (dedup.status()) {
+            case NEW -> saveAndPublish(command);
+            case DUPLICATE_COMPLETED -> ackDuplicate(command, dedup.messageId());
+            case DUPLICATE_PROCESSING ->
+                    throw new BusinessException(ChatErrorCode.CHAT_DUPLICATE_PROCESSING);
+        };
     }
 
     // 시스템 메시지 저장 + 브로드캐스트
@@ -70,6 +64,55 @@ public class ChatMessageSendService {
         SentMessage sentMessage = SentMessage.from(saved);
         chatMessagePublisher.broadcast(roomId, sentMessage);
         return sentMessage;
+    }
+
+    private SentMessage saveAndPublish(ChatMessageSendCommand command) {
+        String messageId = messageIdGenerator.generate();
+        ChatMessageDocument saved = chatMessageMongoRepository.save(
+                ChatMessageDocument.createUserMessage(
+                        messageId,
+                        command.roomId(),
+                        command.senderId(),
+                        command.clientMessageId(),
+                        command.messageType(),
+                        command.content()
+                )
+        );
+
+        chatRoomMetadataService.updateLastMessage(
+                command.roomId(), saved.getMessageId(), saved.getCreatedAt());
+        chatMessageDedupStore.complete(
+                command.roomId(), command.senderId(),
+                command.clientMessageId(), saved.getMessageId());
+
+        SentMessage sentMessage = SentMessage.from(saved);
+        // ACK(발신자) 먼저 그 다음 브로드캐스트
+        chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
+        chatMessagePublisher.broadcast(command.roomId(), sentMessage);
+        return sentMessage;
+    }
+
+    // 완료된 중복: 새 저장/브로드캐스트 없이 기존 messageId로 ACK만 반환
+    private SentMessage ackDuplicate(ChatMessageSendCommand command, String messageId) {
+        SentMessage sentMessage = chatMessageMongoRepository.findByMessageId(messageId)
+                .map(SentMessage::from)
+                .orElseGet(() -> duplicateSentMessage(command, messageId));
+        chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
+        return sentMessage;
+    }
+
+    private SentMessage duplicateSentMessage(ChatMessageSendCommand command, String messageId) {
+        return new SentMessage(
+                messageId,
+                command.roomId(),
+                command.senderId(),
+                null,
+                command.clientMessageId(),
+                command.messageType(),
+                command.content(),
+                Instant.now(),
+                null
+        );
     }
 
     private void validateUserContent(ChatMessageSendCommand command) {
