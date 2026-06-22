@@ -1,12 +1,11 @@
-package com.sparta.ditto.chat.presentation.dto.response;
+package com.sparta.ditto.chat.application.message.dto;
 
-import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
 import java.time.Instant;
 import java.util.UUID;
 
-public record ChatMessageResponse(
+public record SentMessage(
         String messageId,
         UUID roomId,
         UUID senderId,
@@ -17,8 +16,8 @@ public record ChatMessageResponse(
         Instant createdAt,
         Instant deletedAt
 ) {
-    public static ChatMessageResponse from(ChatMessageDocument document) {
-        return new ChatMessageResponse(
+    public static SentMessage from(ChatMessageDocument document) {
+        return new SentMessage(
                 document.getMessageId(),
                 document.getRoomId(),
                 document.getSenderId(),
@@ -28,20 +27,6 @@ public record ChatMessageResponse(
                 document.getContent(),
                 document.getCreatedAt(),
                 document.getDeletedAt()
-        );
-    }
-
-    public static ChatMessageResponse from(SentMessage message) {
-        return new ChatMessageResponse(
-                message.messageId(),
-                message.roomId(),
-                message.senderId(),
-                message.actorId(),
-                message.clientMessageId(),
-                message.messageType(),
-                message.content(),
-                message.createdAt(),
-                message.deletedAt()
         );
     }
 }

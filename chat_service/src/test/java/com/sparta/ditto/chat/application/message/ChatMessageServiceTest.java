@@ -6,9 +6,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
@@ -284,11 +284,13 @@ class ChatMessageServiceTest {
 
     private ChatMessageDocument userMessage(String messageId) {
         return ChatMessageDocument.createUserMessage(
-                messageId, ROOM_ID, SENDER_ID, UUID.randomUUID(), MessageType.TEXT, "c-" + messageId);
+                messageId, ROOM_ID, SENDER_ID, UUID.randomUUID(),
+                MessageType.TEXT, "c-" + messageId);
     }
 
     private ChatMessageDocument myMessage(String messageId) {
         return ChatMessageDocument.createUserMessage(
-                messageId, ROOM_ID, REQUESTER_ID, UUID.randomUUID(), MessageType.TEXT, "c-" + messageId);
+                messageId, ROOM_ID, REQUESTER_ID, UUID.randomUUID(),
+                MessageType.TEXT, "c-" + messageId);
     }
 }
