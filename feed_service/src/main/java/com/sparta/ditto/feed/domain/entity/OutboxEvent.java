@@ -3,6 +3,8 @@ package com.sparta.ditto.feed.domain.entity;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
@@ -10,7 +12,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -27,6 +29,12 @@ import org.hibernate.annotations.CreationTimestamp;
                         columnList = "status, created_at")
         }
 )
+/**
+ * Transactional Outbox 패턴 이벤트 엔티티.
+ * Post 저장과 동일 트랜잭션에서 함께 INSERT되어 Kafka 발행 유실을 방지한다.
+ * 상태는 PENDING → PUBLISHED 또는 FAILED로 전이되며, 최대 3회까지 재시도한다.
+ * 별도 배치 프로세스가 PENDING 이벤트를 조회해 Kafka로 발행한다.
+ */
 public class OutboxEvent {
 
     private static final int MAX_RETRY_COUNT = 3;
@@ -42,6 +50,7 @@ public class OutboxEvent {
     @Column(nullable = false)
     private String eventType;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String payload;
 
@@ -54,11 +63,11 @@ public class OutboxEvent {
 
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
-    private LocalDateTime publishedAt;
+    private Instant publishedAt;
 
-    private LocalDateTime failedAt;
+    private Instant failedAt;
 
     public OutboxEvent(String topic, String eventType, String payload) {
         this.topic = topic;
@@ -68,14 +77,14 @@ public class OutboxEvent {
 
     public void markPublished() {
         this.status = OutboxStatus.PUBLISHED;
-        this.publishedAt = LocalDateTime.now();
+        this.publishedAt = Instant.now();
     }
 
     public void incrementRetryCount() {
         this.retryCount++;
         if (this.retryCount >= MAX_RETRY_COUNT) {
             this.status = OutboxStatus.FAILED;
-            this.failedAt = LocalDateTime.now();
+            this.failedAt = Instant.now();
         }
     }
 }

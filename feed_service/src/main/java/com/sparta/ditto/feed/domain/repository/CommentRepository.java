@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.domain.repository;
 
 import com.sparta.ditto.feed.domain.entity.Comment;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -25,7 +25,7 @@ public interface CommentRepository extends JpaRepository<Comment, UUID> {
             """)
     List<Comment> findByPostIdWithCursor(
             @Param("postId") UUID postId,
-            @Param("cursorAt") LocalDateTime cursorAt,
+            @Param("cursorAt") Instant cursorAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );

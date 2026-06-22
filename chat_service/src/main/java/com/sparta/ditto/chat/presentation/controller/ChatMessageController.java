@@ -5,6 +5,7 @@ import com.sparta.ditto.chat.presentation.dto.response.ChatMessageCursorResponse
 import com.sparta.ditto.common.response.ApiResponse;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -33,5 +34,17 @@ public class ChatMessageController {
                 ? chatMessageService.getMissedMessages(roomId, after, size, requesterId)
                 : chatMessageService.getPreviousMessages(roomId, before, size, requesterId);
         return ApiResponse.success(result);
+    }
+
+    // 메시지 삭제
+    @DeleteMapping("/{roomId}/messages/{messageId}")
+    public ApiResponse<Void> deleteMessage(
+            @PathVariable UUID roomId,
+            @PathVariable String messageId,
+            // TODO: 인증 공통 모듈 확정 후 JWT 기반 사용자 ID 추출로 교체한다.
+            @RequestHeader("X-User-Id") UUID requesterId
+    ) {
+        chatMessageService.deleteMessage(roomId, messageId, requesterId);
+        return ApiResponse.deleted();
     }
 }

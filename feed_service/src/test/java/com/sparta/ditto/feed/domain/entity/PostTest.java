@@ -15,7 +15,7 @@ class PostTest {
     void createPost_withAllFields() {
         UUID userId = UUID.randomUUID();
 
-        Post post = new Post(userId, "내용", "강남구", 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(userId, "테스트닉네임", "내용", "강남구", 37.5, 127.0, LocationScope.PUBLIC, true);
 
         assertThat(post.getUserId()).isEqualTo(userId);
         assertThat(post.getContent()).isEqualTo("내용");
@@ -31,7 +31,7 @@ class PostTest {
     @Test
     @DisplayName("게시글 생성 - locationScope null이면 PUBLIC 기본값")
     void createPost_nullLocationScope_defaultsToPublic() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, null, null);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, null, null);
 
         assertThat(post.getLocationScope()).isEqualTo(LocationScope.PUBLIC);
         assertThat(post.getShowLocation()).isTrue();
@@ -40,7 +40,7 @@ class PostTest {
     @Test
     @DisplayName("좋아요 수 증가")
     void incrementLikeCount() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
 
         post.incrementLikeCount();
         post.incrementLikeCount();
@@ -51,7 +51,7 @@ class PostTest {
     @Test
     @DisplayName("좋아요 수 감소 - 0 이상일 때 감소")
     void decrementLikeCount_whenPositive() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
         post.incrementLikeCount();
 
         post.decrementLikeCount();
@@ -62,7 +62,7 @@ class PostTest {
     @Test
     @DisplayName("좋아요 수 감소 - 0이면 감소하지 않음")
     void decrementLikeCount_whenZero_doesNotGoNegative() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
 
         post.decrementLikeCount();
 
@@ -72,7 +72,7 @@ class PostTest {
     @Test
     @DisplayName("댓글 수 증가")
     void incrementCommentCount() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
 
         post.incrementCommentCount();
         post.incrementCommentCount();
@@ -83,7 +83,7 @@ class PostTest {
     @Test
     @DisplayName("댓글 수 감소 - 0 이상일 때 감소")
     void decrementCommentCount_whenPositive() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
         post.incrementCommentCount();
 
         post.decrementCommentCount();
@@ -94,7 +94,7 @@ class PostTest {
     @Test
     @DisplayName("댓글 수 감소 - 0이면 감소하지 않음")
     void decrementCommentCount_whenZero_doesNotGoNegative() {
-        Post post = new Post(UUID.randomUUID(), null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
 
         post.decrementCommentCount();
 
