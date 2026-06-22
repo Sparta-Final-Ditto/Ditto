@@ -1,7 +1,12 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
+import com.sparta.ditto.feed.application.dto.CommentResult;
+import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.GetLikesQuery;
+import com.sparta.ditto.feed.application.dto.LikeListResult;
+import com.sparta.ditto.feed.application.dto.LikeResult;
 import com.sparta.ditto.feed.application.dto.PostResult;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
@@ -68,8 +73,8 @@ public class PostController {
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable UUID postId
     ) {
-        LikeResponse response = postInteractionService.addLike(userId, postId);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        LikeResult result = postInteractionService.addLike(userId, postId);
+        return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
     @DeleteMapping("/{postId}/likes")
@@ -77,8 +82,8 @@ public class PostController {
             @RequestHeader("X-User-Id") UUID userId,
             @PathVariable UUID postId
     ) {
-        LikeResponse response = postInteractionService.removeLike(userId, postId);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        LikeResult result = postInteractionService.removeLike(userId, postId);
+        return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
     @GetMapping("/{postId}/likes")
@@ -87,8 +92,8 @@ public class PostController {
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        LikeListResponse response = postInteractionService.getLikes(postId, cursor, size);
-        return ResponseEntity.ok(ApiResponse.success(response));
+        LikeListResult result = postInteractionService.getLikes(new GetLikesQuery(postId, cursor, size));
+        return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
     }
 
     @PostMapping("/{postId}/comments")
@@ -98,7 +103,9 @@ public class PostController {
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        CommentResponse response = postInteractionService.createComment(userId, nickname, postId, request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
+        CommentResult result = postInteractionService.createComment(
+                userId, nickname, postId, new CreateCommentCommand(request.content())
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CommentResponse.from(result)));
     }
 }

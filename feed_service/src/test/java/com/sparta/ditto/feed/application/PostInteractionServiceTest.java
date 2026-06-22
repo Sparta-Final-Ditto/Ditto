@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
-import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
-import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
+import com.sparta.ditto.feed.application.dto.CommentResult;
+import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
+import com.sparta.ditto.feed.application.dto.LikeResult;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
@@ -80,7 +80,7 @@ class PostInteractionServiceTest {
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        LikeResponse result = postInteractionService.addLike(likerId, postId);
+        LikeResult result = postInteractionService.addLike(likerId, postId);
 
         // then
         assertThat(result.isLiked()).isTrue();
@@ -117,7 +117,7 @@ class PostInteractionServiceTest {
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        LikeResponse result = postInteractionService.addLike(likerId, postId);
+        LikeResult result = postInteractionService.addLike(likerId, postId);
 
         // then
         assertThat(result.isLiked()).isTrue();
@@ -136,7 +136,7 @@ class PostInteractionServiceTest {
         when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
 
         // when
-        LikeResponse result = postInteractionService.removeLike(likerId, postId);
+        LikeResult result = postInteractionService.removeLike(likerId, postId);
 
         // then
         assertThat(result.isLiked()).isFalse();
@@ -172,7 +172,7 @@ class PostInteractionServiceTest {
         when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
 
         // when
-        LikeResponse result = postInteractionService.removeLike(likerId, postId);
+        LikeResult result = postInteractionService.removeLike(likerId, postId);
 
         // then
         assertThat(result.likeCount()).isEqualTo(0);
@@ -221,8 +221,8 @@ class PostInteractionServiceTest {
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        CommentResponse result = postInteractionService.createComment(
-                commenterId, "닉네임", postId, new CreateCommentRequest("댓글 내용"));
+        CommentResult result = postInteractionService.createComment(
+                commenterId, "닉네임", postId, new CreateCommentCommand("댓글 내용"));
 
         // then
         assertThat(result.commentId()).isNotNull();
@@ -238,7 +238,7 @@ class PostInteractionServiceTest {
 
         // when & then
         assertThatThrownBy(() -> postInteractionService.createComment(
-                UUID.randomUUID(), "닉네임", postId, new CreateCommentRequest("댓글")))
+                UUID.randomUUID(), "닉네임", postId, new CreateCommentCommand("댓글")))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
                         .isEqualTo("POST_NOT_FOUND"));
@@ -259,8 +259,8 @@ class PostInteractionServiceTest {
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        CommentResponse result = postInteractionService.createComment(
-                commenterId, "닉네임", postId, new CreateCommentRequest("댓글 내용"));
+        CommentResult result = postInteractionService.createComment(
+                commenterId, "닉네임", postId, new CreateCommentCommand("댓글 내용"));
 
         // then
         assertThat(result.isMyComment()).isTrue();
@@ -283,7 +283,7 @@ class PostInteractionServiceTest {
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        postInteractionService.createComment(commenterId, "닉네임", postId, new CreateCommentRequest("댓글"));
+        postInteractionService.createComment(commenterId, "닉네임", postId, new CreateCommentCommand("댓글"));
 
         // then
         verify(outboxEventPort).buildPostCommented(any(Post.class), any(Comment.class), any(UUID.class));
@@ -301,7 +301,7 @@ class PostInteractionServiceTest {
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
 
         // when
-        postInteractionService.createComment(ownerId, "닉네임", postId, new CreateCommentRequest("댓글"));
+        postInteractionService.createComment(ownerId, "닉네임", postId, new CreateCommentCommand("댓글"));
 
         // then
         verify(outboxEventPort, never()).buildPostCommented(any(), any(), any());

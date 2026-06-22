@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sparta.ditto.feed.domain.entity.Comment;
+import com.sparta.ditto.feed.application.dto.CommentResult;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -14,19 +14,17 @@ public record CommentResponse(
         @JsonProperty("canDelete") boolean isDeletable,
         Instant createdAt
 ) {
+    public record AuthorResponse(UUID userId, String nickname) {}
 
-    public record AuthorResponse(UUID userId, String nickname) {
-    }
-
-    public static CommentResponse fromCreation(Comment comment, String nickname) {
+    public static CommentResponse from(CommentResult result) {
         return new CommentResponse(
-                comment.getId(),
-                comment.getPostId(),
-                new AuthorResponse(comment.getUserId(), nickname),
-                comment.getContent(),
-                true,
-                true,
-                comment.getCreatedAt()
+                result.commentId(),
+                result.postId(),
+                new AuthorResponse(result.authorUserId(), result.authorNickname()),
+                result.content(),
+                result.isMyComment(),
+                result.isDeletable(),
+                result.createdAt()
         );
     }
 }

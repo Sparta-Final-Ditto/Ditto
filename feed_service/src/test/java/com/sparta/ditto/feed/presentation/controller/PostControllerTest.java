@@ -2,12 +2,13 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
+import com.sparta.ditto.feed.application.dto.CommentResult;
+import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.PostResult;
 import com.sparta.ditto.feed.application.dto.PostResult.MediaFileResult;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
-import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
@@ -174,17 +175,18 @@ class PostControllerTest {
     @DisplayName("정상 요청 → 201 CREATED, commentId 반환")
     void createComment_정상요청_201_commentId_반환() throws Exception {
         UUID commentId = UUID.randomUUID();
-        CommentResponse commentResponse = new CommentResponse(
+        CommentResult commentResult = new CommentResult(
                 commentId,
                 postId,
-                new CommentResponse.AuthorResponse(userId, "닉네임"),
+                userId,
+                "닉네임",
                 "댓글 내용",
                 true,
                 true,
                 Instant.now()
         );
-        when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any()))
-                .thenReturn(commentResponse);
+        when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any(CreateCommentCommand.class)))
+                .thenReturn(commentResult);
 
         mockMvc.perform(post("/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
