@@ -1,6 +1,7 @@
 package com.sparta.ditto.user.infrastructure.security;
 
 import com.sparta.ditto.user.domain.user.User;
+import com.sparta.ditto.user.domain.user.enums.UserRole;
 import com.sparta.ditto.user.infrastructure.repository.RefreshTokenRepository;
 import com.sparta.ditto.user.infrastructure.security.exception.InvalidTokenException;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
@@ -18,9 +19,12 @@ public class TokenManager {
     private final RefreshTokenRepository refreshTokenRepository;
 
     public AuthTokenResponse issueTokens(User user) {
-        String accessToken = jwtUtil.generateAccessToken(user.getId(), user.getRole(), user.getNickname());
-        String refreshToken = jwtUtil.generateRefreshToken(user.getId(), user.getRole(), user.getNickname());
-        refreshTokenRepository.save(user.getId(), refreshToken, jwtProperties.refreshTokenValidity());
+        UUID userId = user.getId();
+        UserRole role = user.getRole();
+        String nickname = user.getNickname();
+        String accessToken = jwtUtil.generateAccessToken(userId, role, nickname);
+        String refreshToken = jwtUtil.generateRefreshToken(userId, role, nickname);
+        refreshTokenRepository.save(userId, refreshToken, jwtProperties.refreshTokenValidity());
         return new AuthTokenResponse(accessToken, refreshToken);
     }
 

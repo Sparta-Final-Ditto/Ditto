@@ -7,6 +7,7 @@ import com.sparta.ditto.user.presentation.dto.request.AuthReissueRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthSignupRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,8 +15,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -31,7 +30,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<AuthTokenResponse>> login(@Valid @RequestBody AuthLoginRequest request) {
+    public ResponseEntity<ApiResponse<AuthTokenResponse>> login(
+            @Valid @RequestBody AuthLoginRequest request) {
         return ResponseEntity.ok(ApiResponse.success(authService.login(request)));
     }
 
@@ -42,7 +42,8 @@ public class AuthController {
     }
 
     @PostMapping("/reissue")
-    public ResponseEntity<ApiResponse<AuthTokenResponse>> reissue(@Valid @RequestBody AuthReissueRequest request) {
+    public ResponseEntity<ApiResponse<AuthTokenResponse>> reissue(
+            @Valid @RequestBody AuthReissueRequest request) {
         return ResponseEntity.ok(ApiResponse.success(authService.reissue(request)));
     }
 }
