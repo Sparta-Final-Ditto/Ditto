@@ -4,12 +4,14 @@ import com.sparta.ditto.chat.application.message.ChatMessageSendService;
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.presentation.dto.stomp.ChatMessageSendRequest;
 import com.sparta.ditto.chat.presentation.dto.stomp.ChatStompErrorResponse;
+import com.sparta.ditto.chat.presentation.websocket.StompPrincipalResolver;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import com.sparta.ditto.common.exception.ErrorCode;
 import java.security.Principal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Controller;
 
 @Controller
 @RequiredArgsConstructor
+@Slf4j
 public class ChatMessageStompController {
 
     private final ChatMessageSendService chatMessageSendService;
@@ -29,13 +32,10 @@ public class ChatMessageStompController {
             @Payload ChatMessageSendRequest request,
             Principal principal
     ) {
-        if (principal == null) {
-            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
-        }
         if (request == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
-        UUID senderId = UUID.fromString(principal.getName());
+        UUID senderId = StompPrincipalResolver.resolveUserId(principal);
         ChatMessageSendCommand command = new ChatMessageSendCommand(
                 roomId,
                 senderId,
@@ -46,8 +46,7 @@ public class ChatMessageStompController {
         chatMessageSendService.sendUserMessage(command);
     }
 
-    // 권한 실패/비활성 방/검증 실패 등 도메인 예외 → 연결 종료 대신 사용자 에러 채널로
-    // 실패한 메시지 매핑을 위해 roomId/clientMessageId를 함께 내려준다.
+    // 메시지 전송 실패는 발신자가 요청을 매핑할 수 있도록 clientMessageId를 함께 내려준다.
     @MessageExceptionHandler(BusinessException.class)
     @SendToUser("/sub/chat/errors")
     public ChatStompErrorResponse handleBusinessException(
@@ -66,14 +65,15 @@ public class ChatMessageStompController {
         );
     }
 
-    // 저장 실패 등 그 외 예외도 연결을 끊지 않고 에러 채널로 전달
-    // TODO: payload 역직렬화 실패 등도 포함되어 roomId/clientMessageId는 null로 둔다.
+    // 예상하지 못한 전송 실패도 연결을 끊지 않고 사용자 에러 채널로 전달한다.
     @MessageExceptionHandler(Exception.class)
     @SendToUser("/sub/chat/errors")
     public ChatStompErrorResponse handleException(Exception ex) {
+        log.error("Unhandled STOMP message exception", ex);
+
         return ChatStompErrorResponse.of(
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(),
-                "INTERNAL_SERVER_ERROR",
+                CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
                 null,
                 null
