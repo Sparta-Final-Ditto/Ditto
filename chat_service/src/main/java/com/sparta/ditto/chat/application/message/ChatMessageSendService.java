@@ -14,11 +14,12 @@ import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
 import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
-import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatMessageSendService {
@@ -102,27 +103,22 @@ public class ChatMessageSendService {
         return sentMessage;
     }
 
-    // 완료된 중복: 새 저장/브로드캐스트 없이 기존 messageId로 ACK만 반환
     private SentMessage ackDuplicate(ChatMessageSendCommand command, String messageId) {
-        SentMessage sentMessage = chatMessageMongoRepository.findByMessageId(messageId)
-                .map(SentMessage::from)
-                .orElseGet(() -> duplicateSentMessage(command, messageId));
+        ChatMessageDocument original = chatMessageMongoRepository.findByMessageId(messageId)
+                .orElse(null);
+        if (original == null) {
+            log.error("Dedup completed but original message missing. "
+                            + "roomId={}, senderId={}, clientMessageId={}, messageId={}",
+                    command.roomId(), command.senderId(), command.clientMessageId(), messageId);
+            // 잘못된 dedup 키를 정리해 재시도가 새로 저장되도록 유도
+            chatMessageDedupStore.release(
+                    command.roomId(), command.senderId(), command.clientMessageId());
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+
+        SentMessage sentMessage = SentMessage.from(original);
         chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
         return sentMessage;
-    }
-
-    private SentMessage duplicateSentMessage(ChatMessageSendCommand command, String messageId) {
-        return new SentMessage(
-                messageId,
-                command.roomId(),
-                command.senderId(),
-                null,
-                command.clientMessageId(),
-                command.messageType(),
-                command.content(),
-                Instant.now(),
-                null
-        );
     }
 
     private void validateUserContent(ChatMessageSendCommand command) {

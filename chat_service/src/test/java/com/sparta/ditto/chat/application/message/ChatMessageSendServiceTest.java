@@ -158,6 +158,23 @@ class ChatMessageSendServiceTest {
         verify(chatMessageDedupStore, never()).complete(any(), any(), any(), any());
     }
 
+    @Test
+    @DisplayName("중복(완료)인데 원본이 없으면 - dedup 정리 후 예외, ACK 안 함")
+    void duplicate_completed_but_missing_original() {
+        // given
+        given(chatMessageDedupStore.begin(any(), any(), any()))
+                .willReturn(DedupBeginResult.duplicateCompleted("msg-1"));
+        given(chatMessageMongoRepository.findByMessageId("msg-1"))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
+                .isInstanceOf(BusinessException.class);
+        verify(chatMessageDedupStore)
+                .release(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID));
+        verify(chatMessagePublisher, never()).ackToSender(any(), any());
+    }
+
     private ChatMessageSendCommand command() {
         return new ChatMessageSendCommand(
                 ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID, MessageType.TEXT, "hello");
