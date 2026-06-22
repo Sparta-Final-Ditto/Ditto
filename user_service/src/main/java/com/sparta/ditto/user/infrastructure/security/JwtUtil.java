@@ -20,21 +20,21 @@ public class JwtUtil {
     private static final String CLAIM_NICKNAME = "nickname";
 
     private final SecretKey secretKey;
-    private final long expiration;
-    private final long refreshExpiration;
+    private final long accessTokenValidityMs;
+    private final long refreshTokenValidityMs;
 
     public JwtUtil(JwtProperties properties) {
         this.secretKey = Keys.hmacShaKeyFor(properties.secret().getBytes(StandardCharsets.UTF_8));
-        this.expiration = properties.expiration();
-        this.refreshExpiration = properties.refreshExpiration();
+        this.accessTokenValidityMs = properties.accessTokenValidity().toMillis();
+        this.refreshTokenValidityMs = properties.refreshTokenValidity().toMillis();
     }
 
     public String generateAccessToken(UUID userId, UserRole role, String nickname) {
-        return buildToken(userId, role, nickname, expiration);
+        return buildToken(userId, role, nickname, accessTokenValidityMs);
     }
 
     public String generateRefreshToken(UUID userId, UserRole role, String nickname) {
-        return buildToken(userId, role, nickname, refreshExpiration);
+        return buildToken(userId, role, nickname, refreshTokenValidityMs);
     }
 
     public Claims parseToken(String token) {
