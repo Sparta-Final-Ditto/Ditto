@@ -4,6 +4,7 @@ import com.sparta.ditto.feed.application.dto.response.LikeResponse;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.exception.DuplicateLikeException;
+import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
@@ -38,5 +39,15 @@ public class PostInteractionService {
         }
 
         return LikeResponse.liked(post);
+    }
+
+    @Transactional
+    public LikeResponse removeLike(UUID userId, UUID postId) {
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Like like = likeRepository.findByPostIdAndUserId(postId, userId)
+                .orElseThrow(LikeNotFoundException::new);
+        likeRepository.delete(like);
+        postRepository.decrementLikeCount(postId);
+        return LikeResponse.unliked(post);
     }
 }

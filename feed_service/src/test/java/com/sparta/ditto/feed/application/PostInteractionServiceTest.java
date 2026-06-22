@@ -111,4 +111,73 @@ class PostInteractionServiceTest {
         verify(postRepository).incrementLikeCount(postId);
         verify(outboxEventRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("TC-008-1: 좋아요 존재 → isLiked=false, likeCount 1 감소")
+    void removeLike_정상취소_isLiked_false_likeCount_감소() {
+        // given
+        Post post = createPost(ownerId, 5);
+        Like like = new Like(postId, likerId);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
+
+        // when
+        LikeResponse result = postInteractionService.removeLike(likerId, postId);
+
+        // then
+        assertThat(result.isLiked()).isFalse();
+        assertThat(result.likeCount()).isEqualTo(4);
+        verify(likeRepository).delete(like);
+        verify(postRepository).decrementLikeCount(postId);
+    }
+
+    @Test
+    @DisplayName("TC-008-2: 좋아요하지 않은 게시글 취소 → 404, LIKE_NOT_FOUND")
+    void removeLike_좋아요없음_LikeNotFoundException() {
+        // given
+        Post post = createPost(ownerId, 5);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> postInteractionService.removeLike(likerId, postId))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                        .isEqualTo("LIKE_NOT_FOUND"));
+        verify(likeRepository, never()).delete(any());
+        verify(postRepository, never()).decrementLikeCount(any());
+    }
+
+    @Test
+    @DisplayName("TC-008-4: likeCount=0일 때 취소 → likeCount 0으로 고정 (음수 방지)")
+    void removeLike_likeCount_0일때_음수방지() {
+        // given
+        Post post = createPost(ownerId, 0);
+        Like like = new Like(postId, likerId);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
+
+        // when
+        LikeResponse result = postInteractionService.removeLike(likerId, postId);
+
+        // then
+        assertThat(result.likeCount()).isEqualTo(0);
+        assertThat(result.isLiked()).isFalse();
+    }
+
+    @Test
+    @DisplayName("TC-008-5: 좋아요 취소 시 Outbox 이벤트 저장 없음")
+    void removeLike_Outbox_저장_없음() {
+        // given
+        Post post = createPost(ownerId, 3);
+        Like like = new Like(postId, likerId);
+        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
+
+        // when
+        postInteractionService.removeLike(likerId, postId);
+
+        // then
+        verify(outboxEventRepository, never()).save(any());
+    }
 }
