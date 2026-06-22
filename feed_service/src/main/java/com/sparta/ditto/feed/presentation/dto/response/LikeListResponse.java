@@ -3,7 +3,6 @@ package com.sparta.ditto.feed.presentation.dto.response;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import java.util.List;
-import java.util.UUID;
 
 public record LikeListResponse(
         List<LikeUserResponse> users,
@@ -17,6 +16,7 @@ public record LikeListResponse(
         List<LikeUserResponse> users = result.users().stream()
                 .map(u -> new LikeUserResponse(u.userId(), u.nickname()))
                 .toList();
-        return new LikeListResponse(users, result.totalCount(), result.nextCursor(), result.hasNext());
+        return new LikeListResponse(
+                users, result.totalCount(), result.nextCursor(), result.hasNext());
     }
 }

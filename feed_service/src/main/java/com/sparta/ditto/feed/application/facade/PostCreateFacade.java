@@ -3,15 +3,14 @@ package com.sparta.ditto.feed.application.facade;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.dto.PostResult;
-import com.sparta.ditto.feed.application.service.PostService;
-import com.sparta.ditto.feed.domain.exception.S3ObjectNotFoundException;
 import com.sparta.ditto.feed.application.port.NeighborhoodPort;
 import com.sparta.ditto.feed.application.port.S3Port;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-
+import com.sparta.ditto.feed.application.service.PostService;
+import com.sparta.ditto.feed.domain.exception.S3ObjectNotFoundException;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
 
 /**
  * 게시글 생성 유스케이스를 담당하는 퍼사드(Facade) 클래스.
@@ -35,11 +34,13 @@ public class PostCreateFacade {
      * 모아진 데이터를 바탕으로 DB 트랜잭션을 전담하는 PostService에 위임한다.
      */
     public PostResult createPost(CreatePostCommand command) {
-        List<MediaFileItem> mediaFiles = command.mediaFiles() != null ? command.mediaFiles() : List.of();
+        List<MediaFileItem> mediaFiles =
+                command.mediaFiles() != null ? command.mediaFiles() : List.of();
 
         validateS3Objects(mediaFiles);
 
-        String neighborhood = neighborhoodPort.resolveNeighborhood(command.latitude(), command.longitude());
+        String neighborhood =
+                neighborhoodPort.resolveNeighborhood(command.latitude(), command.longitude());
 
         return postService.createPost(command, neighborhood, command.nickname());
     }
@@ -53,12 +54,15 @@ public class PostCreateFacade {
         }
 
         List<CompletableFuture<Boolean>> futures = mediaFiles.stream()
-                .map(m -> CompletableFuture.supplyAsync(() -> s3Port.doesObjectExist(m.s3Key())))
+                .map(m -> CompletableFuture.supplyAsync(
+                        () -> s3Port.doesObjectExist(m.s3Key())))
                 .toList();
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
 
-        boolean anyMissing = futures.stream().map(CompletableFuture::join).anyMatch(exists -> !exists);
+        boolean anyMissing = futures.stream()
+                .map(CompletableFuture::join)
+                .anyMatch(exists -> !exists);
 
         if (anyMissing) {
             throw new S3ObjectNotFoundException();

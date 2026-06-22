@@ -47,7 +47,9 @@ public class LikeRepositoryImpl implements LikeRepository {
     }
 
     @Override
-    public List<Like> findLikesWithCursor(UUID postId, Instant cursorAt, UUID cursorId, int limit) {
-        return jpaRepository.findLikesWithCursor(postId, cursorAt, cursorId, PageRequest.of(0, limit));
+    public List<Like> findLikesWithCursor(
+            UUID postId, Instant cursorAt, UUID cursorId, int limit) {
+        return jpaRepository.findLikesWithCursor(
+                postId, cursorAt, cursorId, PageRequest.of(0, limit));
     }
 }

@@ -7,16 +7,15 @@ import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.type.LocationScope;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -49,10 +48,12 @@ public class FeedService {
 
         List<UUID> postIds = feedPosts.stream().map(Post::getId).toList();
         Set<UUID> likedPostIds = postIds.isEmpty() ? Set.of()
-                : new HashSet<>(likeRepository.findPostIdsByUserIdAndPostIdIn(query.userId(), postIds));
+                : new HashSet<>(likeRepository.findPostIdsByUserIdAndPostIdIn(
+                        query.userId(), postIds));
 
         List<FeedItemResult> feeds = feedPosts.stream()
-                .map(p -> FeedItemResult.from(p, likedPostIds.contains(p.getId()), cloudfrontDomain))
+                .map(p -> FeedItemResult.from(p, likedPostIds.contains(p.getId()),
+                        cloudfrontDomain))
                 .toList();
 
         UUID nextCursor = hasNext ? feedPosts.get(feedPosts.size() - 1).getId() : null;

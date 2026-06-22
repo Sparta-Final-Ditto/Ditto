@@ -4,6 +4,7 @@ import com.sparta.ditto.feed.application.dto.UploadUrlCommand;
 import com.sparta.ditto.feed.application.dto.UploadUrlCommand.FileItem;
 import com.sparta.ditto.feed.application.dto.UploadUrlResult;
 import com.sparta.ditto.feed.application.dto.UploadUrlResult.FileResult;
+import com.sparta.ditto.feed.application.port.S3Port;
 import com.sparta.ditto.feed.domain.exception.FilesEmptyException;
 import com.sparta.ditto.feed.domain.exception.ImageCountExceededException;
 import com.sparta.ditto.feed.domain.exception.ImageSizeExceededException;
@@ -11,14 +12,12 @@ import com.sparta.ditto.feed.domain.exception.InvalidMediaTypeException;
 import com.sparta.ditto.feed.domain.exception.MediaCountExceededException;
 import com.sparta.ditto.feed.domain.exception.VideoCountExceededException;
 import com.sparta.ditto.feed.domain.exception.VideoSizeExceededException;
-import com.sparta.ditto.feed.application.port.S3Port;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor

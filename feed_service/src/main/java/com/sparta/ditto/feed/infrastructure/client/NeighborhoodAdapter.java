@@ -1,11 +1,10 @@
 package com.sparta.ditto.feed.infrastructure.client;
 
 import com.sparta.ditto.feed.application.port.NeighborhoodPort;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor

@@ -7,6 +7,8 @@ package com.sparta.ditto.feed.application.port;
  * 구현체(S3Adapter)는 AWS SDK v2를 사용한다.
  */
 public interface S3Port {
+
     String generatePresignedPutUrl(String s3Key, String contentType);
+
     boolean doesObjectExist(String s3Key);
 }

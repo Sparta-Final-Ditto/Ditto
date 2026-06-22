@@ -17,12 +17,16 @@ public record FeedItemResponse(
         int commentCount,
         Instant createdAt
 ) {
+
     public record AuthorResponse(UUID userId, String nickname) {}
-    public record MediaFileResponse(String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
+
+    public record MediaFileResponse(
+            String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
 
     public static FeedItemResponse from(FeedItemResult result) {
         List<MediaFileResponse> mediaFiles = result.mediaFiles().stream()
-                .map(m -> new MediaFileResponse(m.s3Key(), m.mediaUrl(), m.mediaType(), m.sortOrder()))
+                .map(m -> new MediaFileResponse(
+                        m.s3Key(), m.mediaUrl(), m.mediaType(), m.sortOrder()))
                 .toList();
         return new FeedItemResponse(
                 result.postId(),

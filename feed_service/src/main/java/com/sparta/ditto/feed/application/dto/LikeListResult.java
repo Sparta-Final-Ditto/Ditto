@@ -12,7 +12,8 @@ public record LikeListResult(
 ) {
     public record LikeUserResult(String userId, String nickname) {}
 
-    public static LikeListResult of(List<Like> likes, int totalCount, UUID nextCursor, boolean hasNext) {
+    public static LikeListResult of(
+            List<Like> likes, int totalCount, UUID nextCursor, boolean hasNext) {
         List<LikeUserResult> users = likes.stream()
                 .map(l -> new LikeUserResult(l.getUserId().toString(), l.getUserNickname()))
                 .toList();

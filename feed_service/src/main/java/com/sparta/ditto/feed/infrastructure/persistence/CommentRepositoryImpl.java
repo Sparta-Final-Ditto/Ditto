@@ -27,7 +27,9 @@ public class CommentRepositoryImpl implements CommentRepository {
     }
 
     @Override
-    public List<Comment> findByPostIdWithCursor(UUID postId, Instant cursorAt, UUID cursorId, int limit) {
-        return jpaRepository.findByPostIdWithCursor(postId, cursorAt, cursorId, PageRequest.of(0, limit));
+    public List<Comment> findByPostIdWithCursor(
+            UUID postId, Instant cursorAt, UUID cursorId, int limit) {
+        return jpaRepository.findByPostIdWithCursor(
+                postId, cursorAt, cursorId, PageRequest.of(0, limit));
     }
 }

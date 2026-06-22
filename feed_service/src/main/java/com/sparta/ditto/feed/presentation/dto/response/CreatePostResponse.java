@@ -5,7 +5,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/** 게시글 생성 응답 DTO */
 public record CreatePostResponse(
         UUID postId,
         AuthorResponse author,
@@ -19,12 +18,16 @@ public record CreatePostResponse(
         boolean showLocation,
         Instant createdAt
 ) {
+
     public record AuthorResponse(UUID userId, String nickname) {}
-    public record MediaFileResponse(String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
+
+    public record MediaFileResponse(
+            String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
 
     public static CreatePostResponse from(PostResult result) {
         List<MediaFileResponse> mediaFiles = result.mediaFiles().stream()
-                .map(m -> new MediaFileResponse(m.s3Key(), m.mediaUrl(), m.mediaType(), m.sortOrder()))
+                .map(m -> new MediaFileResponse(
+                        m.s3Key(), m.mediaUrl(), m.mediaType(), m.sortOrder()))
                 .toList();
         return new CreatePostResponse(
                 result.postId(),

@@ -1,18 +1,20 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
+import com.sparta.ditto.feed.application.dto.FeedResult;
 import com.sparta.ditto.feed.application.dto.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.dto.UploadUrlCommand;
-import com.sparta.ditto.feed.application.dto.FeedResult;
 import com.sparta.ditto.feed.application.dto.UploadUrlResult;
-import com.sparta.ditto.feed.presentation.dto.response.RandomFeedResponse;
 import com.sparta.ditto.feed.application.service.FeedService;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest;
+import com.sparta.ditto.feed.presentation.dto.response.RandomFeedResponse;
 import com.sparta.ditto.feed.presentation.dto.response.UploadUrlResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -24,21 +26,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-import java.util.UUID;
-
 @Validated
 @RestController
-@RequestMapping("/api/v1/feeds")
+@RequestMapping("/feeds")
 @RequiredArgsConstructor
 public class FeedController {
 
     private final UploadUrlService uploadUrlService;
     private final FeedService feedService;
 
-    // -------------------------------------------------------
-    // POST /api/v1/feeds/upload-url — 미디어 업로드 URL 생성
-    // -------------------------------------------------------
     @PostMapping("/upload-url")
     public ResponseEntity<ApiResponse<UploadUrlResponse>> getUploadUrl(
             @RequestHeader("X-User-Id") UUID userId,
@@ -46,16 +42,15 @@ public class FeedController {
     ) {
         List<UploadUrlCommand.FileItem> fileItems = request.files() != null
                 ? request.files().stream()
-                        .map(f -> new UploadUrlCommand.FileItem(f.fileName(), f.fileType(), f.fileSize()))
+                        .map(f -> new UploadUrlCommand.FileItem(
+                                f.fileName(), f.fileType(), f.fileSize()))
                         .toList()
                 : List.of();
-        UploadUrlResult result = uploadUrlService.generateUploadUrls(new UploadUrlCommand(fileItems));
+        UploadUrlResult result = uploadUrlService.generateUploadUrls(
+                new UploadUrlCommand(fileItems));
         return ResponseEntity.ok(ApiResponse.success(UploadUrlResponse.from(result)));
     }
 
-    // -------------------------------------------------------
-    // GET /api/v1/feeds/random — 랜덤 피드 조회
-    // -------------------------------------------------------
     @GetMapping("/random")
     public ResponseEntity<ApiResponse<RandomFeedResponse>> getRandomFeed(
             @RequestHeader("X-User-Id") UUID userId,

@@ -17,7 +17,8 @@ public interface LikeJpaRepository extends JpaRepository<Like, UUID> {
     boolean existsByPostIdAndUserId(UUID postId, UUID userId);
 
     @Query("SELECT l.postId FROM Like l WHERE l.userId = :userId AND l.postId IN :postIds")
-    List<UUID> findPostIdsByUserIdAndPostIdIn(@Param("userId") UUID userId, @Param("postIds") List<UUID> postIds);
+    List<UUID> findPostIdsByUserIdAndPostIdIn(
+            @Param("userId") UUID userId, @Param("postIds") List<UUID> postIds);
 
     @Query(value = """
             SELECT * FROM likes

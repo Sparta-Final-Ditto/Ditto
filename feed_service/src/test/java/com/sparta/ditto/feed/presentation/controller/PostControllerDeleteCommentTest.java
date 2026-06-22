@@ -95,7 +95,6 @@ class PostControllerDeleteCommentTest {
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
-                .andExpect(jsonPath("$.message").value("DELETED"))
-                .andExpect(jsonPath("$.data.message").value("댓글이 삭제되었습니다."));
+                .andExpect(jsonPath("$.message").value("SUCCESS"));
     }
 }

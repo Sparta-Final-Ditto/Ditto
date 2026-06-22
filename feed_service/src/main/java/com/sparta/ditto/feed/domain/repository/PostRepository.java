@@ -21,6 +21,8 @@ public interface PostRepository {
 
     void incrementCommentCount(UUID postId);
 
+    void decrementCommentCount(UUID postId);
+
     List<Post> findFeedWithCursor(Instant cursorAt, UUID cursorId, int limit);
 
     List<Post> findFeedByLocationScopeWithCursor(

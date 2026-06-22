@@ -48,6 +48,11 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
+    public void decrementCommentCount(UUID postId) {
+        jpaRepository.decrementCommentCount(postId);
+    }
+
+    @Override
     public List<Post> findFeedWithCursor(Instant cursorAt, UUID cursorId, int limit) {
         return jpaRepository.findFeedWithCursor(cursorAt, cursorId, PageRequest.of(0, limit));
     }
@@ -60,7 +65,9 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
-    public List<Post> findByUserIdWithCursor(UUID userId, Instant cursorAt, UUID cursorId, int limit) {
-        return jpaRepository.findByUserIdWithCursor(userId, cursorAt, cursorId, PageRequest.of(0, limit));
+    public List<Post> findByUserIdWithCursor(
+            UUID userId, Instant cursorAt, UUID cursorId, int limit) {
+        return jpaRepository.findByUserIdWithCursor(
+                userId, cursorAt, cursorId, PageRequest.of(0, limit));
     }
 }
