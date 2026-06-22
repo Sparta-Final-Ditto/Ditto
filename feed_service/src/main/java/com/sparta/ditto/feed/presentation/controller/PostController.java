@@ -8,14 +8,14 @@ import com.sparta.ditto.feed.application.dto.GetLikesQuery;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import com.sparta.ditto.feed.application.dto.LikeResult;
 import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
-import com.sparta.ditto.feed.application.facade.PostCreateFacade;
-import com.sparta.ditto.feed.application.service.PostInteractionService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -37,16 +37,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/v1/posts")
+@RequestMapping("/posts")
 @RequiredArgsConstructor
 public class PostController {
 
     private final PostCreateFacade postCreateFacade;
     private final PostInteractionService postInteractionService;
 
-    // -------------------------------------------------------
-    // POST /api/v1/posts — 게시글 생성
-    // -------------------------------------------------------
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
             @RequestHeader("X-User-Id") UUID userId,
@@ -55,7 +52,8 @@ public class PostController {
     ) {
         List<CreatePostCommand.MediaFileItem> mediaFileItems = request.mediaFiles() != null
                 ? request.mediaFiles().stream()
-                        .map(m -> new CreatePostCommand.MediaFileItem(m.s3Key(), m.mediaType(), m.sortOrder()))
+                        .map(m -> new CreatePostCommand.MediaFileItem(
+                                m.s3Key(), m.mediaType(), m.sortOrder()))
                         .toList()
                 : List.of();
         CreatePostCommand command = new CreatePostCommand(
@@ -70,12 +68,10 @@ public class PostController {
                 mediaFileItems
         );
         PostResult result = postCreateFacade.createPost(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CreatePostResponse.from(result)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(CreatePostResponse.from(result)));
     }
 
-    // -------------------------------------------------------
-    // POST /api/v1/posts/{postId}/likes — 좋아요 추가
-    // -------------------------------------------------------
     @PostMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> addLike(
             @RequestHeader("X-User-Id") UUID userId,
@@ -85,9 +81,6 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
-    // -------------------------------------------------------
-    // DELETE /api/v1/posts/{postId}/likes — 좋아요 취소
-    // -------------------------------------------------------
     @DeleteMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> removeLike(
             @RequestHeader("X-User-Id") UUID userId,
@@ -97,22 +90,28 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
-    // -------------------------------------------------------
-    // GET /api/v1/posts/{postId}/likes — 좋아요 목록 조회
-    // -------------------------------------------------------
     @GetMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeListResponse>> getLikes(
             @PathVariable UUID postId,
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        LikeListResult result = postInteractionService.getLikes(new GetLikesQuery(postId, cursor, size));
+        LikeListResult result = postInteractionService.getLikes(
+                new GetLikesQuery(postId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
     }
 
-    // -------------------------------------------------------
-    // POST /api/v1/posts/{postId}/comments — 댓글 생성
-    // -------------------------------------------------------
+    @DeleteMapping("/{postId}/comments/{commentId}")
+    public ResponseEntity<ApiResponse<Void>> deleteComment(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId,
+            @PathVariable UUID commentId
+    ) {
+        postInteractionService.deleteComment(userId, userRole, postId, commentId);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
     @PostMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @RequestHeader("X-User-Id") UUID userId,
@@ -120,8 +119,9 @@ public class PostController {
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        CreateCommentCommand command = new CreateCommentCommand(postId, userId, nickname, request.content());
-        CommentResult result = postInteractionService.createComment(command);
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CommentResponse.from(result)));
+        CommentResult result = postInteractionService.createComment(
+                userId, nickname, postId, new CreateCommentCommand(request.content()));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.created(CommentResponse.from(result)));
     }
 }

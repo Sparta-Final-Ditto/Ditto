@@ -5,13 +5,15 @@ import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.GetLikesQuery;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import com.sparta.ditto.feed.application.dto.LikeResult;
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.Post;
+import com.sparta.ditto.feed.domain.exception.CommentNotFoundException;
 import com.sparta.ditto.feed.domain.exception.DuplicateLikeException;
+import com.sparta.ditto.feed.domain.exception.ForbiddenException;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
-import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
@@ -96,16 +98,41 @@ public class PostInteractionService {
     }
 
     // -------------------------------------------------------
+    // 댓글 삭제
+    // -------------------------------------------------------
+    @Transactional
+    public void deleteComment(UUID requesterId, String requesterRole, UUID postId, UUID commentId) {
+        Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
+                .orElseThrow(CommentNotFoundException::new);
+        Post post = postRepository.findById(postId)
+                .orElseThrow(PostNotFoundException::new);
+
+        boolean isCommentAuthor = requesterId.equals(comment.getUserId());
+        boolean isPostAuthor = requesterId.equals(post.getUserId());
+        boolean isAdmin = "ADMIN".equals(requesterRole);
+
+        if (!isCommentAuthor && !isPostAuthor && !isAdmin) {
+            throw new ForbiddenException();
+        }
+
+        comment.delete(requesterId);
+        commentRepository.save(comment);
+        postRepository.decrementCommentCount(postId);
+    }
+
+    // -------------------------------------------------------
     // 댓글 생성
     // -------------------------------------------------------
     @Transactional
-    public CommentResult createComment(CreateCommentCommand command) {
-        Post post = postRepository.findById(command.postId()).orElseThrow(PostNotFoundException::new);
-        Comment comment = commentRepository.save(new Comment(command.postId(), command.userId(), command.content()));
-        postRepository.incrementCommentCount(command.postId());
-        if (!command.userId().equals(post.getUserId())) {
-            outboxEventRepository.save(outboxEventPort.buildPostCommented(post, comment, command.userId()));
+    public CommentResult createComment(
+            UUID userId, String nickname, UUID postId, CreateCommentCommand command) {
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Comment comment = commentRepository.save(new Comment(postId, userId, command.content()));
+        postRepository.incrementCommentCount(postId);
+        if (!userId.equals(post.getUserId())) {
+            outboxEventRepository.save(
+                    outboxEventPort.buildPostCommented(post, comment, userId));
         }
-        return CommentResult.fromCreation(comment, command.userNickname());
+        return CommentResult.fromCreation(comment, nickname);
     }
 }

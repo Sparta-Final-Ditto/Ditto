@@ -3,8 +3,6 @@ package com.sparta.ditto.feed.domain.repository;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.type.LocationScope;
-import com.sparta.ditto.feed.infrastructure.config.AuditorAwareImpl;
-import com.sparta.ditto.feed.infrastructure.config.JpaAuditingConfig;
 import com.sparta.ditto.feed.infrastructure.persistence.CommentRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostRepositoryImpl;
 import java.util.Optional;
@@ -14,7 +12,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.AuditorAware;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -28,9 +30,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({CommentRepositoryImpl.class, PostRepositoryImpl.class,
-        JpaAuditingConfig.class, AuditorAwareImpl.class})
+@Import({CommentRepositoryImpl.class, PostRepositoryImpl.class})
 class CommentRepositoryDeleteTest {
+
+    @TestConfiguration
+    @EnableJpaAuditing
+    static class AuditingConfig {
+        @Bean
+        AuditorAware<UUID> auditorAwareImpl() {
+            return Optional::empty;
+        }
+    }
 
     @Container
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
@@ -89,7 +99,7 @@ class CommentRepositoryDeleteTest {
         UUID postId = savedPost.getId();
         postRepository.incrementCommentCount(postId); // comment_count = 1로 설정
 
-        // when - decrementCommentCount (아직 PostRepository 인터페이스에 미구현 → RED)
+        // when
         postRepository.decrementCommentCount(postId);
 
         // then
