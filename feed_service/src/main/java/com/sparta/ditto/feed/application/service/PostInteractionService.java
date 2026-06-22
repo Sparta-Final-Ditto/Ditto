@@ -1,13 +1,17 @@
 package com.sparta.ditto.feed.application.service;
 
+import com.sparta.ditto.feed.application.dto.request.CreateCommentRequest;
+import com.sparta.ditto.feed.application.dto.response.CommentResponse;
 import com.sparta.ditto.feed.application.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.application.dto.response.LikeResponse;
+import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.exception.DuplicateLikeException;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import com.sparta.ditto.feed.domain.port.OutboxEventPort;
+import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
@@ -25,6 +29,7 @@ public class PostInteractionService {
 
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
+    private final CommentRepository commentRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPort outboxEventPort;
 
@@ -93,5 +98,17 @@ public class PostInteractionService {
         UUID nextCursor = hasNext ? pageResult.get(pageResult.size() - 1).getId() : null;
 
         return LikeListResponse.of(pageResult, post.getLikeCount(), nextCursor, hasNext);
+    }
+
+    @Transactional
+    public CommentResponse createComment(UUID userId, String nickname, UUID postId,
+                                         CreateCommentRequest request) {
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Comment comment = commentRepository.save(new Comment(postId, userId, request.content()));
+        postRepository.incrementCommentCount(postId);
+        if (!userId.equals(post.getUserId())) {
+            outboxEventRepository.save(outboxEventPort.buildPostCommented(post, comment, userId));
+        }
+        return CommentResponse.fromCreation(comment, nickname);
     }
 }

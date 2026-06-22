@@ -23,6 +23,10 @@ public interface PostRepository extends JpaRepository<Post, UUID> {
     @Query("UPDATE Post p SET p.likeCount = GREATEST(p.likeCount - 1, 0) WHERE p.id = :postId")
     void decrementLikeCount(@Param("postId") UUID postId);
 
+    @Modifying
+    @Query("UPDATE Post p SET p.commentCount = p.commentCount + 1 WHERE p.id = :postId")
+    void incrementCommentCount(@Param("postId") UUID postId);
+
     @Query(value = """
             SELECT * FROM posts
             WHERE deleted_at IS NULL

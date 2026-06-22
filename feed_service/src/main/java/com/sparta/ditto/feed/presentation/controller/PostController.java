@@ -1,7 +1,9 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
+import com.sparta.ditto.feed.application.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.application.dto.response.CommentResponse;
 import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.application.dto.response.LikeResponse;
@@ -69,5 +71,16 @@ public class PostController {
     ) {
         LikeListResponse response = postInteractionService.getLikes(postId, cursor, size);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{postId}/comments")
+    public ResponseEntity<ApiResponse<CommentResponse>> createComment(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Nickname") String nickname,
+            @PathVariable UUID postId,
+            @Valid @RequestBody CreateCommentRequest request
+    ) {
+        CommentResponse response = postInteractionService.createComment(userId, nickname, postId, request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
     }
 }
