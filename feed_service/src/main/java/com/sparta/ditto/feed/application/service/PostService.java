@@ -6,11 +6,11 @@ import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.entity.PostTag;
+import com.sparta.ditto.feed.domain.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.service.PostValidator;
 import com.sparta.ditto.feed.domain.type.LocationScope;
-import com.sparta.ditto.feed.infrastructure.kafka.OutboxEventFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -26,6 +26,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final OutboxEventRepository outboxEventRepository;
+    private final OutboxEventPort outboxEventPort;
 
     // application.yml 등 환경 변수로부터 주입받은 CloudFront CDN 도메인 주소
     @Value("${app.cloudfront.domain}")
@@ -67,7 +68,7 @@ public class PostService {
         Post savedPost = postRepository.save(post);
 
         // 5-4. Transactional Outbox 패턴: 비즈니스 원자성을 보장하기 위해 동일 트랜잭션 내에 Outbox 이벤트 적재
-        outboxEventRepository.save(OutboxEventFactory.createPostCreated(savedPost, userId, distinctTags));
+        outboxEventRepository.save(outboxEventPort.buildPostCreated(savedPost, userId, distinctTags));
 
         // 6. 데이터 저장이 완료된 영속성 객체를 포맷팅하여 최종 응답 DTO로 조립하여 반환
         return CreatePostResponse.from(savedPost, nickname, cloudfrontDomain);

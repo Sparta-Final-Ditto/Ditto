@@ -7,10 +7,10 @@ import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.exception.DuplicateLikeException;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
+import com.sparta.ditto.feed.domain.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.infrastructure.kafka.OutboxEventFactory;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -26,6 +26,7 @@ public class PostInteractionService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final OutboxEventRepository outboxEventRepository;
+    private final OutboxEventPort outboxEventPort;
 
     /**
      * 게시글 좋아요를 추가한다.
@@ -44,7 +45,7 @@ public class PostInteractionService {
         postRepository.incrementLikeCount(postId);
 
         if (!userId.equals(post.getUserId())) {
-            outboxEventRepository.save(OutboxEventFactory.createPostLiked(post, userId));
+            outboxEventRepository.save(outboxEventPort.buildPostLiked(post, userId));
         }
 
         return LikeResponse.liked(post);

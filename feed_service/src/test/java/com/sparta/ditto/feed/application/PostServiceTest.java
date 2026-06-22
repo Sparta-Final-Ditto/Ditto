@@ -7,6 +7,7 @@ import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
+import com.sparta.ditto.feed.domain.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,9 @@ class PostServiceTest {
     @Mock
     private OutboxEventRepository outboxEventRepository;
 
+    @Mock
+    private OutboxEventPort outboxEventPort;
+
     @InjectMocks
     private PostService postService;
 
@@ -57,6 +61,8 @@ class PostServiceTest {
         });
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(outboxEventPort.buildPostCreated(any(Post.class), any(UUID.class), any()))
+                .thenReturn(new OutboxEvent("post-events", "POST_CREATED", "{}"));
     }
 
     private CreatePostRequest defaultRequest() {

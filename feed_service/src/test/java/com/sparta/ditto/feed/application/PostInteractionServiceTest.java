@@ -6,6 +6,8 @@ import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
+import com.sparta.ditto.feed.domain.port.OutboxEventPort;
+import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
@@ -38,7 +40,13 @@ class PostInteractionServiceTest {
     private LikeRepository likeRepository;
 
     @Mock
+    private CommentRepository commentRepository;
+
+    @Mock
     private OutboxEventRepository outboxEventRepository;
+
+    @Mock
+    private OutboxEventPort outboxEventPort;
 
     @InjectMocks
     private PostInteractionService postInteractionService;
@@ -56,13 +64,15 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-007-1: 유효한 postId → isLiked=true, likeCount 1 증가")
+    @DisplayName("유효한 postId → isLiked=true, likeCount 1 증가")
     void addLike_정상요청_isLiked_true_likeCount_증가() {
         // given
         Post post = createPost(ownerId, 5);
         when(postRepository.findById(postId)).thenReturn(Optional.of(post));
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(false);
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
+        when(outboxEventPort.buildPostLiked(any(Post.class), any(UUID.class)))
+                .thenReturn(new OutboxEvent("post-events", "POST_LIKED", "{}"));
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
@@ -77,7 +87,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-007-3: 이미 좋아요한 게시글 → 409, DUPLICATE_LIKE")
+    @DisplayName("이미 좋아요한 게시글 → 409, DUPLICATE_LIKE")
     void addLike_중복좋아요_DuplicateLikeException() {
         // given
         Post post = createPost(ownerId, 5);
@@ -94,7 +104,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-007-7: 본인 게시글 좋아요 → 좋아요 적용, Outbox 이벤트 저장 없음")
+    @DisplayName("본인 게시글 좋아요 → 좋아요 적용, Outbox 이벤트 저장 없음")
     void addLike_본인게시글_좋아요적용_outbox저장안함() {
         // given - likerId == ownerId (본인 게시글)
         Post post = createPost(likerId, 3);
@@ -113,7 +123,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-008-1: 좋아요 존재 → isLiked=false, likeCount 1 감소")
+    @DisplayName("좋아요 존재 → isLiked=false, likeCount 1 감소")
     void removeLike_정상취소_isLiked_false_likeCount_감소() {
         // given
         Post post = createPost(ownerId, 5);
@@ -132,7 +142,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-008-2: 좋아요하지 않은 게시글 취소 → 404, LIKE_NOT_FOUND")
+    @DisplayName("좋아요하지 않은 게시글 취소 → 404, LIKE_NOT_FOUND")
     void removeLike_좋아요없음_LikeNotFoundException() {
         // given
         Post post = createPost(ownerId, 5);
@@ -149,7 +159,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-008-4: likeCount=0일 때 취소 → likeCount 0으로 고정 (음수 방지)")
+    @DisplayName("likeCount=0일 때 취소 → likeCount 0으로 고정 (음수 방지)")
     void removeLike_likeCount_0일때_음수방지() {
         // given
         Post post = createPost(ownerId, 0);
@@ -166,7 +176,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("TC-008-5: 좋아요 취소 시 Outbox 이벤트 저장 없음")
+    @DisplayName("좋아요 취소 시 Outbox 이벤트 저장 없음")
     void removeLike_Outbox_저장_없음() {
         // given
         Post post = createPost(ownerId, 3);
