@@ -10,6 +10,7 @@ import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.AuthLoginRequest;
+import com.sparta.ditto.user.presentation.dto.request.AuthReissueRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthSignupRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import java.util.UUID;
@@ -64,5 +65,18 @@ public class AuthService {
 
     public void logout(UUID userId) {
         tokenManager.deleteToken(userId);
+    }
+
+    public AuthTokenResponse reissue(AuthReissueRequest request) {
+        UUID userId = tokenManager.validateRefreshToken(request.refreshToken());
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        if (user.getStatus() == UserStatus.BANNED) {
+            throw new UserBannedException();
+        }
+
+        return tokenManager.issueTokens(user);
     }
 }
