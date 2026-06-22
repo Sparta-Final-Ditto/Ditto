@@ -1,10 +1,11 @@
 package com.sparta.ditto.match.application.service;
 
-
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.match.application.dto.MatchRequestDto;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
+import com.sparta.ditto.match.application.dto.MatchStatusRequestDto;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
+import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
 import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
 import com.sparta.ditto.match.infrastructure.redis.MatchCacheService;
@@ -16,7 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Set;         // ← 이거 추가
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -28,7 +31,6 @@ public class MatchService {
     private final MatchingLockService matchingLockService;
     private final MatchCacheService matchCacheService;
     private final MatchingStatsService matchingStatsService;
-
 
     @Transactional
     public MatchResponseDto createMatch(UUID userId, MatchRequestDto request) {
@@ -94,7 +96,8 @@ public class MatchService {
 
     @Transactional(readOnly = true)
     public MatchResponseDto getTodayMatch(UUID userId) {
-        return matchingHistoryRepository.findTodayMatchByUserId(userId, LocalDate.now())
+        return matchingHistoryRepository
+                .findTodayMatchByUserId(userId, LocalDate.now())
                 .map(m -> new MatchResponseDto(
                         m.getId(),
                         m.getMatchedUserId(),
@@ -103,6 +106,50 @@ public class MatchService {
                         m.getMatchedAt(),
                         m.getStatus()
                 ))
-                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(
+                        MatchErrorCode.MATCH_NOT_FOUND
+                ));
+    }
+
+    // 매칭 수락/거절
+    @Transactional
+    public void updateMatchStatus(
+            UUID userId,
+            UUID matchId,
+            MatchStatusRequestDto request
+    ) {
+        MatchingHistory history = matchingHistoryRepository
+                .findById(matchId)
+                .orElseThrow(() -> new BusinessException(
+                        MatchErrorCode.MATCH_NOT_FOUND
+                ));
+
+        if (request.status() == MatchStatus.ACCEPTED) {
+            history.accept();
+            // TODO: chat_service 채팅방 생성
+            // chatServiceClient.createChatRoom(
+            //     history.getUserId(),
+            //     history.getMatchedUserId()
+            // );
+        } else if (request.status() == MatchStatus.REJECTED) {
+            history.reject();
+        }
+
+        matchingHistoryRepository.save(history);
+    }
+
+    // feed_service 추천 목록 제공
+    @Transactional(readOnly = true)
+    public List<UUID> getRecommendations(UUID userId, int limit) {
+        Set<String> candidates =
+                matchCacheService.getTopCandidates(userId, limit);
+
+        if (candidates == null || candidates.isEmpty()) {
+            return List.of();
+        }
+
+        return candidates.stream()
+                .map(UUID::fromString)
+                .toList();
     }
 }
