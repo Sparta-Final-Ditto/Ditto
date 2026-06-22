@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.port.OutboxEventPort;
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

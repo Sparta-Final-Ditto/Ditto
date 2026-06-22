@@ -7,7 +7,7 @@ import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.port.OutboxEventPort;
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import org.junit.jupiter.api.BeforeEach;

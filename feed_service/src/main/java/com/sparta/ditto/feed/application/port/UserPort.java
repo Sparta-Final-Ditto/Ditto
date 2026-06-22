@@ -1,6 +1,7 @@
-package com.sparta.ditto.feed.domain.port;
+package com.sparta.ditto.feed.application.port;
 
 import java.util.UUID;
+
 /**
  * User Service 닉네임 조회 포트 인터페이스.
  * 게시글 생성 시점의 닉네임을 조회해 posts 테이블에 비정규화 저장한다.

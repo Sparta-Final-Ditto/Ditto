@@ -5,9 +5,9 @@ import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFil
 import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.S3ObjectNotFoundException;
-import com.sparta.ditto.feed.domain.port.NeighborhoodPort;
-import com.sparta.ditto.feed.domain.port.S3Port;
-import com.sparta.ditto.feed.domain.port.UserPort;
+import com.sparta.ditto.feed.application.port.NeighborhoodPort;
+import com.sparta.ditto.feed.application.port.S3Port;
+import com.sparta.ditto.feed.application.port.UserPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 

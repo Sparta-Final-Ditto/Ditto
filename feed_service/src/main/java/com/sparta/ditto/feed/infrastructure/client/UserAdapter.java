@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.infrastructure.client;
 
-import com.sparta.ditto.feed.domain.port.UserPort;
+import com.sparta.ditto.feed.application.port.UserPort;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;

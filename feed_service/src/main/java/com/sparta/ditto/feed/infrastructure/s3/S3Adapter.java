@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.infrastructure.s3;
 
-import com.sparta.ditto.feed.domain.port.S3Port;
+import com.sparta.ditto.feed.application.port.S3Port;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

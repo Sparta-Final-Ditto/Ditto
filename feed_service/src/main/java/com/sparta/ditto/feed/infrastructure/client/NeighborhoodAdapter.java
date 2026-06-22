@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.infrastructure.client;
 
-import com.sparta.ditto.feed.domain.port.NeighborhoodPort;
+import com.sparta.ditto.feed.application.port.NeighborhoodPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;

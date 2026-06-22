@@ -3,21 +3,20 @@ package com.sparta.ditto.feed.domain.entity;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.Convert;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -50,7 +49,7 @@ public class OutboxEvent {
     @Column(nullable = false)
     private String eventType;
 
-    @JdbcTypeCode(SqlTypes.JSON)
+    @Convert(converter = com.sparta.ditto.feed.infrastructure.persistence.converter.JsonConverter.class)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String payload;
 
@@ -61,13 +60,17 @@ public class OutboxEvent {
     @Column(nullable = false)
     private Integer retryCount = 0;
 
-    @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     private Instant publishedAt;
 
     private Instant failedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = Instant.now();
+    }
 
     public OutboxEvent(String topic, String eventType, String payload) {
         this.topic = topic;

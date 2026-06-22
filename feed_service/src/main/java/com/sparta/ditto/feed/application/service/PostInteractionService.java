@@ -10,7 +10,7 @@ import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.exception.DuplicateLikeException;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
-import com.sparta.ditto.feed.domain.port.OutboxEventPort;
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
