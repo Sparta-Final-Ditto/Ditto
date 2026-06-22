@@ -6,9 +6,24 @@ from app.common.exception.error_code import EmbeddingErrorCode
 from app.common.response.api_response import ApiResponse
 from app.dependencies import get_embedding_service
 from app.embedding.application.service.embedding_service import EmbeddingService
-from app.embedding.presentation.dto.embedding_dto import ProfileVectorResponse
+from app.embedding.presentation.dto.embedding_dto import ActiveUserIdsResponse, ProfileVectorResponse
 
 router = APIRouter(tags=["Internal"])
+
+
+@router.get(
+    "/profiles/active/ids",
+    summary="매칭 가능 유저 ID 목록 조회",
+    description="active=True인 유저 ID 목록을 반환한다. match_service Spring Batch 파티셔닝용.",
+    response_model=ApiResponse[ActiveUserIdsResponse],
+)
+async def get_active_user_ids(
+    svc: EmbeddingService = Depends(get_embedding_service),
+) -> ApiResponse[ActiveUserIdsResponse]:
+    user_ids = await svc.profile_repo.find_active_user_ids()
+    return ApiResponse.success(
+        ActiveUserIdsResponse(user_ids=user_ids, count=len(user_ids))
+    )
 
 
 @router.get(
