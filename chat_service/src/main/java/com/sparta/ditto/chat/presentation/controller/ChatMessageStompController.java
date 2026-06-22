@@ -47,20 +47,27 @@ public class ChatMessageStompController {
     }
 
     // 권한 실패/비활성 방/검증 실패 등 도메인 예외 → 연결 종료 대신 사용자 에러 채널로
+    // 실패한 메시지 매핑을 위해 roomId/clientMessageId를 함께 내려준다.
     @MessageExceptionHandler(BusinessException.class)
     @SendToUser("/sub/chat/errors")
-    public ChatStompErrorResponse handleBusinessException(BusinessException ex) {
+    public ChatStompErrorResponse handleBusinessException(
+            BusinessException ex,
+            @DestinationVariable UUID roomId,
+            @Payload ChatMessageSendRequest request
+    ) {
         ErrorCode errorCode = ex.getErrorCode();
+        UUID clientMessageId = (request != null) ? request.clientMessageId() : null;
         return ChatStompErrorResponse.of(
                 errorCode.getCode(),
                 errorType(errorCode),
                 errorCode.getMessage(),
-                null,
-                null
+                roomId,
+                clientMessageId
         );
     }
 
     // 저장 실패 등 그 외 예외도 연결을 끊지 않고 에러 채널로 전달
+    // TODO: payload 역직렬화 실패 등도 포함되어 roomId/clientMessageId는 null로 둔다.
     @MessageExceptionHandler(Exception.class)
     @SendToUser("/sub/chat/errors")
     public ChatStompErrorResponse handleException(Exception ex) {
