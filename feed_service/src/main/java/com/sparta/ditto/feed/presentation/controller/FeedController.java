@@ -29,13 +29,16 @@ import java.util.UUID;
 
 @Validated
 @RestController
-@RequestMapping("/feeds")
+@RequestMapping("/api/v1/feeds")
 @RequiredArgsConstructor
 public class FeedController {
 
     private final UploadUrlService uploadUrlService;
     private final FeedService feedService;
 
+    // -------------------------------------------------------
+    // POST /api/v1/feeds/upload-url — 미디어 업로드 URL 생성
+    // -------------------------------------------------------
     @PostMapping("/upload-url")
     public ResponseEntity<ApiResponse<UploadUrlResponse>> getUploadUrl(
             @RequestHeader("X-User-Id") UUID userId,
@@ -50,6 +53,9 @@ public class FeedController {
         return ResponseEntity.ok(ApiResponse.success(UploadUrlResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // GET /api/v1/feeds/random — 랜덤 피드 조회
+    // -------------------------------------------------------
     @GetMapping("/random")
     public ResponseEntity<ApiResponse<RandomFeedResponse>> getRandomFeed(
             @RequestHeader("X-User-Id") UUID userId,

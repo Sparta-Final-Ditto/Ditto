@@ -37,13 +37,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/posts")
+@RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
 public class PostController {
 
     private final PostCreateFacade postCreateFacade;
     private final PostInteractionService postInteractionService;
 
+    // -------------------------------------------------------
+    // POST /api/v1/posts — 게시글 생성
+    // -------------------------------------------------------
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
             @RequestHeader("X-User-Id") UUID userId,
@@ -70,6 +73,9 @@ public class PostController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CreatePostResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // POST /api/v1/posts/{postId}/likes — 좋아요 추가
+    // -------------------------------------------------------
     @PostMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> addLike(
             @RequestHeader("X-User-Id") UUID userId,
@@ -79,6 +85,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // DELETE /api/v1/posts/{postId}/likes — 좋아요 취소
+    // -------------------------------------------------------
     @DeleteMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> removeLike(
             @RequestHeader("X-User-Id") UUID userId,
@@ -88,6 +97,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // GET /api/v1/posts/{postId}/likes — 좋아요 목록 조회
+    // -------------------------------------------------------
     @GetMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeListResponse>> getLikes(
             @PathVariable UUID postId,
@@ -98,6 +110,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // POST /api/v1/posts/{postId}/comments — 댓글 생성
+    // -------------------------------------------------------
     @PostMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @RequestHeader("X-User-Id") UUID userId,
@@ -105,9 +120,8 @@ public class PostController {
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        CommentResult result = postInteractionService.createComment(
-                userId, nickname, postId, new CreateCommentCommand(request.content())
-        );
+        CreateCommentCommand command = new CreateCommentCommand(postId, userId, nickname, request.content());
+        CommentResult result = postInteractionService.createComment(command);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(CommentResponse.from(result)));
     }
 }

@@ -33,6 +33,9 @@ public class PostInteractionService {
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPort outboxEventPort;
 
+    // -------------------------------------------------------
+    // 좋아요 추가
+    // -------------------------------------------------------
     @Transactional
     public LikeResult addLike(UUID userId, UUID postId) {
         Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
@@ -51,6 +54,9 @@ public class PostInteractionService {
         return LikeResult.liked(post);
     }
 
+    // -------------------------------------------------------
+    // 좋아요 취소
+    // -------------------------------------------------------
     @Transactional
     public LikeResult removeLike(UUID userId, UUID postId) {
         Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
@@ -61,6 +67,9 @@ public class PostInteractionService {
         return LikeResult.unliked(post);
     }
 
+    // -------------------------------------------------------
+    // 좋아요 목록 조회
+    // -------------------------------------------------------
     @Transactional(readOnly = true)
     public LikeListResult getLikes(GetLikesQuery query) {
         Post post = postRepository.findById(query.postId()).orElseThrow(PostNotFoundException::new);
@@ -86,15 +95,17 @@ public class PostInteractionService {
         return LikeListResult.of(pageResult, post.getLikeCount(), nextCursor, hasNext);
     }
 
+    // -------------------------------------------------------
+    // 댓글 생성
+    // -------------------------------------------------------
     @Transactional
-    public CommentResult createComment(UUID userId, String nickname, UUID postId,
-                                       CreateCommentCommand command) {
-        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
-        Comment comment = commentRepository.save(new Comment(postId, userId, command.content()));
-        postRepository.incrementCommentCount(postId);
-        if (!userId.equals(post.getUserId())) {
-            outboxEventRepository.save(outboxEventPort.buildPostCommented(post, comment, userId));
+    public CommentResult createComment(CreateCommentCommand command) {
+        Post post = postRepository.findById(command.postId()).orElseThrow(PostNotFoundException::new);
+        Comment comment = commentRepository.save(new Comment(command.postId(), command.userId(), command.content()));
+        postRepository.incrementCommentCount(command.postId());
+        if (!command.userId().equals(post.getUserId())) {
+            outboxEventRepository.save(outboxEventPort.buildPostCommented(post, comment, command.userId()));
         }
-        return CommentResult.fromCreation(comment, nickname);
+        return CommentResult.fromCreation(comment, command.userNickname());
     }
 }

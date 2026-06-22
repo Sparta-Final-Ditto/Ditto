@@ -1,3 +1,10 @@
 package com.sparta.ditto.feed.application.dto;
 
-public record CreateCommentCommand(String content) {}
+import java.util.UUID;
+
+public record CreateCommentCommand(
+        UUID postId,
+        UUID userId,
+        String userNickname,
+        String content
+) {}
