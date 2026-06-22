@@ -35,14 +35,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+        String token;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else if (path.startsWith("/ws-chat")) {
+            // 브라우저 WebSocket은 Authorization 헤더를 못 실으므로 token 쿼리 파라미터를 허용한다.
+            token = exchange.getRequest().getQueryParams().getFirst("token");
+        } else {
+            token = null;
         }
 
-        String token = authHeader.substring(7);
-
-        if (!jwtUtil.isValid(token)) {
+        if (token == null || !jwtUtil.isValid(token)) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
