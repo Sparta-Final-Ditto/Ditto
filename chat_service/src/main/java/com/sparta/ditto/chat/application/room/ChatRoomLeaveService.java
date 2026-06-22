@@ -1,8 +1,11 @@
 package com.sparta.ditto.chat.application.room;
 
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
+import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomLeaveResult;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -22,6 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatRoomLeaveService {
 
+    private static final String SYSTEM_LEAVE_CONTENT = "사용자가 채팅방을 나갔습니다.";
+
+    private final ChatMessageSendService chatMessageSendService;
     private final ChatRoomRepository chatRoomRepository;
     private final ChatRoomParticipantRepository chatRoomParticipantRepository;
 
@@ -39,7 +45,7 @@ public class ChatRoomLeaveService {
 
         List<ChatRoomParticipant> activeParticipants =
                 chatRoomParticipantRepository.findAllByRoomIdAndLeftAtIsNull(roomId);
-        String lastVisibleMessageId = chatRoom.getLastMessageId();
+        String lastVisibleMessageId = saveSystemLeaveMessage(roomId, requesterId);
 
         requesterParticipant.leave(lastVisibleMessageId);
 
@@ -88,5 +94,15 @@ public class ChatRoomLeaveService {
                 requesterParticipant.getLeftAt(),
                 requesterParticipant.getLastVisibleMessageId()
         );
+    }
+
+    private String saveSystemLeaveMessage(UUID roomId, UUID requesterId) {
+        SentMessage systemMessage = chatMessageSendService.saveSystemMessage(
+                roomId,
+                requesterId,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        );
+        return systemMessage.messageId();
     }
 }
