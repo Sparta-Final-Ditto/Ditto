@@ -8,7 +8,6 @@ import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.type.LocationScope;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,8 +43,7 @@ public class FeedService {
 
         // size+1개 조회
         List<Post> posts = postRepository.findFeedByLocationScopeWithCursor(
-                List.of(LocationScope.PUBLIC), cursorAt, cursorId,
-                PageRequest.of(0, size + 1)
+                List.of(LocationScope.PUBLIC), cursorAt, cursorId, size + 1
         );
 
         // hasNext 판단

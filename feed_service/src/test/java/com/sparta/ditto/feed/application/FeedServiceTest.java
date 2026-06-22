@@ -17,7 +17,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
@@ -28,6 +27,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -69,7 +69,7 @@ class FeedServiceTest {
         // given
         List<Post> posts = List.of(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
         when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(null), eq(null), any(PageRequest.class)))
+                eq(List.of(LocationScope.PUBLIC)), eq(null), eq(null), anyInt()))
                 .thenReturn(posts);
 
         // when

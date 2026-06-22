@@ -1,7 +1,9 @@
 package com.sparta.ditto.feed.domain.entity;
 
+import com.sparta.ditto.feed.domain.converter.JsonConverter;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -9,7 +11,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.Convert;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -49,7 +50,7 @@ public class OutboxEvent {
     @Column(nullable = false)
     private String eventType;
 
-    @Convert(converter = com.sparta.ditto.feed.infrastructure.persistence.converter.JsonConverter.class)
+    @Convert(converter = JsonConverter.class)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String payload;
 
