@@ -19,10 +19,12 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
 @Getter
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 @Table(
         name = "users",
         indexes = {
