@@ -21,7 +21,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -70,45 +69,7 @@ class PostDetailIntegrationTest {
     }
 
     @Test
-    @DisplayName("GET /posts/{postId} 단건 조회 시 view_count가 DB에 1 누적된다")
-    void getPostDetail_단건조회_viewCount_DB에_1_증가() throws Exception {
-        Post post = savedPost();
-        UUID postId = post.getId();
-
-        mockMvc.perform(get("/posts/{postId}", postId)
-                        .header("X-User-Id", userId)
-                        .header("X-User-Role", "USER"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.viewCount").value(1));
-
-        Post updated = postRepository.findById(postId).orElseThrow();
-        assertThat(updated.getViewCount()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("동일 유저가 연속 2회 조회 시 view_count가 2로 누적된다")
-    void getPostDetail_연속2회조회_viewCount_2로_누적() throws Exception {
-        Post post = savedPost();
-        UUID postId = post.getId();
-
-        mockMvc.perform(get("/posts/{postId}", postId)
-                        .header("X-User-Id", userId)
-                        .header("X-User-Role", "USER"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.viewCount").value(1));
-
-        mockMvc.perform(get("/posts/{postId}", postId)
-                        .header("X-User-Id", userId)
-                        .header("X-User-Role", "USER"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.viewCount").value(2));
-
-        Post updated = postRepository.findById(postId).orElseThrow();
-        assertThat(updated.getViewCount()).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("응답 본문에 isMyPost, postId, viewCount가 포함된다")
+    @DisplayName("응답 본문에 isMyPost, postId가 포함된다")
     void getPostDetail_응답_필수필드_포함() throws Exception {
         Post post = savedPost();
 
@@ -118,7 +79,7 @@ class PostDetailIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.isMyPost").value(true))
                 .andExpect(jsonPath("$.data.postId").value(post.getId().toString()))
-                .andExpect(jsonPath("$.data.viewCount").exists())
+                .andExpect(jsonPath("$.data.viewCount").doesNotExist())
                 .andExpect(jsonPath("$.data.latitude").doesNotExist())
                 .andExpect(jsonPath("$.data.longitude").doesNotExist());
     }

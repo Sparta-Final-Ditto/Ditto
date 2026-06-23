@@ -2,8 +2,11 @@ package com.sparta.ditto.feed.application.service;
 
 import com.sparta.ditto.feed.application.dto.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
 import com.sparta.ditto.feed.application.dto.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.UserPostItemResult;
+import com.sparta.ditto.feed.application.dto.UserPostsResult;
 import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;
@@ -15,6 +18,7 @@ import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.service.PostValidator;
 import com.sparta.ditto.feed.domain.type.LocationScope;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -34,14 +38,41 @@ public class PostService {
     @Value("${app.cloudfront.domain}")
     private String cloudfrontDomain;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public PostDetailResult getPostDetail(UUID postId, UUID requesterId) {
-        postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
-        postRepository.incrementViewCount(postId);
-        // @Modifying(clearAutomatically = true)으로 캐시가 비워지므로 재조회해야 갱신된 viewCount 반영
-        Post post = postRepository.findById(postId).orElseThrow();
+        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
         List<Comment> comments = commentRepository.findByPostIdAndDeletedAtIsNull(postId);
         return PostDetailResult.from(post, requesterId, comments, cloudfrontDomain);
+    }
+
+    @Transactional(readOnly = true)
+    public UserPostsResult getUserPosts(GetUserPostsQuery query) {
+        List<LocationScope> allowedScopes = query.requesterId().equals(query.targetUserId())
+                ? List.of(LocationScope.PUBLIC, LocationScope.FOLLOWERS_ONLY, LocationScope.PRIVATE)
+                : List.of(LocationScope.PUBLIC);
+
+        Instant cursorAt = null;
+        UUID cursorId = null;
+        if (query.cursor() != null) {
+            Post cursorPost = postRepository.findById(query.cursor()).orElse(null);
+            if (cursorPost != null) {
+                cursorAt = cursorPost.getCreatedAt();
+                cursorId = cursorPost.getId();
+            }
+        }
+
+        List<Post> fetched = postRepository.findByUserIdAndScopesWithCursor(
+                query.targetUserId(), allowedScopes, cursorAt, cursorId, query.size() + 1);
+
+        boolean hasNext = fetched.size() > query.size();
+        List<Post> page = hasNext ? fetched.subList(0, query.size()) : fetched;
+        UUID nextCursor = hasNext ? page.get(page.size() - 1).getId() : null;
+
+        List<UserPostItemResult> items = page.stream()
+                .map(post -> UserPostItemResult.from(post, cloudfrontDomain))
+                .toList();
+
+        return new UserPostsResult(items, nextCursor, hasNext);
     }
 
     @Transactional

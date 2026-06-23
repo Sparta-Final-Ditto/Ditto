@@ -15,8 +15,6 @@ public interface PostRepository {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
-    void incrementViewCount(UUID postId);
-
     void incrementLikeCount(UUID postId);
 
     void decrementLikeCount(UUID postId);
@@ -31,4 +29,8 @@ public interface PostRepository {
             List<LocationScope> scopes, Instant cursorAt, UUID cursorId, int limit);
 
     List<Post> findByUserIdWithCursor(UUID userId, Instant cursorAt, UUID cursorId, int limit);
+
+    List<Post> findByUserIdAndScopesWithCursor(
+            UUID userId, List<LocationScope> allowedScopes,
+            Instant cursorAt, UUID cursorId, int limit);
 }

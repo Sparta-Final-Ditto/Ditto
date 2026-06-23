@@ -33,11 +33,6 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
-    public void incrementViewCount(UUID postId) {
-        jpaRepository.incrementViewCount(postId);
-    }
-
-    @Override
     public void incrementLikeCount(UUID postId) {
         jpaRepository.incrementLikeCount(postId);
     }
@@ -74,5 +69,13 @@ public class PostRepositoryImpl implements PostRepository {
             UUID userId, Instant cursorAt, UUID cursorId, int limit) {
         return jpaRepository.findByUserIdWithCursor(
                 userId, cursorAt, cursorId, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<Post> findByUserIdAndScopesWithCursor(
+            UUID userId, List<LocationScope> allowedScopes,
+            Instant cursorAt, UUID cursorId, int limit) {
+        return jpaRepository.findByUserIdAndScopesWithCursor(
+                userId, allowedScopes, cursorAt, cursorId, PageRequest.of(0, limit));
     }
 }

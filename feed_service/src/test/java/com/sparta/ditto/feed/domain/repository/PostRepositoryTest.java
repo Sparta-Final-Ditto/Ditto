@@ -59,44 +59,4 @@ class PostRepositoryTest {
                 37.5, 127.0, LocationScope.PUBLIC, true));
     }
 
-    @Test
-    @DisplayName("incrementViewCount - DB의 view_count가 1 증가한다")
-    void incrementViewCount_viewCount가_1_증가한다() {
-        // given
-        Post post = savePost();
-        UUID postId = post.getId();
-
-        // when
-        postRepository.incrementViewCount(postId);
-
-        // then
-        Post updated = postRepository.findById(postId).orElseThrow();
-        assertThat(updated.getViewCount()).isEqualTo(1);
-    }
-
-    @Test
-    @DisplayName("incrementViewCount 연속 2회 호출 시 view_count가 2가 된다")
-    void incrementViewCount_2회_호출시_2가_된다() {
-        // given
-        Post post = savePost();
-        UUID postId = post.getId();
-
-        // when
-        postRepository.incrementViewCount(postId);
-        postRepository.incrementViewCount(postId);
-
-        // then
-        Post updated = postRepository.findById(postId).orElseThrow();
-        assertThat(updated.getViewCount()).isEqualTo(2);
-    }
-
-    @Test
-    @DisplayName("신규 게시글의 view_count 초기값은 0이다")
-    void newPost_viewCount_초기값은_0이다() {
-        // given & when
-        Post post = savePost();
-
-        // then
-        assertThat(post.getViewCount()).isZero();
-    }
 }

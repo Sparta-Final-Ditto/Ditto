@@ -12,7 +12,6 @@ public record PostDetailResponse(
         String content,
         int likeCount,
         int commentCount,
-        int viewCount,
         List<MediaResponse> media,
         List<CommentResponse> comments
 ) {
@@ -53,7 +52,6 @@ public record PostDetailResponse(
                 result.content(),
                 result.likeCount(),
                 result.commentCount(),
-                result.viewCount(),
                 result.media().stream().map(MediaResponse::from).toList(),
                 result.comments().stream().map(CommentResponse::from).toList()
         );

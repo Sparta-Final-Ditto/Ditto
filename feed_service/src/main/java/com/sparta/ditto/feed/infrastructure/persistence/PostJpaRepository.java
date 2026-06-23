@@ -16,10 +16,6 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
     @Modifying
-    @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
-    void incrementViewCount(@Param("postId") UUID postId);
-
-    @Modifying
     @Query("UPDATE Post p SET p.likeCount = p.likeCount + 1 WHERE p.id = :postId")
     void incrementLikeCount(@Param("postId") UUID postId);
 
@@ -83,6 +79,26 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
             """, nativeQuery = true)
     List<Post> findByUserIdWithCursor(
             @Param("userId") UUID userId,
+            @Param("cursorAt") Instant cursorAt,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
+
+    @Query(value = """
+            SELECT * FROM posts
+            WHERE user_id = CAST(:userId AS uuid)
+              AND location_scope IN (:#{#scopes.![name()]})
+              AND deleted_at IS NULL
+              AND (
+                CAST(:cursorAt AS timestamptz) IS NULL
+                OR created_at < CAST(:cursorAt AS timestamptz)
+                OR (created_at = CAST(:cursorAt AS timestamptz) AND id < CAST(:cursorId AS uuid))
+              )
+            ORDER BY created_at DESC, id DESC
+            """, nativeQuery = true)
+    List<Post> findByUserIdAndScopesWithCursor(
+            @Param("userId") UUID userId,
+            @Param("scopes") List<LocationScope> scopes,
             @Param("cursorAt") Instant cursorAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable

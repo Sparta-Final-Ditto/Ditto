@@ -57,7 +57,6 @@ class PostControllerGetDetailTest {
                 "오늘 날씨 참 좋네요!",
                 15,
                 2,
-                42,
                 List.of(new MediaItem(mediaId, "https://cdn.example.com/feeds/weather.png", "IMAGE", 1)),
                 List.of(new CommentItem(commentId, "동감합니다!", "댓글러", commentCreatedAt, false))
         );

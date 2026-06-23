@@ -12,7 +12,6 @@ public record PostDetailResult(
         String content,
         int likeCount,
         int commentCount,
-        int viewCount,
         List<MediaItem> media,
         List<CommentItem> comments
 ) {
@@ -58,7 +57,6 @@ public record PostDetailResult(
                 post.getContent(),
                 post.getLikeCount(),
                 post.getCommentCount(),
-                post.getViewCount(),
                 mediaItems,
                 commentItems
         );
