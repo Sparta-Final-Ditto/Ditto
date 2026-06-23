@@ -61,7 +61,7 @@ class PostControllerGetUserPostsTest {
                 .thenReturn(new UserPostsResult(List.of(), null, false));
 
         // when
-        mockMvc.perform(get("/posts/users/{userId}", targetUserId)
+        mockMvc.perform(get("/api/v1/posts/users/{userId}", targetUserId)
                         .header("X-User-Id", requesterId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
@@ -85,7 +85,7 @@ class PostControllerGetUserPostsTest {
                 .thenReturn(new UserPostsResult(List.of(), null, false));
 
         // when & then
-        mockMvc.perform(get("/posts/users/{userId}", unknownUserId)
+        mockMvc.perform(get("/api/v1/posts/users/{userId}", unknownUserId)
                         .header("X-User-Id", requesterId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
@@ -103,7 +103,7 @@ class PostControllerGetUserPostsTest {
     void getUserPosts_잘못된UUID_400_VALIDATION_ERROR() throws Exception {
         // when & then
         // Spring이 "not-a-uuid"를 UUID 타입으로 변환하지 못할 때 400 VALIDATION_ERROR 반환
-        mockMvc.perform(get("/posts/users/{userId}", "not-a-uuid")
+        mockMvc.perform(get("/api/v1/posts/users/{userId}", "not-a-uuid")
                         .header("X-User-Id", requesterId))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));

@@ -51,7 +51,7 @@ class PostControllerGetLikesTest {
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(get("/posts/{postId}/likes", postId))
+        mockMvc.perform(get("/api/v1/posts/{postId}/likes", postId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
@@ -71,7 +71,7 @@ class PostControllerGetLikesTest {
                 .thenReturn(result);
 
         // when & then
-        mockMvc.perform(get("/posts/{postId}/likes", postId))
+        mockMvc.perform(get("/api/v1/posts/{postId}/likes", postId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.message").value("SUCCESS"))

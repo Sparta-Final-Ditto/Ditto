@@ -102,7 +102,7 @@ class PostControllerTest {
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(post("/posts/{postId}/likes", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/likes", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "테스트닉네임"))
                 .andExpect(status().isNotFound())
@@ -118,7 +118,7 @@ class PostControllerTest {
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/likes", postId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/likes", postId)
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
@@ -133,7 +133,7 @@ class PostControllerTest {
                 .thenThrow(new LikeNotFoundException());
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/likes", postId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/likes", postId)
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
@@ -146,7 +146,7 @@ class PostControllerTest {
         when(postCreateFacade.createPost(any(CreatePostCommand.class)))
                 .thenReturn(successResult);
 
-        mockMvc.perform(post("/posts")
+        mockMvc.perform(post("/api/v1/posts")
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "새벽러너")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +194,7 @@ class PostControllerTest {
         when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any(CreateCommentCommand.class)))
                 .thenReturn(commentResult);
 
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -208,7 +208,7 @@ class PostControllerTest {
     @Test
     @DisplayName("content 누락 → 400, COMMON-001")
     void createComment_content_누락_400_COMMON_001() throws Exception {
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -221,7 +221,7 @@ class PostControllerTest {
     @Test
     @DisplayName("공백만 입력 → 400, COMMON-001")
     void createComment_공백입력_400_COMMON_001() throws Exception {
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -235,7 +235,7 @@ class PostControllerTest {
     @DisplayName("201자 입력 → 400, COMMON-001")
     void createComment_201자_입력_400_COMMON_001() throws Exception {
         String over200 = "a".repeat(201);
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -252,7 +252,7 @@ class PostControllerTest {
                 any(UUID.class), anyString(), any(UUID.class), any()))
                 .thenThrow(new PostNotFoundException());
 
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)

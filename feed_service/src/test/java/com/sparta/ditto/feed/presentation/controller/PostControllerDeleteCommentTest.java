@@ -55,7 +55,7 @@ class PostControllerDeleteCommentTest {
                 .deleteComment(any(UUID.class), anyString(), any(UUID.class), any(UUID.class));
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/comments/{commentId}", postId, commentId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/comments/{commentId}", postId, commentId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isForbidden())
@@ -75,7 +75,7 @@ class PostControllerDeleteCommentTest {
                 .deleteComment(any(UUID.class), anyString(), any(UUID.class), any(UUID.class));
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/comments/{commentId}", postId, commentId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/comments/{commentId}", postId, commentId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isNotFound())
@@ -94,7 +94,7 @@ class PostControllerDeleteCommentTest {
                 .deleteComment(any(UUID.class), anyString(), any(UUID.class), any(UUID.class));
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/comments/{commentId}", postId, commentId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/comments/{commentId}", postId, commentId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())

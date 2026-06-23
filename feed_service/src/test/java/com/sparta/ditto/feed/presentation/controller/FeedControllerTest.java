@@ -62,7 +62,7 @@ class FeedControllerTest {
                         List.of(new FileResult("https://s3.example.com/presigned", "feeds/test.jpg"))
                 ));
 
-        mockMvc.perform(post("/feeds/upload-url")
+        mockMvc.perform(post("/api/v1/feeds/upload-url")
                         .header("X-User-Id", userId.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -78,7 +78,7 @@ class FeedControllerTest {
         when(feedService.getRandomFeed(any(GetRandomFeedQuery.class)))
                 .thenReturn(new FeedResult(List.of(), null, false));
 
-        mockMvc.perform(get("/feeds/random")
+        mockMvc.perform(get("/api/v1/feeds/random")
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isOk());
 

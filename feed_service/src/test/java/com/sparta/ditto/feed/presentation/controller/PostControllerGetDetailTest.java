@@ -73,7 +73,7 @@ class PostControllerGetDetailTest {
     void getPostDetail_타인글_isMyPost_false() throws Exception {
         when(postService.getPostDetail(postId, otherUserId)).thenReturn(buildResult(false));
 
-        mockMvc.perform(get("/posts/{postId}", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", otherUserId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
@@ -85,7 +85,7 @@ class PostControllerGetDetailTest {
     void getPostDetail_본인글_isMyPost_true() throws Exception {
         when(postService.getPostDetail(postId, authorId)).thenReturn(buildResult(true));
 
-        mockMvc.perform(get("/posts/{postId}", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", authorId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
@@ -95,7 +95,7 @@ class PostControllerGetDetailTest {
     @Test
     @DisplayName("응답 JSON에 latitude, longitude 필드가 포함되지 않는다")
     void getPostDetail_위도경도_미포함() throws Exception {
-        mockMvc.perform(get("/posts/{postId}", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", otherUserId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
@@ -106,7 +106,7 @@ class PostControllerGetDetailTest {
     @Test
     @DisplayName("댓글 목록에 commentId, content, userNickname, createdAt, isUpdated가 포함된다")
     void getPostDetail_댓글_필드_정상포함() throws Exception {
-        mockMvc.perform(get("/posts/{postId}", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", otherUserId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
@@ -120,7 +120,7 @@ class PostControllerGetDetailTest {
     @Test
     @DisplayName("댓글 목록에 updatedAt 필드는 포함되지 않는다")
     void getPostDetail_댓글_updatedAt_미포함() throws Exception {
-        mockMvc.perform(get("/posts/{postId}", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", otherUserId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
@@ -133,7 +133,7 @@ class PostControllerGetDetailTest {
         when(postService.getPostDetail(any(UUID.class), any(UUID.class)))
                 .thenThrow(new PostNotFoundException());
 
-        mockMvc.perform(get("/posts/{postId}", UUID.randomUUID())
+        mockMvc.perform(get("/api/v1/posts/{postId}", UUID.randomUUID())
                         .header("X-User-Id", otherUserId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isNotFound())

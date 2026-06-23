@@ -73,7 +73,7 @@ class PostDetailIntegrationTest {
     void getPostDetail_응답_필수필드_포함() throws Exception {
         Post post = savedPost();
 
-        mockMvc.perform(get("/posts/{postId}", post.getId())
+        mockMvc.perform(get("/api/v1/posts/{postId}", post.getId())
                         .header("X-User-Id", userId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
@@ -87,7 +87,7 @@ class PostDetailIntegrationTest {
     @Test
     @DisplayName("존재하지 않는 postId 조회 시 404 POST_NOT_FOUND")
     void getPostDetail_없는게시글_404() throws Exception {
-        mockMvc.perform(get("/posts/{postId}", UUID.randomUUID())
+        mockMvc.perform(get("/api/v1/posts/{postId}", UUID.randomUUID())
                         .header("X-User-Id", userId)
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isNotFound())

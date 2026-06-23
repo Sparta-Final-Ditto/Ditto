@@ -53,7 +53,7 @@ class PostControllerGetCommentsTest {
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(get("/posts/{postId}/comments", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", requesterId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isNotFound())
@@ -86,7 +86,7 @@ class PostControllerGetCommentsTest {
                 .thenReturn(listResult);
 
         // when & then
-        mockMvc.perform(get("/posts/{postId}/comments", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", requesterId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())
