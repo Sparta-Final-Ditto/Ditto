@@ -5,6 +5,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.sparta.ditto.match.application.dto.MatchRequestDto;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
 import com.sparta.ditto.match.application.service.MatchService;
+import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.presentation.controller.MatchController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,7 +19,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -55,9 +55,11 @@ class MatchControllerTest {
         UUID matchedUserId = UUID.randomUUID();
         MatchRequestDto request = new MatchRequestDto("NONE", false);
         MatchResponseDto response = new MatchResponseDto(
-                matchId, matchedUserId, 0.8f, 0.75f, Instant.now(), "PENDING");
+                matchId, matchedUserId, 0.8f, 0.75f,
+                Instant.now(), MatchStatus.PENDING);
 
-        given(matchService.createMatch(eq(userId), any(MatchRequestDto.class))).willReturn(response);
+        given(matchService.createMatch(eq(userId), any(MatchRequestDto.class)))
+                .willReturn(response);
 
         mockMvc.perform(post("/api/v1/matching/today")
                         .header("X-User-Id", userId.toString())
@@ -75,7 +77,8 @@ class MatchControllerTest {
         UUID matchId = UUID.randomUUID();
         UUID matchedUserId = UUID.randomUUID();
         MatchResponseDto response = new MatchResponseDto(
-                matchId, matchedUserId, 0.9f, 0.85f, Instant.now(), "ACCEPTED");
+                matchId, matchedUserId, 0.9f, 0.85f,
+                Instant.now(), MatchStatus.ACCEPTED);
 
         given(matchService.getTodayMatch(eq(userId))).willReturn(response);
 

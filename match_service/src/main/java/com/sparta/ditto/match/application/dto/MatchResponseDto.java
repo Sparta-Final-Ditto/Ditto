@@ -12,5 +12,5 @@ public record MatchResponseDto(
         Float similarityScore,
         Float finalScore,
         Instant matchedAt,
-        MatchStatus status  // String → MatchStatus
+        MatchStatus status
 ) {}
