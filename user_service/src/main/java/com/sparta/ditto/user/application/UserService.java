@@ -40,4 +40,12 @@ public class UserService {
 
         return new UserUpdateResponse(user.getNickname(), user.getBio(), user.getProfileImageUrl(), tokens);
     }
+
+    @Transactional
+    public void deleteAccount(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        user.delete(userId);
+        tokenManager.deleteToken(userId);
+    }
 }
