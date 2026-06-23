@@ -25,6 +25,7 @@ from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.application.event.post_consumer import PostConsumer
+from app.embedding.application.event.user_consumer import UserRegisteredConsumer
 from app.embedding.application.service.batch_service import run_nightly_batch
 from app.embedding.presentation.router.embedding_router import router as embedding_router
 from app.embedding.presentation.router.internal_router import router as internal_router
@@ -49,6 +50,7 @@ TAGS_METADATA = [
 async def lifespan(_: FastAPI):
     ModelLoader.load()
     consumer_task = asyncio.create_task(PostConsumer().start())
+    user_consumer_task = asyncio.create_task(UserRegisteredConsumer().start())
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(run_nightly_batch, CronTrigger(hour=3, minute=0, timezone="Asia/Seoul"))
@@ -57,6 +59,7 @@ async def lifespan(_: FastAPI):
     yield
 
     consumer_task.cancel()
+    user_consumer_task.cancel()
     scheduler.shutdown(wait=False)
 
 
