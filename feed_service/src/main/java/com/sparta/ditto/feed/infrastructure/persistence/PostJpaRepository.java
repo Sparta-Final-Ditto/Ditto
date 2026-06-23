@@ -15,23 +15,23 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.viewCount = p.viewCount + 1 WHERE p.id = :postId")
     void incrementViewCount(@Param("postId") UUID postId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.likeCount = p.likeCount + 1 WHERE p.id = :postId")
     void incrementLikeCount(@Param("postId") UUID postId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.likeCount = GREATEST(p.likeCount - 1, 0) WHERE p.id = :postId")
     void decrementLikeCount(@Param("postId") UUID postId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.commentCount = p.commentCount + 1 WHERE p.id = :postId")
     void incrementCommentCount(@Param("postId") UUID postId);
 
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Post p SET p.commentCount = GREATEST(p.commentCount - 1, 0)"
             + " WHERE p.id = :postId")
     void decrementCommentCount(@Param("postId") UUID postId);
