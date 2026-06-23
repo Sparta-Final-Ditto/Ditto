@@ -103,4 +103,16 @@ public class User extends BaseEntity {
     public void updateLastLoginAt() {
         this.lastLoginAt = Instant.now();
     }
+
+    public void updateProfile(String nickname, String bio, String profileImageUrl) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname;
+        }
+        if (bio != null) {
+            this.bio = bio;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
+    }
 }
