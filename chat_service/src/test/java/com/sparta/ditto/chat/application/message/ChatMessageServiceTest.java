@@ -349,6 +349,23 @@ class ChatMessageServiceTest {
                     eq(LAST_VISIBLE_AT), eq(LAST_VISIBLE), anyInt());
         }
 
+        @Test
+        @DisplayName("lastVisible 메시지가 없으면 빈 페이지를 반환한다 (fail-closed)")
+        void missing_lastVisible_returns_empty() {
+            given(chatMessageVisibilityService.getVisibilityRange(ROOM_ID, REQUESTER_ID))
+                    .willReturn(ChatMessageVisibilityRange.leftParticipant(
+                            ROOM_ID, REQUESTER_ID, JOINED_AT, "missing-id"));
+            given(chatMessageQueryPort.findByMessageIdAndRoomId("missing-id", ROOM_ID))
+                    .willReturn(Optional.empty());
+
+            ChatMessageCursorResult result =
+                    chatMessageService.getPreviousMessages(ROOM_ID, null, 30, REQUESTER_ID);
+
+            assertThat(result.items()).isEmpty();
+            verify(chatMessageQueryPort, never())
+                    .findLatestWithinRange(any(), any(), any(), any(), anyInt());
+        }
+
         private SentMessage boundary(String id, Instant at) {
             return new SentMessage(id, ROOM_ID, SENDER_ID, null, null,
                     MessageType.TEXT, "c", at, null);

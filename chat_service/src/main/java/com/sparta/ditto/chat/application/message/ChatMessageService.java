@@ -9,10 +9,9 @@ import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.domain.exception.ChatMessageForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatMessageNotFoundException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
+
+import java.util.*;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -64,13 +63,18 @@ public class ChatMessageService {
 
     private List<SentMessage> findPreviousForLeftUser(
             UUID roomId, String before, ChatMessageVisibilityRange range, int limit) {
-        SentMessage upper = resolveCursor(roomId, range.lastVisibleMessageId());
+        Optional<SentMessage> upperOpt =
+                chatMessageQueryPort.findByMessageIdAndRoomId(range.lastVisibleMessageId(), roomId);
+        if (upperOpt.isEmpty()) {
+            return List.of(); // lastVisible 메시지 누락 시 fail-closed (과거 조회 실패 대신 빈 결과)
+        }
+        SentMessage upper = upperOpt.get();
+
         if (before == null || before.isBlank()) {
             return chatMessageQueryPort.findLatestWithinRange(
                     roomId, range.joinedAt(), upper.createdAt(), upper.messageId(), limit);
         }
-        SentMessage cursor = resolveCursor(roomId, before);
-        // before 커서가 상한을 넘으면 상한(lastVisible)부터 시작하도록 클램프 (범위 밖 노출 방지)
+        SentMessage cursor = resolveCursor(roomId, before);   // 클라이언트 커서는 기존대로 검증
         if (isAfter(cursor, upper)) {
             return chatMessageQueryPort.findLatestWithinRange(
                     roomId, range.joinedAt(), upper.createdAt(), upper.messageId(), limit);
@@ -100,7 +104,12 @@ public class ChatMessageService {
         SentMessage cursor = resolveCursor(roomId, after);
         List<SentMessage> rows;
         if (range.hasUpperBound()) {
-            SentMessage upper = resolveCursor(roomId, range.lastVisibleMessageId());
+            Optional<SentMessage> upperOpt =
+                    chatMessageQueryPort.findByMessageIdAndRoomId(range.lastVisibleMessageId(), roomId);
+            if (upperOpt.isEmpty()) {
+                return ChatMessageCursorResult.of(List.of(), null, false); // fail-closed
+            }
+            SentMessage upper = upperOpt.get();
             rows = chatMessageQueryPort.findAfterCursorWithinRange(
                     roomId, range.joinedAt(), cursor.createdAt(), cursor.messageId(),
                     upper.createdAt(), upper.messageId(), limit);
