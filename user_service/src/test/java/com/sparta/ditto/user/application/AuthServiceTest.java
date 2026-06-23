@@ -24,6 +24,7 @@ import com.sparta.ditto.user.presentation.dto.request.AuthLoginRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthReissueRequest;
 import com.sparta.ditto.user.presentation.dto.request.AuthSignupRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,7 +61,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = User.createEmailUser("test@test.com", "encodedPassword", "testNick", Gender.MALE, "19900101");
+        user = User.createEmailUser("test@test.com", "encodedPassword", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
         ReflectionTestUtils.setField(user, "id", userId);
     }
 
@@ -70,7 +71,7 @@ class AuthServiceTest {
         @Test
         void 성공() {
             AuthSignupRequest request = new AuthSignupRequest(
-                    "test@test.com", "password123", "testNick", Gender.MALE, "19900101");
+                    "test@test.com", "password123", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
             given(userRepository.existsByEmail(request.email())).willReturn(false);
             given(userRepository.existsByNickname(request.nickname())).willReturn(false);
             given(passwordEncoder.encode(request.password())).willReturn("encodedPassword");
@@ -83,7 +84,7 @@ class AuthServiceTest {
 
         @Test
         void 이메일_중복_예외() {
-            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, "19900101");
+            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
             given(userRepository.existsByEmail(request.email())).willReturn(true);
 
             assertThatThrownBy(() -> authService.signup(request))
@@ -93,7 +94,7 @@ class AuthServiceTest {
 
         @Test
         void 닉네임_중복_예외() {
-            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, "19900101");
+            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
             given(userRepository.existsByEmail(request.email())).willReturn(false);
             given(userRepository.existsByNickname(request.nickname())).willReturn(true);
 

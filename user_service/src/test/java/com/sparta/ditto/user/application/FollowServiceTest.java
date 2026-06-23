@@ -16,6 +16,7 @@ import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.FollowRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -50,9 +51,9 @@ class FollowServiceTest {
         followerId = UUID.randomUUID();
         followingId = UUID.randomUUID();
         follower = User.createEmailUser(
-                "follower@test.com", "encodedPw", "followerNick", Gender.MALE, "19900101");
+                "follower@test.com", "encodedPw", "followerNick", Gender.MALE, LocalDate.of(1990, 1, 1));
         following = User.createEmailUser(
-                "following@test.com", "encodedPw", "followingNick", Gender.FEMALE, "19950101");
+                "following@test.com", "encodedPw", "followingNick", Gender.FEMALE, LocalDate.of(1995, 1, 1));
         ReflectionTestUtils.setField(follower, "id", followerId);
         ReflectionTestUtils.setField(following, "id", followingId);
     }

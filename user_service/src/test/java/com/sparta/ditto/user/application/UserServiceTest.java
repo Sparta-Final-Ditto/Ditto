@@ -21,6 +21,7 @@ import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -59,7 +60,7 @@ class UserServiceTest {
     void setUp() {
         userId = UUID.randomUUID();
         user = User.createEmailUser(
-                "test@test.com", "encodedPassword", "testNick", Gender.MALE, "19900101");
+                "test@test.com", "encodedPassword", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
         ReflectionTestUtils.setField(user, "id", userId);
     }
 

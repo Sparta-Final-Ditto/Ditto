@@ -15,6 +15,7 @@ import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.ReportRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.presentation.dto.request.UserReportRequest;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -48,9 +49,9 @@ class ReportServiceTest {
         reporterId = UUID.randomUUID();
         reportedId = UUID.randomUUID();
         reporter = User.createEmailUser(
-                "reporter@test.com", "encodedPw", "reporterNick", Gender.MALE, "19900101");
+                "reporter@test.com", "encodedPw", "reporterNick", Gender.MALE, LocalDate.of(1990, 1, 1));
         reported = User.createEmailUser(
-                "reported@test.com", "encodedPw", "reportedNick", Gender.FEMALE, "19950101");
+                "reported@test.com", "encodedPw", "reportedNick", Gender.FEMALE, LocalDate.of(1995, 1, 1));
         ReflectionTestUtils.setField(reporter, "id", reporterId);
         ReflectionTestUtils.setField(reported, "id", reportedId);
     }
