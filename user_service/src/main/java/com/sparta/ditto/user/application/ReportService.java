@@ -32,6 +32,7 @@ public class ReportService {
         User reporter = userRepository.findById(reporterId).orElseThrow(UserNotFoundException::new);
         User reported = userRepository.findById(reportedId).orElseThrow(UserNotFoundException::new);
 
-        reportRepository.save(Report.of(reporter, reported, request.reportType(), request.content()));
+        reportRepository.save(
+                Report.of(reporter, reported, request.reportType(), request.content()));
     }
 }
