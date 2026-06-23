@@ -1,15 +1,15 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
-import com.sparta.ditto.feed.application.dto.CommentListResult;
-import com.sparta.ditto.feed.application.dto.CommentResult;
-import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand;
-import com.sparta.ditto.feed.application.dto.GetCommentsQuery;
-import com.sparta.ditto.feed.application.dto.GetLikesQuery;
-import com.sparta.ditto.feed.application.dto.LikeListResult;
-import com.sparta.ditto.feed.application.dto.LikeResult;
-import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.result.CommentListResult;
+import com.sparta.ditto.feed.application.dto.result.CommentResult;
+import com.sparta.ditto.feed.application.dto.command.CreateCommentCommand;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
+import com.sparta.ditto.feed.application.dto.query.GetLikesQuery;
+import com.sparta.ditto.feed.application.dto.result.LikeListResult;
+import com.sparta.ditto.feed.application.dto.result.LikeResult;
+import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;

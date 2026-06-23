@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
-import com.sparta.ditto.feed.application.dto.UploadUrlResult;
+import com.sparta.ditto.feed.application.dto.result.UploadUrlResult;
 import java.util.List;
 
 public record UploadUrlResponse(List<FileResponse> files) {

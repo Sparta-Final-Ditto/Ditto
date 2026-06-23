@@ -1,8 +1,8 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.FeedItemResult;
-import com.sparta.ditto.feed.application.dto.FeedResult;
-import com.sparta.ditto.feed.application.dto.GetRandomFeedQuery;
+import com.sparta.ditto.feed.application.dto.result.FeedItemResult;
+import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;

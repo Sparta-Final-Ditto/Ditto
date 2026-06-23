@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.infrastructure.kafka;
 
-import com.sparta.ditto.feed.application.port.OutboxEventPublisher;
+import com.sparta.ditto.feed.application.UploadUrlResult.port.out.OutboxEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;

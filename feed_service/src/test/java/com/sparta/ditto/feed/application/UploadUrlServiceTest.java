@@ -1,11 +1,11 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.application.dto.UploadUrlCommand;
-import com.sparta.ditto.feed.application.dto.UploadUrlCommand.FileItem;
-import com.sparta.ditto.feed.application.dto.UploadUrlResult;
+import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand;
+import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand.FileItem;
+import com.sparta.ditto.feed.application.dto.result.UploadUrlResult;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
-import com.sparta.ditto.feed.application.port.S3Port;
+import com.sparta.ditto.feed.application.UploadUrlResult.port.out.S3Port;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

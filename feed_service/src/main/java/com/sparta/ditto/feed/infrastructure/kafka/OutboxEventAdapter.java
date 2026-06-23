@@ -2,7 +2,7 @@ package com.sparta.ditto.feed.infrastructure.kafka;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.ditto.feed.application.port.OutboxEventPort;
+import com.sparta.ditto.feed.application.UploadUrlResult.port.out.OutboxEventPort;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;

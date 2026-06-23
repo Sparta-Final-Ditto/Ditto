@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
-import com.sparta.ditto.feed.application.dto.LikeResult;
+import com.sparta.ditto.feed.application.dto.result.LikeResult;
 
 public record LikeResponse(int likeCount, boolean isLiked) {
 

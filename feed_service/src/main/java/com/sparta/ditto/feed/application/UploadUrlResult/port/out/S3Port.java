@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.port;
+package com.sparta.ditto.feed.application.UploadUrlResult.port.out;
 
 /**
  * S3 파일 업로드·존재 확인 포트 인터페이스.

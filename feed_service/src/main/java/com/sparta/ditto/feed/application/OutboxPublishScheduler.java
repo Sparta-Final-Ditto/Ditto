@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.application;
 
-import com.sparta.ditto.feed.application.port.OutboxEventPublisher;
+import com.sparta.ditto.feed.application.UploadUrlResult.port.out.OutboxEventPublisher;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
