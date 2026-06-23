@@ -94,12 +94,13 @@ class PostControllerTest {
     @DisplayName("존재하지 않는 게시글 좋아요 → 404, POST_NOT_FOUND")
     void addLike_게시글없음_404_POST_NOT_FOUND() throws Exception {
         // given
-        when(postInteractionService.addLike(any(UUID.class), any(UUID.class)))
+        when(postInteractionService.addLike(any(UUID.class), any(UUID.class), anyString()))
                 .thenThrow(new PostNotFoundException());
 
         // when & then
         mockMvc.perform(post("/posts/{postId}/likes", postId)
-                        .header("X-User-Id", userId.toString()))
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "테스트닉네임"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));

@@ -78,9 +78,10 @@ public class PostController {
     @PostMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> addLike(
             @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Nickname") String nickname,
             @PathVariable UUID postId
     ) {
-        LikeResult result = postInteractionService.addLike(userId, postId);
+        LikeResult result = postInteractionService.addLike(userId, postId, nickname);
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
