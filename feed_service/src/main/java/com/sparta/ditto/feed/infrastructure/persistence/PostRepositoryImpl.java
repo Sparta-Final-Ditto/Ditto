@@ -33,6 +33,11 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
+    public void incrementViewCount(UUID postId) {
+        jpaRepository.incrementViewCount(postId);
+    }
+
+    @Override
     public void incrementLikeCount(UUID postId) {
         jpaRepository.incrementLikeCount(postId);
     }

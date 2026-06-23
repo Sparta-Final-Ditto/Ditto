@@ -15,6 +15,8 @@ public interface PostRepository {
 
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
+    void incrementViewCount(UUID postId);
+
     void incrementLikeCount(UUID postId);
 
     void decrementLikeCount(UUID postId);

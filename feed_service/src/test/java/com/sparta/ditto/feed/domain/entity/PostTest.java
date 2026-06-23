@@ -100,4 +100,23 @@ class PostTest {
 
         assertThat(post.getCommentCount()).isZero();
     }
+
+    @Test
+    @DisplayName("조회수 증가 - 호출할 때마다 1씩 증가")
+    void incrementViewCount() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+
+        post.incrementViewCount();
+        post.incrementViewCount();
+
+        assertThat(post.getViewCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("조회수 초기값은 0")
+    void viewCount_defaultIsZero() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+
+        assertThat(post.getViewCount()).isZero();
+    }
 }

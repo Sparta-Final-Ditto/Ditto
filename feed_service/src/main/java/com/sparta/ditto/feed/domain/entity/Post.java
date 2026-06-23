@@ -80,6 +80,9 @@ public class Post extends BaseEntity {
     @Column(nullable = false)
     private Integer commentCount = 0;
 
+    @Column(nullable = false)
+    private Integer viewCount = 0;
+
     @OneToMany(
             mappedBy = "post",
             cascade = CascadeType.ALL,
@@ -127,6 +130,10 @@ public class Post extends BaseEntity {
             throw new VideoCountExceededException();
         }
         this.mediaList.add(media);
+    }
+
+    public void incrementViewCount() {
+        this.viewCount++;
     }
 
     public void incrementLikeCount() {
