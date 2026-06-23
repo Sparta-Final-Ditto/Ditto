@@ -2,15 +2,20 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.dto.request.CreatePostRequest;
-import com.sparta.ditto.feed.application.dto.request.CreatePostRequest.MediaFileRequest;
-import com.sparta.ditto.feed.application.dto.response.CreatePostResponse;
-import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.AuthorResponse;
-import com.sparta.ditto.feed.application.dto.response.CreatePostResponse.MediaFileResponse;
+import com.sparta.ditto.feed.application.dto.CommentResult;
+import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
+import com.sparta.ditto.feed.application.dto.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.PostResult.MediaFileResult;
+import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -20,12 +25,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -51,17 +52,18 @@ class PostControllerTest {
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
 
-    private CreatePostResponse successResponse;
+    private PostResult successResult;
 
     @BeforeEach
     void setUp() {
-        successResponse = new CreatePostResponse(
+        successResult = new PostResult(
                 postId,
-                new AuthorResponse(userId, "새벽러너"),
+                userId,
+                "새벽러너",
                 "오늘 새벽 러닝 완료!",
                 "서울 성동구",
                 List.of("#새벽운동", "#러닝"),
-                List.of(new MediaFileResponse(
+                List.of(new MediaFileResult(
                         "feeds/test-uuid.mp4",
                         "https://cdn.example.com/feeds/test-uuid.mp4",
                         "VIDEO",
@@ -136,11 +138,12 @@ class PostControllerTest {
     @Test
     @DisplayName("POST /posts 정상 요청 → 201, API_SPEC 응답 형식 검증")
     void createPost_정상요청_201_응답형식_검증() throws Exception {
-        when(postCreateFacade.createPost(any(UUID.class), any(CreatePostRequest.class)))
-                .thenReturn(successResponse);
+        when(postCreateFacade.createPost(any(CreatePostCommand.class)))
+                .thenReturn(successResult);
 
         mockMvc.perform(post("/posts")
                         .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "새벽러너")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequestBody()))
                 .andExpect(status().isCreated())
@@ -163,5 +166,94 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.createdAt").value("2026-06-16T05:30:00Z"))
                 .andExpect(jsonPath("$.data.latitude").doesNotExist())
                 .andExpect(jsonPath("$.data.longitude").doesNotExist());
+    }
+
+    // ============================================================
+    // POST /posts/{postId}/comments (댓글 등록)
+    // ============================================================
+
+    @Test
+    @DisplayName("정상 요청 → 201 CREATED, commentId 반환")
+    void createComment_정상요청_201_commentId_반환() throws Exception {
+        UUID commentId = UUID.randomUUID();
+        CommentResult commentResult = new CommentResult(
+                commentId,
+                postId,
+                userId,
+                "닉네임",
+                "댓글 내용",
+                true,
+                true,
+                Instant.now()
+        );
+        when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any(CreateCommentCommand.class)))
+                .thenReturn(commentResult);
+
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"댓글 내용\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value(201))
+                .andExpect(jsonPath("$.message").value("CREATED"))
+                .andExpect(jsonPath("$.data.commentId").value(commentId.toString()));
+    }
+
+    @Test
+    @DisplayName("content 누락 → 400, COMMON-001")
+    void createComment_content_누락_400_COMMON_001() throws Exception {
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMMON-001"));
+    }
+
+    @Test
+    @DisplayName("공백만 입력 → 400, COMMON-001")
+    void createComment_공백입력_400_COMMON_001() throws Exception {
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"   \"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMMON-001"));
+    }
+
+    @Test
+    @DisplayName("201자 입력 → 400, COMMON-001")
+    void createComment_201자_입력_400_COMMON_001() throws Exception {
+        String over200 = "a".repeat(201);
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"" + over200 + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("COMMON-001"));
+    }
+
+    @Test
+    @DisplayName("없는 postId → 404, POST_NOT_FOUND")
+    void createComment_없는postId_404_POST_NOT_FOUND() throws Exception {
+        when(postInteractionService.createComment(
+                any(UUID.class), anyString(), any(UUID.class), any()))
+                .thenThrow(new PostNotFoundException());
+
+        mockMvc.perform(post("/posts/{postId}/comments", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "닉네임")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\": \"댓글 내용\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
     }
 }

@@ -2,18 +2,23 @@ package com.sparta.ditto.chat.presentation.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sparta.ditto.chat.application.room.ChatDirectRoomService;
 import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
+import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
+import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
+import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -21,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(ChatDirectRoomController.class)
 @ActiveProfiles("test")
+@Import(GlobalExceptionHandler.class)
 @DisplayName("ChatDirectRoomController 테스트")
 class ChatDirectRoomControllerTest {
 
@@ -98,11 +104,40 @@ class ChatDirectRoomControllerTest {
                 .andExpect(jsonPath("$.data.reactivated").value(true));
     }
 
+    @Test
+    @DisplayName("자기 자신과 1:1 채팅방 생성 요청 시 400 Bad Request를 반환한다")
+    void createOrGetDirectRoom_should_return_bad_request_when_target_is_self()
+            throws Exception {
+        // given
+        willThrow(new ChatInvalidDirectTargetException())
+                .given(chatDirectRoomService).createOrGetDirectRoom(any());
+
+        // when & then
+        mockMvc.perform(post("/api/v1/chat/rooms/direct")
+                        .header("X-User-Id", REQUESTER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(selfRequestBody()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code")
+                        .value(ChatErrorCode.CHAT_INVALID_DIRECT_TARGET.getCode()))
+                .andExpect(jsonPath("$.message")
+                        .value(ChatErrorCode.CHAT_INVALID_DIRECT_TARGET.getMessage()));
+    }
+
     private String requestBody() {
         return """
                 {
                   "targetUserId": "%s"
                 }
                 """.formatted(TARGET_USER_ID);
+    }
+
+    private String selfRequestBody() {
+        return """
+                {
+                  "targetUserId": "%s"
+                }
+                """.formatted(REQUESTER_ID);
     }
 }

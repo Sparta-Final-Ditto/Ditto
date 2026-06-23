@@ -1,14 +1,17 @@
 package com.sparta.ditto.chat.application.room;
 
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
+import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomLeaveResult;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomType;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.Comparator;
@@ -22,8 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatRoomLeaveService {
 
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private static final String SYSTEM_LEAVE_CONTENT = "사용자가 채팅방을 나갔습니다.";
+
+    private final ChatMessageSendService chatMessageSendService;
+    private final ChatRoomPort chatRoomPort;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
 
     @Transactional
     public ChatRoomLeaveResult leaveRoom(UUID requesterId, UUID roomId) {
@@ -31,15 +37,15 @@ public class ChatRoomLeaveService {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
 
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+        ChatRoom chatRoom = chatRoomPort.findById(roomId)
                 .orElseThrow(ChatRoomNotFoundException::new);
-        ChatRoomParticipant requesterParticipant = chatRoomParticipantRepository
-                .findByRoomIdAndUserIdAndLeftAtIsNull(roomId, requesterId)
+        ChatRoomParticipant requesterParticipant = chatRoomParticipantPort
+                .findActiveParticipant(roomId, requesterId)
                 .orElseThrow(ChatNotParticipantException::new);
 
         List<ChatRoomParticipant> activeParticipants =
-                chatRoomParticipantRepository.findAllByRoomIdAndLeftAtIsNull(roomId);
-        String lastVisibleMessageId = chatRoom.getLastMessageId();
+                chatRoomParticipantPort.findActiveParticipants(roomId);
+        String lastVisibleMessageId = saveSystemLeaveMessage(roomId, requesterId);
 
         requesterParticipant.leave(lastVisibleMessageId);
 
@@ -88,5 +94,15 @@ public class ChatRoomLeaveService {
                 requesterParticipant.getLeftAt(),
                 requesterParticipant.getLastVisibleMessageId()
         );
+    }
+
+    private String saveSystemLeaveMessage(UUID roomId, UUID requesterId) {
+        SentMessage systemMessage = chatMessageSendService.saveSystemMessage(
+                roomId,
+                requesterId,
+                MessageType.SYSTEM_LEAVE,
+                SYSTEM_LEAVE_CONTENT
+        );
+        return systemMessage.messageId();
     }
 }

@@ -9,14 +9,14 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import java.util.List;
 import java.util.UUID;
@@ -38,17 +38,17 @@ class ChatGroupRoomServiceTest {
             UUID.fromString("00000000-0000-0000-0000-000000000200");
     private static final String ROOM_NAME = "스터디 그룹";
 
-    private ChatRoomRepository chatRoomRepository;
-    private ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private ChatRoomPort chatRoomPort;
+    private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatGroupRoomService chatGroupRoomService;
 
     @BeforeEach
     void setUp() {
-        chatRoomRepository = mock(ChatRoomRepository.class);
-        chatRoomParticipantRepository = mock(ChatRoomParticipantRepository.class);
+        chatRoomPort = mock(ChatRoomPort.class);
+        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatGroupRoomService = new ChatGroupRoomService(
-                chatRoomRepository,
-                chatRoomParticipantRepository
+                chatRoomPort,
+                chatRoomParticipantPort
         );
     }
 
@@ -57,7 +57,7 @@ class ChatGroupRoomServiceTest {
     void createGroupRoom_should_create_room_and_participants() {
         // given
         ChatRoom savedRoom = savedGroupRoom();
-        given(chatRoomRepository.save(any(ChatRoom.class))).willReturn(savedRoom);
+        given(chatRoomPort.save(any(ChatRoom.class))).willReturn(savedRoom);
 
         // when
         ChatGroupRoomResult result = chatGroupRoomService.createGroupRoom(command());
@@ -69,7 +69,7 @@ class ChatGroupRoomServiceTest {
         assertThat(result.status()).isEqualTo(RoomStatus.ACTIVE);
 
         ArgumentCaptor<List<ChatRoomParticipant>> captor = ArgumentCaptor.captor();
-        verify(chatRoomParticipantRepository).saveAll(captor.capture());
+        verify(chatRoomParticipantPort).saveAll(captor.capture());
         List<ChatRoomParticipant> participants = captor.getValue();
 
         assertThat(participants).hasSize(3);
@@ -90,7 +90,7 @@ class ChatGroupRoomServiceTest {
     void createGroupRoom_should_remove_requester_and_duplicate_members() {
         // given
         ChatRoom savedRoom = savedGroupRoom();
-        given(chatRoomRepository.save(any(ChatRoom.class))).willReturn(savedRoom);
+        given(chatRoomPort.save(any(ChatRoom.class))).willReturn(savedRoom);
         ChatGroupRoomCreateCommand command = ChatGroupRoomCreateCommand.of(
                 REQUESTER_ID,
                 List.of(REQUESTER_ID, MEMBER_USER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID),
@@ -102,7 +102,7 @@ class ChatGroupRoomServiceTest {
 
         // then
         ArgumentCaptor<List<ChatRoomParticipant>> captor = ArgumentCaptor.captor();
-        verify(chatRoomParticipantRepository).saveAll(captor.capture());
+        verify(chatRoomParticipantPort).saveAll(captor.capture());
 
         assertThat(captor.getValue())
                 .extracting(ChatRoomParticipant::getUserId)

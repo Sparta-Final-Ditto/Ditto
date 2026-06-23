@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
@@ -13,7 +14,6 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -33,6 +33,8 @@ import org.hibernate.annotations.CreationTimestamp;
 )
 public class Like {
 
+    private static final String TEMP_USER_NICKNAME = "user";
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
@@ -44,12 +46,20 @@ public class Like {
     @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID userId;
 
-    @CreationTimestamp
+    @Column(name = "user_nickname", nullable = false, updatable = false, length = 100)
+    private String userNickname;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
     public Like(UUID postId, UUID userId) {
         this.postId = postId;
         this.userId = userId;
+        this.userNickname = TEMP_USER_NICKNAME;
+    }
+
+    @PrePersist
+    void onCreate() {
+        this.createdAt = Instant.now();
     }
 }

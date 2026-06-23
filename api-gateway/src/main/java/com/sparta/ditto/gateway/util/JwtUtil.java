@@ -13,8 +13,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtUtil {
 
-    public static final String CLAIM_USER_ID = "sub";
     public static final String CLAIM_ROLE = "role";
+    public static final String CLAIM_NICKNAME = "nickname";
 
     private final SecretKey secretKey;
 
