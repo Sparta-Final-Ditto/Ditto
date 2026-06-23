@@ -1,0 +1,13 @@
+package com.sparta.ditto.feed.infrastructure.persistence;
+
+import com.sparta.ditto.feed.domain.entity.OutboxEvent;
+import com.sparta.ditto.feed.domain.type.OutboxStatus;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface OutboxEventJpaRepository extends JpaRepository<OutboxEvent, UUID> {
+
+    List<OutboxEvent> findByStatusOrderByCreatedAt(OutboxStatus status, Pageable pageable);
+}

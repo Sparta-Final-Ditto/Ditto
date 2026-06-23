@@ -22,7 +22,8 @@ public enum FeedErrorCode implements ErrorCode {
 
     // 게시글 생성 입력값 검증 (POST /posts)
     EMPTY_POST("VALIDATION_ERROR", "이미지, 영상, 텍스트 중 하나는 반드시 입력해주세요.", 400),
-    INVALID_LOCATION_SCOPE("VALIDATION_ERROR", "공개 범위는 PUBLIC, FOLLOWERS_ONLY, PRIVATE 중 선택해주세요.", 400),
+    INVALID_LOCATION_SCOPE("VALIDATION_ERROR",
+            "공개 범위는 PUBLIC, FOLLOWERS_ONLY, PRIVATE 중 선택해주세요.", 400),
     INVALID_POST_MEDIA_TYPE("VALIDATION_ERROR", "미디어 타입은 IMAGE, VIDEO 중 선택해주세요.", 400),
     DUPLICATE_SORT_ORDER("VALIDATION_ERROR", "미디어 파일의 정렬 순서가 중복됩니다.", 400),
 
@@ -35,7 +36,8 @@ public enum FeedErrorCode implements ErrorCode {
     LIKE_NOT_FOUND("LIKE_NOT_FOUND", "좋아요를 누르지 않은 게시글입니다.", 404),
 
     // 댓글
-    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "댓글을 찾을 수 없습니다.", 404);
+    COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "댓글을 찾을 수 없습니다.", 404),
+    FORBIDDEN("FORBIDDEN", "댓글 삭제 권한이 없습니다.", 403);
 
     private final String code;
     private final String message;
