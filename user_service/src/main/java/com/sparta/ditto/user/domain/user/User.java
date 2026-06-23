@@ -104,6 +104,10 @@ public class User extends BaseEntity {
         this.lastLoginAt = Instant.now();
     }
 
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
     public void updateProfile(String nickname, String bio, String profileImageUrl) {
         if (nickname != null && !nickname.isBlank()) {
             this.nickname = nickname;
