@@ -36,9 +36,10 @@ public class PostService {
 
     @Transactional
     public PostDetailResult getPostDetail(UUID postId, UUID requesterId) {
-        Post post = postRepository.findById(postId)
-                .orElseThrow(PostNotFoundException::new);
+        postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
         postRepository.incrementViewCount(postId);
+        // @Modifying(clearAutomatically = true)으로 캐시가 비워지므로 재조회해야 갱신된 viewCount 반영
+        Post post = postRepository.findById(postId).orElseThrow();
         List<Comment> comments = commentRepository.findByPostIdAndDeletedAtIsNull(postId);
         return PostDetailResult.from(post, requesterId, comments, cloudfrontDomain);
     }
