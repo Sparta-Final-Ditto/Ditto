@@ -2,7 +2,9 @@ package com.sparta.ditto.chat.application.participant;
 
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
-import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
+import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
+import com.sparta.ditto.chat.domain.exception.ChatRoomInactiveException;
+import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
@@ -30,10 +32,10 @@ public class ChatParticipantValidatorImpl implements ChatParticipantValidator {
     @Transactional(readOnly = true)
     public void ensureRoomActive(UUID roomId) {
         ChatRoom chatRoom = chatRoomPort.findById(roomId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
+                .orElseThrow(() -> new ChatRoomNotFoundException());
 
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
-            throw new BusinessException(ChatErrorCode.CHAT_ROOM_INACTIVE);
+            throw new ChatRoomInactiveException();
         }
     }
 
@@ -46,8 +48,8 @@ public class ChatParticipantValidatorImpl implements ChatParticipantValidator {
 
     private BusinessException participantException(UUID roomId) {
         if (!chatRoomPort.existsById(roomId)) {
-            return new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
+            return new ChatRoomNotFoundException();
         }
-        return new BusinessException(ChatErrorCode.CHAT_NOT_PARTICIPANT);
+        return new ChatNotParticipantException();
     }
 }
