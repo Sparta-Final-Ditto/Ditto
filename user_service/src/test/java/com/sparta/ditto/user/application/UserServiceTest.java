@@ -16,6 +16,8 @@ import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,6 +58,51 @@ class UserServiceTest {
         user = User.createEmailUser(
                 "test@test.com", "encodedPassword", "testNick", Gender.MALE, "19900101");
         ReflectionTestUtils.setField(user, "id", userId);
+    }
+
+    @Nested
+    class GetProfile {
+
+        @Test
+        void 성공() {
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+            UserProfileResponse result = userService.getProfile(userId);
+
+            assertThat(result.id()).isEqualTo(userId);
+            assertThat(result.email()).isEqualTo("test@test.com");
+            assertThat(result.nickname()).isEqualTo("testNick");
+        }
+
+        @Test
+        void 유저_없음_예외() {
+            given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.getProfile(userId))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    class GetPublicProfile {
+
+        @Test
+        void 성공() {
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+            UserPublicProfileResponse result = userService.getPublicProfile(userId);
+
+            assertThat(result.id()).isEqualTo(userId);
+            assertThat(result.nickname()).isEqualTo("testNick");
+        }
+
+        @Test
+        void 유저_없음_예외() {
+            given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.getPublicProfile(userId))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
     }
 
     @Nested
