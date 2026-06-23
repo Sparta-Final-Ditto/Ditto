@@ -10,7 +10,7 @@ from app.embedding.infrastructure.repository.pg_user_profile_repository import P
 logger = logging.getLogger(__name__)
 
 
-async def run_nightly_batch() -> None:
+async def run_batch() -> None:
     """새벽 배치: FAILED 재처리 → 전체 유저 EMA 재계산."""
     logger.info("[Batch] 새벽 배치 시작")
 
