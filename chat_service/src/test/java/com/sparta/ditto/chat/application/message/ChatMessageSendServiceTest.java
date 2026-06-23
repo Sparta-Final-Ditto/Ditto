@@ -11,17 +11,18 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
 import com.sparta.ditto.chat.application.message.port.ChatMessageDedupStore;
 import com.sparta.ditto.chat.application.message.port.ChatMessagePublisher;
+import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.message.port.DedupBeginResult;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.message.MessageIdGenerator;
 import com.sparta.ditto.chat.domain.message.MessageType;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
 import com.sparta.ditto.common.exception.BusinessException;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +37,8 @@ class ChatMessageSendServiceTest {
     private static final UUID CLIENT_MESSAGE_ID =
             UUID.fromString("00000000-0000-0000-0000-0000000000aa");
 
-    private ChatMessageMongoRepository chatMessageMongoRepository;
+    private ChatMessageCommandPort chatMessageCommandPort;
+    private ChatMessageQueryPort chatMessageQueryPort;
     private ChatParticipantValidator chatParticipantValidator;
     private MessageIdGenerator messageIdGenerator;
     private ChatRoomMetadataService chatRoomMetadataService;
@@ -46,14 +48,15 @@ class ChatMessageSendServiceTest {
 
     @BeforeEach
     void setUp() {
-        chatMessageMongoRepository = mock(ChatMessageMongoRepository.class);
+        chatMessageCommandPort = mock(ChatMessageCommandPort.class);
+        chatMessageQueryPort = mock(ChatMessageQueryPort.class);
         chatParticipantValidator = mock(ChatParticipantValidator.class);
         messageIdGenerator = mock(MessageIdGenerator.class);
         chatRoomMetadataService = mock(ChatRoomMetadataService.class);
         chatMessagePublisher = mock(ChatMessagePublisher.class);
         chatMessageDedupStore = mock(ChatMessageDedupStore.class);
         chatMessageSendService = new ChatMessageSendService(
-                chatMessageMongoRepository, chatParticipantValidator,
+                chatMessageCommandPort, chatMessageQueryPort, chatParticipantValidator,
                 messageIdGenerator, chatRoomMetadataService,
                 chatMessagePublisher, chatMessageDedupStore);
     }
@@ -65,14 +68,16 @@ class ChatMessageSendServiceTest {
         given(chatMessageDedupStore.begin(any(), any(), any()))
                 .willReturn(DedupBeginResult.newRequest());
         given(messageIdGenerator.generate()).willReturn("msg-1");
-        given(chatMessageMongoRepository.save(any()))
-                .willAnswer(inv -> inv.getArgument(0));
+        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
+                .willReturn(existingMessage("msg-1"));
 
         // when
         chatMessageSendService.sendUserMessage(command());
 
         // then
-        verify(chatMessageMongoRepository).save(any(ChatMessageDocument.class));
+        verify(chatMessageCommandPort)
+                .saveUserMessage(eq("msg-1"), eq(ROOM_ID), eq(SENDER_ID),
+                        eq(CLIENT_MESSAGE_ID), eq(MessageType.TEXT), eq("hello"));
         verify(chatRoomMetadataService).updateLastMessage(eq(ROOM_ID), eq("msg-1"), any());
         verify(chatMessageDedupStore)
                 .complete(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID), eq("msg-1"));
@@ -86,7 +91,7 @@ class ChatMessageSendServiceTest {
         // given
         given(chatMessageDedupStore.begin(any(), any(), any()))
                 .willReturn(DedupBeginResult.duplicateCompleted("msg-1"));
-        given(chatMessageMongoRepository.findByMessageId("msg-1"))
+        given(chatMessageQueryPort.findByMessageId("msg-1"))
                 .willReturn(Optional.of(existingMessage("msg-1")));
 
         // when
@@ -94,7 +99,8 @@ class ChatMessageSendServiceTest {
 
         // then
         verify(chatMessagePublisher).ackToSender(eq(SENDER_ID), any(SentMessage.class));
-        verify(chatMessageMongoRepository, never()).save(any());
+        verify(chatMessageCommandPort, never())
+                .saveUserMessage(any(), any(), any(), any(), any(), any());
         verify(chatMessagePublisher, never()).broadcast(any(), any());
     }
 
@@ -110,7 +116,8 @@ class ChatMessageSendServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting(e -> ((BusinessException) e).getErrorCode())
                 .isEqualTo(ChatErrorCode.CHAT_DUPLICATE_PROCESSING);
-        verify(chatMessageMongoRepository, never()).save(any());
+        verify(chatMessageCommandPort, never())
+                .saveUserMessage(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -118,8 +125,8 @@ class ChatMessageSendServiceTest {
     void success_save_system_message() {
         // given
         given(messageIdGenerator.generate()).willReturn("system-msg-1");
-        given(chatMessageMongoRepository.save(any()))
-                .willAnswer(inv -> inv.getArgument(0));
+        given(chatMessageCommandPort.saveSystemMessage(any(), any(), any(), any(), any()))
+                .willReturn(systemMessage("system-msg-1"));
 
         // when
         chatMessageSendService.saveSystemMessage(
@@ -130,7 +137,9 @@ class ChatMessageSendServiceTest {
         );
 
         // then
-        verify(chatMessageMongoRepository).save(any(ChatMessageDocument.class));
+        verify(chatMessageCommandPort)
+                .saveSystemMessage(eq("system-msg-1"), eq(ROOM_ID), eq(SENDER_ID),
+                        eq(MessageType.SYSTEM_LEAVE), any());
         verify(chatRoomMetadataService)
                 .updateLastMessage(eq(ROOM_ID), eq("system-msg-1"), any());
         verify(chatMessagePublisher, never()).ackToSender(any(), any());
@@ -148,7 +157,8 @@ class ChatMessageSendServiceTest {
         assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
                 .isInstanceOf(BusinessException.class);
         verify(chatMessageDedupStore, never()).begin(any(), any(), any());
-        verify(chatMessageMongoRepository, never()).save(any());
+        verify(chatMessageCommandPort, never())
+                .saveUserMessage(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -161,7 +171,8 @@ class ChatMessageSendServiceTest {
         // when & then
         assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
                 .isInstanceOf(BusinessException.class);
-        verify(chatMessageMongoRepository, never()).save(any());
+        verify(chatMessageCommandPort, never())
+                .saveUserMessage(any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -171,7 +182,7 @@ class ChatMessageSendServiceTest {
         given(chatMessageDedupStore.begin(any(), any(), any()))
                 .willReturn(DedupBeginResult.newRequest());
         given(messageIdGenerator.generate()).willReturn("msg-1");
-        given(chatMessageMongoRepository.save(any()))
+        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
                 .willThrow(new RuntimeException("mongo down"));
 
         // when & then
@@ -188,7 +199,7 @@ class ChatMessageSendServiceTest {
         // given
         given(chatMessageDedupStore.begin(any(), any(), any()))
                 .willReturn(DedupBeginResult.duplicateCompleted("msg-1"));
-        given(chatMessageMongoRepository.findByMessageId("msg-1"))
+        given(chatMessageQueryPort.findByMessageId("msg-1"))
                 .willReturn(Optional.empty());
 
         // when & then
@@ -204,8 +215,31 @@ class ChatMessageSendServiceTest {
                 ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID, MessageType.TEXT, "hello");
     }
 
-    private ChatMessageDocument existingMessage(String messageId) {
-        return ChatMessageDocument.createUserMessage(
-                messageId, ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID, MessageType.TEXT, "hello");
+    private SentMessage existingMessage(String messageId) {
+        return new SentMessage(
+                messageId,
+                ROOM_ID,
+                SENDER_ID,
+                null,
+                CLIENT_MESSAGE_ID,
+                MessageType.TEXT,
+                "hello",
+                Instant.now(),
+                null
+        );
+    }
+
+    private SentMessage systemMessage(String messageId) {
+        return new SentMessage(
+                messageId,
+                ROOM_ID,
+                null,
+                SENDER_ID,
+                null,
+                MessageType.SYSTEM_LEAVE,
+                "사용자가 채팅방을 나갔습니다.",
+                Instant.now(),
+                null
+        );
     }
 }
