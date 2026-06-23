@@ -15,6 +15,8 @@ import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserBannedException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
+import com.sparta.ditto.user.infrastructure.kafka.UserCreatedEvent;
+import com.sparta.ditto.user.infrastructure.kafka.UserEventProducer;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.infrastructure.security.exception.InvalidTokenException;
@@ -49,6 +51,9 @@ class AuthServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private UserEventProducer userEventProducer;
+
     private User user;
     private UUID userId;
 
@@ -64,7 +69,8 @@ class AuthServiceTest {
 
         @Test
         void 성공() {
-            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, "19900101");
+            AuthSignupRequest request = new AuthSignupRequest(
+                    "test@test.com", "password123", "testNick", Gender.MALE, "19900101");
             given(userRepository.existsByEmail(request.email())).willReturn(false);
             given(userRepository.existsByNickname(request.nickname())).willReturn(false);
             given(passwordEncoder.encode(request.password())).willReturn("encodedPassword");
@@ -72,6 +78,7 @@ class AuthServiceTest {
             authService.signup(request);
 
             then(userRepository).should().save(any(User.class));
+            then(userEventProducer).should().sendUserCreated(any(UserCreatedEvent.class));
         }
 
         @Test
