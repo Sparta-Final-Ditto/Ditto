@@ -135,4 +135,33 @@ public class ChatMessageMongoAdapter implements ChatMessageCommandPort, ChatMess
                 document.getDeletedAt()
         );
     }
+
+    @Override
+    public List<SentMessage> findLatestWithinRange(
+            UUID roomId, Instant joinedAt,
+            Instant upperCreatedAt, String upperMessageId, int limit) {
+        return chatMessageMongoRepository.findLatestWithinRange(
+                        roomId, joinedAt, upperCreatedAt, upperMessageId, Limit.of(limit))
+                .stream().map(this::toSentMessage).toList();
+    }
+
+    @Override
+    public List<SentMessage> findBeforeCursorWithinRange(
+            UUID roomId, Instant joinedAt,
+            Instant cursorCreatedAt, String cursorMessageId, int limit) {
+        return chatMessageMongoRepository.findBeforeCursorWithinRange(
+                        roomId, joinedAt, cursorCreatedAt, cursorMessageId, Limit.of(limit))
+                .stream().map(this::toSentMessage).toList();
+    }
+
+    @Override
+    public List<SentMessage> findAfterCursorWithinRange(
+            UUID roomId, Instant joinedAt,
+            Instant afterCreatedAt, String afterMessageId,
+            Instant upperCreatedAt, String upperMessageId, int limit) {
+        return chatMessageMongoRepository.findAfterCursorWithinRange(
+                        roomId, joinedAt, afterCreatedAt, afterMessageId,
+                        upperCreatedAt, upperMessageId, Limit.of(limit))
+                .stream().map(this::toSentMessage).toList();
+    }
 }
