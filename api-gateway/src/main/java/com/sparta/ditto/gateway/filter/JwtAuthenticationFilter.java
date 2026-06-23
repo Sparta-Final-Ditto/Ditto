@@ -22,6 +22,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITELIST = List.of(
             "/api/v1/auth/login",
             "/api/v1/auth/signup",
+            "/api/v1/auth/reissue",
             "/actuator"
     );
 
@@ -35,27 +36,28 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         String authHeader = exchange.getRequest().getHeaders().getFirst(HttpHeaders.AUTHORIZATION);
 
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
-            return exchange.getResponse().setComplete();
+        String token;
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            token = authHeader.substring(7);
+        } else if (path.startsWith("/ws-chat")) {
+            // 브라우저 WebSocket은 Authorization 헤더를 못 실으므로 token 쿼리 파라미터를 허용한다.
+            token = exchange.getRequest().getQueryParams().getFirst("token");
+        } else {
+            token = null;
         }
 
-        String token = authHeader.substring(7);
-
-        if (!jwtUtil.isValid(token)) {
+        if (token == null || !jwtUtil.isValid(token)) {
             exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
             return exchange.getResponse().setComplete();
         }
 
         Claims claims = jwtUtil.parseClaims(token);
-        String role = claims.get(JwtUtil.CLAIM_ROLE, String.class);
 
         ServerWebExchange modifiedExchange = exchange.mutate()
                 .request(r -> {
                     r.header("X-User-Id", claims.getSubject());
-                    if (role != null) {
-                        r.header("X-User-Role", role);
-                    }
+                    r.header("X-User-Role", claims.get(JwtUtil.CLAIM_ROLE, String.class));
+                    r.header("X-User-Nickname", claims.get(JwtUtil.CLAIM_NICKNAME, String.class));
                 })
                 .build();
 

@@ -1,15 +1,15 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.dto.response.LikeListResponse;
+import com.sparta.ditto.feed.application.dto.GetLikesQuery;
+import com.sparta.ditto.feed.application.dto.LikeListResult;
+import com.sparta.ditto.feed.application.dto.LikeListResult.LikeUserResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
@@ -43,7 +43,7 @@ class PostControllerGetLikesTest {
     @DisplayName("게시글 없음 → 404, POST_NOT_FOUND")
     void getLikes_게시글없음_404_POST_NOT_FOUND() throws Exception {
         // given
-        when(postInteractionService.getLikes(any(UUID.class), isNull(), anyInt()))
+        when(postInteractionService.getLikes(any(GetLikesQuery.class)))
                 .thenThrow(new PostNotFoundException());
 
         // when & then
@@ -57,14 +57,14 @@ class PostControllerGetLikesTest {
     @DisplayName("좋아요 목록 응답에 profileImageUrl 필드 미포함")
     void getLikes_profileImageUrl_필드미포함() throws Exception {
         // given
-        LikeListResponse response = new LikeListResponse(
-                List.of(new LikeListResponse.LikeUserResponse("usr_aaa", "혼공마스터")),
+        LikeListResult result = new LikeListResult(
+                List.of(new LikeUserResult("usr_aaa", "혼공마스터")),
                 1,
                 null,
                 false
         );
-        when(postInteractionService.getLikes(any(UUID.class), isNull(), anyInt()))
-                .thenReturn(response);
+        when(postInteractionService.getLikes(any(GetLikesQuery.class)))
+                .thenReturn(result);
 
         // when & then
         mockMvc.perform(get("/posts/{postId}/likes", postId))

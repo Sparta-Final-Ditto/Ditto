@@ -25,13 +25,7 @@ public class StompChannelInterceptor implements ChannelInterceptor {
         StompHeaderAccessor accessor = StompHeaderAccessor.wrap(message);
         StompCommand command = accessor.getCommand();
 
-        if (StompCommand.CONNECT.equals(command)) {
-            // TODO: Gateway WebSocket 라우팅/handshake 확정 후 X-User-Id Principal 세팅 방식으로 교체한다.
-            String userId = accessor.getFirstNativeHeader("X-User-Id");
-            if (userId != null && !userId.isBlank()) {
-                accessor.setUser(() -> userId);
-            }
-        } else if (StompCommand.SUBSCRIBE.equals(command)) {
+        if (StompCommand.SUBSCRIBE.equals(command)) {
             UUID roomId = extractRoomId(accessor.getDestination());
             if (roomId != null) {
                 // room 구독은 인증된 활성 참여자만 허용한다.

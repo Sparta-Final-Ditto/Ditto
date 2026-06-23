@@ -9,10 +9,10 @@ import static org.mockito.Mockito.verify;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.dto.command.ChatNotificationSettingCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatNotificationSettingResult;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.Optional;
@@ -30,16 +30,16 @@ class ChatNotificationSettingServiceTest {
             UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private ChatParticipantValidator chatParticipantValidator;
-    private ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatNotificationSettingService chatNotificationSettingService;
 
     @BeforeEach
     void setUp() {
         chatParticipantValidator = mock(ChatParticipantValidator.class);
-        chatRoomParticipantRepository = mock(ChatRoomParticipantRepository.class);
+        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatNotificationSettingService = new ChatNotificationSettingService(
                 chatParticipantValidator,
-                chatRoomParticipantRepository
+                chatRoomParticipantPort
         );
     }
 
@@ -52,7 +52,7 @@ class ChatNotificationSettingServiceTest {
                 REQUESTER_ID,
                 ParticipantRole.MEMBER
         );
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+        given(chatRoomParticipantPort.findActiveParticipant(
                 ROOM_ID,
                 REQUESTER_ID
         )).willReturn(Optional.of(participant));
@@ -72,7 +72,7 @@ class ChatNotificationSettingServiceTest {
     @DisplayName("현재 참여자가 아니면 알림 설정을 변경할 수 없다")
     void updateNotificationSetting_fail_not_participant() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+        given(chatRoomParticipantPort.findActiveParticipant(
                 ROOM_ID,
                 REQUESTER_ID
         )).willReturn(Optional.empty());

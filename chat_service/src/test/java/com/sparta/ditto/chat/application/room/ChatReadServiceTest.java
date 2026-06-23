@@ -9,14 +9,12 @@ import static org.mockito.Mockito.verify;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.dto.command.ChatReadCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatReadResult;
+import com.sparta.ditto.chat.application.room.port.ChatReadMessagePort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.exception.ChatMessageNotFoundException;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
-import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.time.Instant;
@@ -25,7 +23,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("ChatReadService 테스트")
 class ChatReadServiceTest {
@@ -34,8 +31,6 @@ class ChatReadServiceTest {
             UUID.fromString("00000000-0000-0000-0000-000000000100");
     private static final UUID REQUESTER_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final UUID CLIENT_MESSAGE_ID =
-            UUID.fromString("00000000-0000-0000-0000-000000000200");
     private static final String CURRENT_MESSAGE_ID =
             "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f70";
     private static final String NEXT_MESSAGE_ID =
@@ -50,19 +45,19 @@ class ChatReadServiceTest {
             Instant.parse("2026-06-22T09:59:00Z");
 
     private ChatParticipantValidator chatParticipantValidator;
-    private ChatRoomParticipantRepository chatRoomParticipantRepository;
-    private ChatMessageMongoRepository chatMessageMongoRepository;
+    private ChatRoomParticipantPort chatRoomParticipantPort;
+    private ChatReadMessagePort chatReadMessagePort;
     private ChatReadService chatReadService;
 
     @BeforeEach
     void setUp() {
         chatParticipantValidator = mock(ChatParticipantValidator.class);
-        chatRoomParticipantRepository = mock(ChatRoomParticipantRepository.class);
-        chatMessageMongoRepository = mock(ChatMessageMongoRepository.class);
+        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
+        chatReadMessagePort = mock(ChatReadMessagePort.class);
         chatReadService = new ChatReadService(
                 chatParticipantValidator,
-                chatRoomParticipantRepository,
-                chatMessageMongoRepository
+                chatRoomParticipantPort,
+                chatReadMessagePort
         );
     }
 
@@ -128,7 +123,7 @@ class ChatReadServiceTest {
         // given
         ChatRoomParticipant participant = participant();
         givenParticipant(participant);
-        given(chatMessageMongoRepository.findByMessageIdAndRoomId(NEXT_MESSAGE_ID, ROOM_ID))
+        given(chatReadMessagePort.findReadMessage(ROOM_ID, NEXT_MESSAGE_ID))
                 .willReturn(Optional.empty());
 
         // when & then
@@ -140,10 +135,8 @@ class ChatReadServiceTest {
     @DisplayName("현재 참여자가 아니면 읽음 상태를 갱신할 수 없다")
     void updateReadState_fail_not_participant() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
-                ROOM_ID,
-                REQUESTER_ID
-        )).willReturn(Optional.empty());
+        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, REQUESTER_ID))
+                .willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> chatReadService.updateReadState(command(NEXT_MESSAGE_ID)))
@@ -169,28 +162,16 @@ class ChatReadServiceTest {
     }
 
     private void givenParticipant(ChatRoomParticipant participant) {
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
-                ROOM_ID,
-                REQUESTER_ID
-        )).willReturn(Optional.of(participant));
+        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, REQUESTER_ID))
+                .willReturn(Optional.of(participant));
     }
 
     private void givenMessage(String messageId, Instant createdAt) {
-        given(chatMessageMongoRepository.findByMessageIdAndRoomId(messageId, ROOM_ID))
-                .willReturn(Optional.of(message(messageId, createdAt)));
-    }
-
-    private ChatMessageDocument message(String messageId, Instant createdAt) {
-        ChatMessageDocument message = ChatMessageDocument.createUserMessage(
-                messageId,
-                ROOM_ID,
-                REQUESTER_ID,
-                CLIENT_MESSAGE_ID,
-                MessageType.TEXT,
-                "테스트 메시지"
-        );
-        ReflectionTestUtils.setField(message, "createdAt", createdAt);
-        return message;
+        given(chatReadMessagePort.findReadMessage(ROOM_ID, messageId))
+                .willReturn(Optional.of(new ChatReadMessagePort.ReadMessage(
+                        messageId,
+                        createdAt
+                )));
     }
 
     private ChatReadCommand command(String lastReadMessageId) {
