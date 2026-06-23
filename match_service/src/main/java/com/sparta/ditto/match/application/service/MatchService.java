@@ -4,6 +4,7 @@ import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.match.application.dto.MatchRequestDto;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
 import com.sparta.ditto.match.application.dto.MatchStatusRequestDto;
+import com.sparta.ditto.match.application.dto.RecommendationResponseDto;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
 import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
@@ -140,16 +141,18 @@ public class MatchService {
 
     // feed_service 추천 목록 제공
     @Transactional(readOnly = true)
-    public List<UUID> getRecommendations(UUID userId, int limit) {
-        Set<String> candidates =
-                matchCacheService.getTopCandidates(userId, limit);
+    public List<RecommendationResponseDto> getRecommendations(UUID userId, int limit) {
+        Set<String> candidates = matchCacheService.getTopCandidates(userId, limit);
 
         if (candidates == null || candidates.isEmpty()) {
             return List.of();
         }
 
         return candidates.stream()
-                .map(UUID::fromString)
+                .map(candidateId -> new RecommendationResponseDto(
+                        UUID.fromString(candidateId),
+                        null  // score는 추후 Sorted Set에서 가져오기
+                ))
                 .toList();
     }
 }

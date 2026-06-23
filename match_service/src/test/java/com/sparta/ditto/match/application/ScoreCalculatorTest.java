@@ -1,4 +1,3 @@
-// test/application/ScoreCalculatorTest.java
 package com.sparta.ditto.match.application;
 
 import com.sparta.ditto.match.application.service.ScoreCalculator;
@@ -11,6 +10,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.within;
 
 class ScoreCalculatorTest {
 
@@ -130,9 +130,11 @@ class ScoreCalculatorTest {
         float tagScore = 0.5f;
         float timeScore = 1.0f;
 
-        float result = scoreCalculator.calculateFinalScore(similarity, tagScore, timeScore);
+        float result = scoreCalculator.calculateFinalScore(
+                similarity, tagScore, timeScore
+        );
 
-        // 0.8×0.6 + 0.5×0.2 + 1.0×0.2 = 0.48 + 0.10 + 0.20 = 0.78
-        assertThat(result).isEqualTo(0.78f);
+        // isEqualTo 대신 isCloseTo 사용
+        assertThat(result).isCloseTo(0.78f, within(0.001f));
     }
 }

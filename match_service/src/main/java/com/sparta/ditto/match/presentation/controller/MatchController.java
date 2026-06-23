@@ -4,6 +4,7 @@ import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.MatchRequestDto;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
 import com.sparta.ditto.match.application.dto.MatchStatusRequestDto;
+import com.sparta.ditto.match.application.dto.RecommendationResponseDto;
 import com.sparta.ditto.match.application.service.MatchService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -44,12 +45,11 @@ public class MatchController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    @GetMapping("/recommendations")
-    public ResponseEntity<ApiResponse<List<UUID>>> getRecommendations(
+    public ResponseEntity<ApiResponse<List<RecommendationResponseDto>>> getRecommendations(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "50") int limit  // default 20 → 50
     ) {
-        List<UUID> recommendations =
+        List<RecommendationResponseDto> recommendations =
                 matchService.getRecommendations(userId, limit);
         return ResponseEntity.ok(ApiResponse.success(recommendations));
     }
