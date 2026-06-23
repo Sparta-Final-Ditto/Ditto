@@ -7,11 +7,13 @@ import static org.mockito.BDDMockito.then;
 
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.enums.Gender;
+import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.kafka.UserEventProducer;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
+import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
@@ -136,6 +138,44 @@ class UserServiceTest {
             assertThatThrownBy(() -> userService.deleteAccount(userId))
                     .isInstanceOf(UserNotFoundException.class);
             then(tokenManager).shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    class ChangePassword {
+
+        @Test
+        void 성공() {
+            UserPasswordChangeRequest request =
+                    new UserPasswordChangeRequest("currentPw", "newPw");
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("currentPw", user.getPassword())).willReturn(true);
+            given(passwordEncoder.encode("newPw")).willReturn("encodedNewPw");
+
+            userService.changePassword(userId, request);
+
+            assertThat(user.getPassword()).isEqualTo("encodedNewPw");
+        }
+
+        @Test
+        void 유저_없음_예외() {
+            UserPasswordChangeRequest request =
+                    new UserPasswordChangeRequest("currentPw", "newPw");
+            given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(UserNotFoundException.class);
+        }
+
+        @Test
+        void 현재_비밀번호_불일치_예외() {
+            UserPasswordChangeRequest request =
+                    new UserPasswordChangeRequest("wrongPw", "newPw");
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+            given(passwordEncoder.matches("wrongPw", user.getPassword())).willReturn(false);
+
+            assertThatThrownBy(() -> userService.changePassword(userId, request))
+                    .isInstanceOf(InvalidPasswordException.class);
         }
     }
 }
