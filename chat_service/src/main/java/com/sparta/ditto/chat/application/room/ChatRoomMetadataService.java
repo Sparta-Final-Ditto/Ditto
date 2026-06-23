@@ -1,7 +1,7 @@
 package com.sparta.ditto.chat.application.room;
 
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
-import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
+import com.sparta.ditto.chat.domain.exception.ChatRoomInactiveException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
@@ -36,7 +36,7 @@ public class ChatRoomMetadataService {
                 .orElseThrow(ChatRoomNotFoundException::new);
 
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
-            throw new BusinessException(ChatErrorCode.CHAT_ROOM_INACTIVE);
+            throw new ChatRoomInactiveException();
         }
 
         // TODO: 재처리/비동기 흐름이 들어오면 오래된 메시지가 최신 메시지를 덮지 않도록

@@ -6,8 +6,8 @@ import com.sparta.ditto.chat.application.message.dto.result.ChatMessageResult;
 import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
 import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
-import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
-import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.chat.domain.exception.ChatMessageForbiddenException;
+import com.sparta.ditto.chat.domain.exception.ChatMessageNotFoundException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -82,10 +82,10 @@ public class ChatMessageService {
         chatParticipantValidator.ensureActiveParticipant(roomId, requesterId);
 
         SentMessage message = chatMessageQueryPort.findByMessageIdAndRoomId(messageId, roomId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+                .orElseThrow(ChatMessageNotFoundException::new);
 
         if (!requesterId.equals(message.senderId())) {
-            throw new BusinessException(ChatErrorCode.CHAT_MESSAGE_FORBIDDEN);
+            throw new ChatMessageForbiddenException();
         }
 
         chatMessageCommandPort.markDeleted(roomId, messageId);
@@ -93,14 +93,14 @@ public class ChatMessageService {
 
     private List<SentMessage> findBefore(UUID roomId, String before, int limit) {
         SentMessage cursor = chatMessageQueryPort.findByMessageIdAndRoomId(before, roomId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+                .orElseThrow(ChatMessageNotFoundException::new);
         return chatMessageQueryPort.findBeforeCursor(
                 roomId, cursor.createdAt(), cursor.messageId(), limit);
     }
 
     private SentMessage resolveCursor(UUID roomId, String messageId) {
         return chatMessageQueryPort.findByMessageIdAndRoomId(messageId, roomId)
-                .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_MESSAGE_NOT_FOUND));
+                .orElseThrow(ChatMessageNotFoundException::new);
     }
 
     private List<ChatMessageResult> toResults(List<SentMessage> rows) {
