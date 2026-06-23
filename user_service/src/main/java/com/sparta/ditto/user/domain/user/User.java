@@ -14,6 +14,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -53,8 +54,8 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 20)
     private Gender gender;
 
-    @Column(length = 8)
-    private String birthdate;
+    @Column
+    private LocalDate birthdate;
 
     @Column(name = "profile_image_url", length = 500)
     private String profileImageUrl;
@@ -77,8 +78,11 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "interest_registered", nullable = false)
+    private boolean interestRegistered = false;
+
     private User(String email, String password, String nickname,
-                 Gender gender, String birthdate, LoginProvider loginProvider) {
+                 Gender gender, LocalDate birthdate, LoginProvider loginProvider) {
         this.email = Objects.requireNonNull(email, "email must not be null");
         this.password = password;
         this.nickname = Objects.requireNonNull(nickname, "nickname must not be null");
@@ -91,16 +95,36 @@ public class User extends BaseEntity {
     }
 
     public static User createEmailUser(String email, String encodedPassword,
-                                       String nickname, Gender gender, String birthdate) {
+                                       String nickname, Gender gender, LocalDate birthdate) {
         return new User(email, encodedPassword, nickname, gender, birthdate, LoginProvider.EMAIL);
     }
 
     public static User createOAuthUser(String email, String nickname,
-                                       Gender gender, String birthdate, LoginProvider provider) {
+                                       Gender gender, LocalDate birthdate, LoginProvider provider) {
         return new User(email, null, nickname, gender, birthdate, provider);
     }
 
     public void updateLastLoginAt() {
         this.lastLoginAt = Instant.now();
+    }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
+
+    public void completeInterestRegistration() {
+        this.interestRegistered = true;
+    }
+
+    public void updateProfile(String nickname, String bio, String profileImageUrl) {
+        if (nickname != null && !nickname.isBlank()) {
+            this.nickname = nickname;
+        }
+        if (bio != null) {
+            this.bio = bio;
+        }
+        if (profileImageUrl != null) {
+            this.profileImageUrl = profileImageUrl;
+        }
     }
 }

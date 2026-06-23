@@ -4,29 +4,37 @@ server:
 spring:
   application:
     name: api-gateway
+  main:
+    web-application-type: reactive
   cloud:
     gateway:
-      routes:
-        - id: user-service
-          uri: ${USER_SERVICE_URL}
-          predicates:
-            - Path=/api/v1/auth/**,/api/v1/users/**
-        - id: feed-service
-          uri: ${FEED_SERVICE_URL}
-          predicates:
-            - Path=/api/v1/feeds/**,/api/v1/posts/**
-        - id: match-service
-          uri: ${MATCH_SERVICE_URL}
-          predicates:
-            - Path=/api/v1/matches/**
-        - id: chat-service
-          uri: ${CHAT_SERVICE_URL}
-          predicates:
-            - Path=/api/v1/chat/**
-        - id: notification-service
-          uri: ${NOTIFICATION_SERVICE_URL}
-          predicates:
-            - Path=/api/v1/notifications/**
+      server:
+        webflux:
+          routes:
+            - id: user-service
+              uri: ${USER_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/auth/**,/api/v1/users/**
+            - id: feed-service
+              uri: ${FEED_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/feeds/**,/api/v1/posts/**
+            - id: match-service
+              uri: ${MATCH_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/matches/**
+            - id: chat-service
+              uri: ${CHAT_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/chat/**
+            - id: chat-websocket
+              uri: ${CHAT_WEBSOCKET_URL}
+              predicates:
+                - Path=/ws-chat,/ws-chat/**
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/notifications/**
 
 jwt:
   secret: ${JWT_SECRET}

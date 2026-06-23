@@ -1,11 +1,13 @@
 package com.sparta.ditto.user.presentation.dto.request;
 
 import com.sparta.ditto.user.domain.user.enums.Gender;
+import com.sparta.ditto.user.presentation.dto.request.validation.ValidBirthdate;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
+import java.time.LocalDate;
 
 public record AuthSignupRequest(
 
@@ -21,7 +23,7 @@ public record AuthSignupRequest(
         @NotNull
         Gender gender,
 
-        @Pattern(regexp = "\\d{8}", message = "생년월일은 YYYYMMDD 형식이어야 합니다.")
-        String birthdate
+        @NotNull @Past @ValidBirthdate
+        LocalDate birthdate
 ) {
 }

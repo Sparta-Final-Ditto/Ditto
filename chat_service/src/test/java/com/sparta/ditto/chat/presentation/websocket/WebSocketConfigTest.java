@@ -1,5 +1,6 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -13,7 +14,10 @@ import org.springframework.web.socket.config.annotation.StompWebSocketEndpointRe
 @DisplayName("WebSocketConfig 테스트")
 class WebSocketConfigTest {
 
-    private final WebSocketConfig config = new WebSocketConfig(mock(StompChannelInterceptor.class));
+    private final WebSocketConfig config = new WebSocketConfig(
+            mock(StompChannelInterceptor.class),
+            mock(ChatHandshakeInterceptor.class),
+            mock(ChatHandshakeHandler.class));
 
     @Test
     @DisplayName("STOMP 엔드포인트(/ws-chat)를 등록한다")
@@ -23,6 +27,8 @@ class WebSocketConfigTest {
         StompWebSocketEndpointRegistration registration =
                 mock(StompWebSocketEndpointRegistration.class);
         given(registry.addEndpoint("/ws-chat")).willReturn(registration);
+        given(registration.setHandshakeHandler(any())).willReturn(registration);
+        given(registration.addInterceptors(any())).willReturn(registration);
 
         // when
         config.registerStompEndpoints(registry);
@@ -43,7 +49,7 @@ class WebSocketConfigTest {
 
         // then
         verify(registry).setApplicationDestinationPrefixes("/pub");
-        verify(registry).enableSimpleBroker("/sub", "/user/sub");
+        verify(registry).enableSimpleBroker("/sub");
         verify(registry).setUserDestinationPrefix("/user");
     }
 }

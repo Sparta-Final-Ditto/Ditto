@@ -14,6 +14,7 @@ import com.sparta.ditto.user.infrastructure.security.exception.InvalidTokenExcep
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import io.jsonwebtoken.Claims;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,8 @@ class TokenManagerTest {
     @BeforeEach
     void setUp() {
         userId = UUID.randomUUID();
-        user = User.createEmailUser("test@test.com", "encodedPassword", "testNick", Gender.MALE, "19900101");
+        user = User.createEmailUser(
+                "test@test.com", "encodedPassword", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
         ReflectionTestUtils.setField(user, "id", userId);
     }
 

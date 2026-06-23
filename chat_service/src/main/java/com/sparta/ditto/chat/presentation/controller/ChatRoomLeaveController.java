@@ -27,7 +27,6 @@ public class ChatRoomLeaveController {
             @PathVariable UUID roomId
     ) {
         ChatRoomLeaveResult result = chatRoomLeaveService.leaveRoom(requesterId, roomId);
-
         return ResponseEntity.ok(ApiResponse.success(ChatRoomLeaveResponse.from(result)));
     }
 }

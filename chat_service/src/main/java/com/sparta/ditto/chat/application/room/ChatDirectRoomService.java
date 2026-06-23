@@ -2,6 +2,10 @@ package com.sparta.ditto.chat.application.room;
 
 import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
@@ -9,15 +13,11 @@ import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.DirectChatPair;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.DirectChatPairRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -25,9 +25,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @RequiredArgsConstructor
 public class ChatDirectRoomService {
 
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
-    private final DirectChatPairRepository directChatPairRepository;
+    private final ChatRoomPort chatRoomPort;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
+    private final DirectChatPairPort directChatPairPort;
     private final TransactionTemplate transactionTemplate;
 
     public ChatDirectRoomResult createOrGetDirectRoom(ChatDirectRoomCreateCommand command) {
@@ -51,7 +51,7 @@ public class ChatDirectRoomService {
             return transactionTemplate.execute(
                     status -> createDirectRoom(requesterId, targetUserId)
             );
-        } catch (DataIntegrityViolationException ex) {
+        } catch (DirectChatPairUniqueConflictException ex) {
             // 실패한 생성 트랜잭션과 분리된 새 트랜잭션에서 기존 방을 재조회한다.
             ChatDirectRoomResult roomAfterConflict = transactionTemplate.execute(
                     status -> findRoomAfterUniqueConflict(requesterId, targetUserId)
@@ -64,8 +64,8 @@ public class ChatDirectRoomService {
     }
 
     private ChatDirectRoomResult resolveExistingRoom(DirectChatPair.OrderedUserIds orderedUserIds) {
-        return transactionTemplate.execute(status -> directChatPairRepository
-                .findByUser1IdAndUser2Id(orderedUserIds.user1Id(), orderedUserIds.user2Id())
+        return transactionTemplate.execute(status -> directChatPairPort
+                .findByOrderedUserIds(orderedUserIds.user1Id(), orderedUserIds.user2Id())
                 .map(this::returnExistingOrReactivateRoom)
                 .orElse(null));
     }
@@ -84,7 +84,7 @@ public class ChatDirectRoomService {
     }
 
     private ChatDirectRoomResult returnExistingOrReactivateRoom(DirectChatPair directChatPair) {
-        ChatRoom chatRoom = chatRoomRepository.findById(directChatPair.getRoomId())
+        ChatRoom chatRoom = chatRoomPort.findById(directChatPair.getRoomId())
                 .orElseThrow(ChatRoomNotFoundException::new);
 
         boolean reactivated = false;
@@ -100,18 +100,18 @@ public class ChatDirectRoomService {
     private void rejoinParticipants(UUID roomId) {
         // 재활성화 시 나갔던 참여자 상태를 복구하되, lastVisibleMessageId는 보존한다.
         List<ChatRoomParticipant> participants =
-                chatRoomParticipantRepository.findAllByRoomId(roomId);
+                chatRoomParticipantPort.findAllParticipants(roomId);
         participants.forEach(ChatRoomParticipant::rejoin);
     }
 
     private ChatDirectRoomResult createDirectRoom(UUID requesterId, UUID targetUserId) {
-        ChatRoom chatRoom = chatRoomRepository.saveAndFlush(ChatRoom.createDirect());
+        ChatRoom chatRoom = chatRoomPort.saveForUniqueCheck(ChatRoom.createDirect());
         // 1:1 채팅방은 별도 방장 없이 두 사용자를 모두 MEMBER로 생성한다.
-        chatRoomParticipantRepository.saveAll(List.of(
+        chatRoomParticipantPort.saveAll(List.of(
                 ChatRoomParticipant.join(chatRoom.getId(), requesterId, ParticipantRole.MEMBER),
                 ChatRoomParticipant.join(chatRoom.getId(), targetUserId, ParticipantRole.MEMBER)
         ));
-        directChatPairRepository.saveAndFlush(DirectChatPair.create(
+        directChatPairPort.saveForUniqueCheck(DirectChatPair.create(
                 chatRoom.getId(),
                 requesterId,
                 targetUserId
@@ -125,8 +125,8 @@ public class ChatDirectRoomService {
     ) {
         DirectChatPair.OrderedUserIds orderedUserIds =
                 DirectChatPair.orderUserIds(requesterId, targetUserId);
-        return directChatPairRepository
-                .findByUser1IdAndUser2Id(orderedUserIds.user1Id(), orderedUserIds.user2Id())
+        return directChatPairPort
+                .findByOrderedUserIds(orderedUserIds.user1Id(), orderedUserIds.user2Id())
                 .map(this::returnExistingOrReactivateRoom)
                 .orElse(null);
     }

@@ -12,15 +12,14 @@ import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.dto.command.ChatPresenceCommand;
 import com.sparta.ditto.chat.application.room.dto.command.ChatPresenceStatus;
 import com.sparta.ditto.chat.application.room.dto.result.ChatPresenceResult;
+import com.sparta.ditto.chat.application.room.port.ChatPresencePort;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
-import com.sparta.ditto.chat.infrastructure.redis.ChatPresenceRedisRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataAccessResourceFailureException;
 
 @DisplayName("ChatPresenceService 테스트")
 class ChatPresenceServiceTest {
@@ -31,16 +30,16 @@ class ChatPresenceServiceTest {
             UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     private ChatParticipantValidator chatParticipantValidator;
-    private ChatPresenceRedisRepository chatPresenceRedisRepository;
+    private ChatPresencePort chatPresencePort;
     private ChatPresenceService chatPresenceService;
 
     @BeforeEach
     void setUp() {
         chatParticipantValidator = mock(ChatParticipantValidator.class);
-        chatPresenceRedisRepository = mock(ChatPresenceRedisRepository.class);
+        chatPresencePort = mock(ChatPresencePort.class);
         chatPresenceService = new ChatPresenceService(
                 chatParticipantValidator,
-                chatPresenceRedisRepository
+                chatPresencePort
         );
     }
 
@@ -54,8 +53,8 @@ class ChatPresenceServiceTest {
         // then
         verify(chatParticipantValidator).ensureRoomActive(ROOM_ID);
         verify(chatParticipantValidator).ensureActiveParticipant(ROOM_ID, REQUESTER_ID);
-        verify(chatPresenceRedisRepository).refreshOnline(REQUESTER_ID);
-        verify(chatPresenceRedisRepository).enterRoom(REQUESTER_ID, ROOM_ID);
+        verify(chatPresencePort).refreshOnline(REQUESTER_ID);
+        verify(chatPresencePort).enterRoom(REQUESTER_ID, ROOM_ID);
         assertThat(result.roomId()).isEqualTo(ROOM_ID);
         assertThat(result.status()).isEqualTo(ChatPresenceStatus.ENTER);
     }
@@ -68,7 +67,7 @@ class ChatPresenceServiceTest {
                 chatPresenceService.updatePresence(command(ChatPresenceStatus.LEAVE));
 
         // then
-        verify(chatPresenceRedisRepository).leaveRoomIfCurrent(REQUESTER_ID, ROOM_ID);
+        verify(chatPresencePort).leaveRoomIfCurrent(REQUESTER_ID, ROOM_ID);
         verifyNoInteractions(chatParticipantValidator);
         assertThat(result.roomId()).isEqualTo(ROOM_ID);
         assertThat(result.status()).isEqualTo(ChatPresenceStatus.LEAVE);
@@ -81,16 +80,16 @@ class ChatPresenceServiceTest {
         chatPresenceService.refreshHeartbeat(REQUESTER_ID);
 
         // then
-        verify(chatPresenceRedisRepository).refreshOnline(REQUESTER_ID);
-        verify(chatPresenceRedisRepository).refreshActiveRoomTtlIfPresent(REQUESTER_ID);
+        verify(chatPresencePort).refreshOnline(REQUESTER_ID);
+        verify(chatPresencePort).refreshActiveRoomTtlIfPresent(REQUESTER_ID);
     }
 
     @Test
     @DisplayName("Redis 갱신에 실패하면 presence 요청을 서버 오류로 처리한다")
     void updatePresence_fail_redis_error() {
         // given
-        doThrow(new DataAccessResourceFailureException("redis unavailable"))
-                .when(chatPresenceRedisRepository)
+        doThrow(new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR))
+                .when(chatPresencePort)
                 .enterRoom(REQUESTER_ID, ROOM_ID);
 
         // when & then
@@ -101,7 +100,7 @@ class ChatPresenceServiceTest {
                         .isEqualTo(CommonErrorCode.INTERNAL_SERVER_ERROR));
         verify(chatParticipantValidator).ensureRoomActive(ROOM_ID);
         verify(chatParticipantValidator).ensureActiveParticipant(ROOM_ID, REQUESTER_ID);
-        verify(chatPresenceRedisRepository).refreshOnline(REQUESTER_ID);
+        verify(chatPresencePort).refreshOnline(REQUESTER_ID);
     }
 
     @Test
@@ -117,7 +116,7 @@ class ChatPresenceServiceTest {
                 command(ChatPresenceStatus.ENTER)
         )).isInstanceOfSatisfying(BusinessException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ChatErrorCode.CHAT_ROOM_INACTIVE));
-        verifyNoInteractions(chatPresenceRedisRepository);
+        verifyNoInteractions(chatPresencePort);
     }
 
     @Test
@@ -134,7 +133,7 @@ class ChatPresenceServiceTest {
         )).isInstanceOfSatisfying(BusinessException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(ChatErrorCode.CHAT_NOT_PARTICIPANT));
         verify(chatParticipantValidator).ensureRoomActive(ROOM_ID);
-        verifyNoMoreInteractions(chatPresenceRedisRepository);
+        verifyNoMoreInteractions(chatPresencePort);
     }
 
     @Test
@@ -145,7 +144,7 @@ class ChatPresenceServiceTest {
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(CommonErrorCode.INVALID_INPUT));
-        verifyNoInteractions(chatParticipantValidator, chatPresenceRedisRepository);
+        verifyNoInteractions(chatParticipantValidator, chatPresencePort);
     }
 
     private ChatPresenceCommand command(ChatPresenceStatus status) {
