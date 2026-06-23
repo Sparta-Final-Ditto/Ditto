@@ -9,6 +9,7 @@ import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.PasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,12 @@ public class UserService {
     private final UserRepository userRepository;
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
+
+    public UserProfileResponse getProfile(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+        return UserProfileResponse.from(user);
+    }
 
     @Transactional
     public UserUpdateResponse updateProfile(UUID userId, UserUpdateRequest request) {
