@@ -1,11 +1,10 @@
 package com.sparta.ditto.feed.infrastructure.client;
 
-import com.sparta.ditto.feed.domain.port.NeighborhoodPort;
+import com.sparta.ditto.feed.application.port.NeighborhoodPort;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
 
 @Component
 @RequiredArgsConstructor
@@ -22,12 +21,12 @@ public class NeighborhoodAdapter implements NeighborhoodPort {
     public String resolveNeighborhood(double latitude, double longitude) {
         String cacheKey = buildCacheKey(latitude, longitude);
 
-        String cached = redisTemplate.opsForValue().get(cacheKey);
-        if (cached != null) {
-            return cached;
-        }
-
         try {
+            String cached = redisTemplate.opsForValue().get(cacheKey);
+            if (cached != null) {
+                return cached;
+            }
+
             String neighborhood = kakaoLocalClient.reverseGeocode(latitude, longitude);
             if (neighborhood != null) {
                 redisTemplate.opsForValue().set(cacheKey, neighborhood, TTL);

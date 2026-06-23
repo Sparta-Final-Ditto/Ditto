@@ -1,11 +1,10 @@
-package com.sparta.ditto.feed.application.dto.request;
+package com.sparta.ditto.feed.presentation.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-
 import java.util.List;
 
 /** 게시글 생성 요청 DTO */

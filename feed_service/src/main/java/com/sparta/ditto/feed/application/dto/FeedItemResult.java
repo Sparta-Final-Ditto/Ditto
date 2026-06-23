@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.dto.response;
+package com.sparta.ditto.feed.application.dto;
 
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostTag;
@@ -6,17 +6,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * 피드 목록 조회 응답의 단건 게시글 DTO.
- * 랜덤·팔로우·매칭 피드 등 목록 API의 feeds 배열 원소로 사용된다.
- * showLocation=false이면 neighborhood를 null로 마스킹하고,
- * s3Key는 CloudFront URL로 변환하여 mediaUrl로 제공한다.
- */
-public record FeedItemResponse(
+public record FeedItemResult(
         UUID postId,
-        AuthorResponse author,
+        UUID authorUserId,
+        String authorNickname,
         String content,
-        List<MediaFileResponse> mediaFiles,
+        List<MediaResult> mediaFiles,
         List<String> tags,
         String neighborhood,
         int likeCount,
@@ -24,28 +19,25 @@ public record FeedItemResponse(
         int commentCount,
         Instant createdAt
 ) {
-    public record AuthorResponse(UUID userId, String nickname) {}
-    public record MediaFileResponse(String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
+    public record MediaResult(String s3Key, String mediaUrl, String mediaType, int sortOrder) {}
 
-    public static FeedItemResponse from(Post post, boolean isLiked, String cloudfrontDomain) {
-        String domain = cloudfrontDomain.endsWith("/")
+    public static FeedItemResult from(Post post, boolean isLiked, String cloudfrontDomain) {
+        String domain = cloudfrontDomain != null && cloudfrontDomain.endsWith("/")
                 ? cloudfrontDomain.substring(0, cloudfrontDomain.length() - 1)
                 : cloudfrontDomain;
         String neighborhood = post.getShowLocation() ? post.getNeighborhood() : null;
-
-        List<MediaFileResponse> mediaFiles = post.getMediaList().stream()
-                .map(m -> new MediaFileResponse(
+        List<MediaResult> mediaFiles = post.getMediaList().stream()
+                .map(m -> new MediaResult(
                         m.getS3Key(),
                         domain + "/" + m.getS3Key(),
                         m.getMediaType().name(),
                         m.getSortOrder()))
                 .toList();
-
         List<String> tags = post.getTags().stream().map(PostTag::getTag).toList();
-
-        return new FeedItemResponse(
+        return new FeedItemResult(
                 post.getId(),
-                new AuthorResponse(post.getUserId(), post.getAuthorNickname()),
+                post.getUserId(),
+                post.getAuthorNickname(),
                 post.getContent(),
                 mediaFiles,
                 tags,

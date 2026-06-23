@@ -116,8 +116,10 @@ public class Post extends BaseEntity {
         if (hasDuplicateSortOrder) {
             throw new DuplicateSortOrderException();
         }
-        long imageCount = this.mediaList.stream().filter(m -> m.getMediaType() == MediaType.IMAGE).count();
-        long videoCount = this.mediaList.stream().filter(m -> m.getMediaType() == MediaType.VIDEO).count();
+        long imageCount = this.mediaList.stream()
+                .filter(m -> m.getMediaType() == MediaType.IMAGE).count();
+        long videoCount = this.mediaList.stream()
+                .filter(m -> m.getMediaType() == MediaType.VIDEO).count();
         if (media.getMediaType() == MediaType.IMAGE && imageCount >= 5) {
             throw new ImageCountExceededException();
         }

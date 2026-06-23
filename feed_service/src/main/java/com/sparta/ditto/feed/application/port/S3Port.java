@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.domain.port;
+package com.sparta.ditto.feed.application.port;
 
 /**
  * S3 파일 업로드·존재 확인 포트 인터페이스.
@@ -7,6 +7,8 @@ package com.sparta.ditto.feed.domain.port;
  * 구현체(S3Adapter)는 AWS SDK v2를 사용한다.
  */
 public interface S3Port {
+
     String generatePresignedPutUrl(String s3Key, String contentType);
+
     boolean doesObjectExist(String s3Key);
 }

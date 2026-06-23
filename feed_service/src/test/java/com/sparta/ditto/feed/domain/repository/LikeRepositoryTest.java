@@ -1,12 +1,13 @@
 package com.sparta.ditto.feed.domain.repository;
 
 import com.sparta.ditto.feed.domain.entity.Like;
+import com.sparta.ditto.feed.infrastructure.persistence.LikeRepositoryImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.ActiveProfiles;
@@ -23,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Import(LikeRepositoryImpl.class)
 class LikeRepositoryTest {
 
     @Container
@@ -48,7 +50,7 @@ class LikeRepositoryTest {
 
         // when
         List<Like> result = likeRepository.findLikesWithCursor(
-                postId, null, null, PageRequest.of(0, 20));
+                postId, null, null, 20);
 
         // then
         assertThat(result).hasSize(1);
@@ -63,7 +65,7 @@ class LikeRepositoryTest {
 
         // when
         List<Like> result = likeRepository.findLikesWithCursor(
-                postId, null, null, PageRequest.of(0, 20));
+                postId, null, null, 20);
 
         // then
         assertThat(result).isEmpty();
@@ -79,7 +81,7 @@ class LikeRepositoryTest {
 
         // when
         List<Like> result = likeRepository.findLikesWithCursor(
-                postId, null, null, PageRequest.of(0, 20));
+                postId, null, null, 20);
 
         // then
         assertThat(result).hasSize(2);
@@ -96,7 +98,7 @@ class LikeRepositoryTest {
 
         // when
         List<Like> result = likeRepository.findLikesWithCursor(
-                postId, null, null, PageRequest.of(0, 20));
+                postId, null, null, 20);
 
         // then
         assertThat(result).hasSize(1);
@@ -116,7 +118,7 @@ class LikeRepositoryTest {
 
         // when - 내림차순 기준 cursor = second → first만 반환
         List<Like> result = likeRepository.findLikesWithCursor(
-                postId, second.getCreatedAt(), second.getId(), PageRequest.of(0, 20));
+                postId, second.getCreatedAt(), second.getId(), 20);
 
         // then
         assertThat(result).hasSize(1);
@@ -134,7 +136,7 @@ class LikeRepositoryTest {
 
         // when
         List<Like> result = likeRepository.findLikesWithCursor(
-                postId, null, null, PageRequest.of(0, size + 1));
+                postId, null, null, size + 1);
 
         // then - size+1개 조회됐으므로 서비스 계층에서 hasNext=true 판단 가능
         assertThat(result.size()).isGreaterThan(size);
