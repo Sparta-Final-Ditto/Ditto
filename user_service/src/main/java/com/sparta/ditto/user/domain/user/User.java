@@ -77,6 +77,9 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "interest_registered", nullable = false)
+    private boolean interestRegistered = false;
+
     private User(String email, String password, String nickname,
                  Gender gender, String birthdate, LoginProvider loginProvider) {
         this.email = Objects.requireNonNull(email, "email must not be null");
@@ -106,6 +109,10 @@ public class User extends BaseEntity {
 
     public void changePassword(String encodedPassword) {
         this.password = encodedPassword;
+    }
+
+    public void completeInterestRegistration() {
+        this.interestRegistered = true;
     }
 
     public void updateProfile(String nickname, String bio, String profileImageUrl) {

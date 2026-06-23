@@ -2,6 +2,7 @@ package com.sparta.ditto.user.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.user.application.UserService;
+import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
@@ -53,6 +54,14 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserPublicProfileResponse>> getPublicProfile(
             @PathVariable UUID userId) {
         return ResponseEntity.ok(ApiResponse.success(userService.getPublicProfile(userId)));
+    }
+
+    @PostMapping("/me/interests")
+    public ResponseEntity<ApiResponse<Void>> registerInterests(
+            @RequestHeader("X-User-Id") UUID userId,
+            @Valid @RequestBody UserInterestRequest request) {
+        userService.registerInterests(userId, request);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 
     @DeleteMapping("/me")

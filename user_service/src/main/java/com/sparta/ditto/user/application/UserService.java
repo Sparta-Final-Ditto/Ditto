@@ -4,8 +4,11 @@ import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
+import com.sparta.ditto.user.infrastructure.kafka.UserEventProducer;
+import com.sparta.ditto.user.infrastructure.kafka.UserInterestsRegisteredEvent;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
+import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
@@ -26,6 +29,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
+    private final UserEventProducer userEventProducer;
 
     public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
@@ -71,6 +75,17 @@ public class UserService {
 
         user.changePassword(passwordEncoder.encode(request.newPassword()));
         return tokenManager.issueTokens(user);
+    }
+
+    @Transactional
+    public void registerInterests(UUID userId, UserInterestRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        user.completeInterestRegistration();
+
+        userEventProducer.sendUserInterestsRegistered(
+                UserInterestsRegisteredEvent.of(userId, request.hashtags()));
     }
 
     @Transactional
