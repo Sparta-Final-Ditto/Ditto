@@ -5,6 +5,7 @@ import com.sparta.ditto.user.application.BlockService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,5 +25,13 @@ public class BlockController {
             @PathVariable UUID userId) {
         blockService.block(blockerId, userId);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @DeleteMapping("/{userId}/block")
+    public ResponseEntity<ApiResponse<Void>> unblock(
+            @RequestHeader("X-User-Id") UUID blockerId,
+            @PathVariable UUID userId) {
+        blockService.unblock(blockerId, userId);
+        return ResponseEntity.ok(ApiResponse.deleted());
     }
 }

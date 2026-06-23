@@ -3,6 +3,7 @@ package com.sparta.ditto.user.application;
 import com.sparta.ditto.user.domain.block.Block;
 import com.sparta.ditto.user.domain.block.exception.AlreadyBlockedException;
 import com.sparta.ditto.user.domain.block.exception.CannotSelfBlockException;
+import com.sparta.ditto.user.domain.block.exception.NotBlockedException;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
@@ -41,5 +42,17 @@ public class BlockService {
                 .ifPresent(followRepository::delete);
         followRepository.findByFollowerIdAndFollowingId(blockedId, blockerId)
                 .ifPresent(followRepository::delete);
+    }
+
+    @Transactional
+    public void unblock(UUID blockerId, UUID blockedId) {
+        if (blockerId.equals(blockedId)) {
+            throw new CannotSelfBlockException();
+        }
+
+        Block block = blockRepository.findByBlockerIdAndBlockedId(blockerId, blockedId)
+                .orElseThrow(NotBlockedException::new);
+
+        blockRepository.delete(block);
     }
 }
