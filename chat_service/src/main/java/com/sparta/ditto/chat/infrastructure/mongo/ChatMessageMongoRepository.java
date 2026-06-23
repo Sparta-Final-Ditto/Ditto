@@ -43,4 +43,35 @@ public interface ChatMessageMongoRepository extends MongoRepository<ChatMessageD
     @Query("{ '_id': ?0, 'room_id': ?1, 'deleted_at': null }")
     @Update("{ '$set': { 'deleted_at': ?2 } }")
     long markDeletedByMessageIdAndRoomId(String messageId, UUID roomId, Instant deletedAt);
+
+
+    // 나간 사용자 - before 없음: joinedAt 이후 ~ lastVisible 이하 최신 N개 (DESC)
+    @Query(value = "{ 'room_id': ?0, 'created_at': { '$gte': ?1 }, "
+            + "'$or': [ { 'created_at': { '$lt': ?2 } }, "
+            + "{ 'created_at': ?2, '_id': { '$lte': ?3 } } ] }",
+            sort = "{ 'created_at': -1, '_id': -1 }")
+    List<ChatMessageDocument> findLatestWithinRange(
+            UUID roomId, Instant joinedAt,
+            Instant upperCreatedAt, String upperMessageId, Limit limit);
+
+    // 나간 사용자 - before 커서: joinedAt 이후 ~ 커서 미만 (DESC)
+    @Query(value = "{ 'room_id': ?0, 'created_at': { '$gte': ?1 }, "
+            + "'$or': [ { 'created_at': { '$lt': ?2 } }, "
+            + "{ 'created_at': ?2, '_id': { '$lt': ?3 } } ] }",
+            sort = "{ 'created_at': -1, '_id': -1 }")
+    List<ChatMessageDocument> findBeforeCursorWithinRange(
+            UUID roomId, Instant joinedAt,
+            Instant cursorCreatedAt, String cursorMessageId, Limit limit);
+
+    // 나간 사용자 - after 커서: joinedAt 이후 ~ lastVisible 이하, 커서 초과 (ASC)
+    @Query(value = "{ 'room_id': ?0, 'created_at': { '$gte': ?1 }, '$and': [ "
+            + "{ '$or': [ { 'created_at': { '$gt': ?2 } }, "
+            + "{ 'created_at': ?2, '_id': { '$gt': ?3 } } ] }, "
+            + "{ '$or': [ { 'created_at': { '$lt': ?4 } }, "
+            + "{ 'created_at': ?4, '_id': { '$lte': ?5 } } ] } ] }",
+            sort = "{ 'created_at': 1, '_id': 1 }")
+    List<ChatMessageDocument> findAfterCursorWithinRange(
+            UUID roomId, Instant joinedAt,
+            Instant afterCreatedAt, String afterMessageId,
+            Instant upperCreatedAt, String upperMessageId, Limit limit);
 }
