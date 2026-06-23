@@ -16,6 +16,15 @@ public class UserEventProducer {
     @Value("${kafka.topic.user-registered}")
     private String userRegisteredTopic;
 
+    public void sendUserCreated(UserCreatedEvent event) {
+        kafkaTemplate.send(userRegisteredTopic, event.userId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        log.error("USER_CREATED 이벤트 발행 실패. userId={}", event.userId(), ex);
+                    }
+                });
+    }
+
     public void sendUserInterestsRegistered(UserInterestsRegisteredEvent event) {
         kafkaTemplate.send(userRegisteredTopic, event.userId().toString(), event)
                 .whenComplete((result, ex) -> {

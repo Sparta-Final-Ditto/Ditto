@@ -7,6 +7,8 @@ import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserBannedException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
+import com.sparta.ditto.user.infrastructure.kafka.UserCreatedEvent;
+import com.sparta.ditto.user.infrastructure.kafka.UserEventProducer;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.AuthLoginRequest;
@@ -27,6 +29,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
+    private final UserEventProducer userEventProducer;
 
     @Transactional
     public void signup(AuthSignupRequest request) {
@@ -45,6 +48,9 @@ public class AuthService {
                 request.birthdate()
         );
         userRepository.save(user);
+
+        userEventProducer.sendUserCreated(
+                UserCreatedEvent.of(user.getId(), user.getGender().name(), user.getBirthdate()));
     }
 
     @Transactional
