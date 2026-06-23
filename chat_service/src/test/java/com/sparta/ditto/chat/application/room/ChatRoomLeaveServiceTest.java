@@ -3,11 +3,13 @@ package com.sparta.ditto.chat.application.room;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.message.ChatMessageSendService;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.room.port.ChatRoomEventPublisher;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
@@ -22,9 +24,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @DisplayName("ChatRoomLeaveService 테스트")
 class ChatRoomLeaveServiceTest {
@@ -43,6 +48,7 @@ class ChatRoomLeaveServiceTest {
     private static final String SYSTEM_LEAVE_CONTENT = "사용자가 채팅방을 나갔습니다.";
 
     private ChatMessageSendService chatMessageSendService;
+    private ChatRoomEventPublisher chatRoomEventPublisher;
     private ChatRoomPort chatRoomPort;
     private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatRoomLeaveService chatRoomLeaveService;
@@ -50,19 +56,34 @@ class ChatRoomLeaveServiceTest {
     @BeforeEach
     void setUp() {
         chatMessageSendService = mock(ChatMessageSendService.class);
+        chatRoomEventPublisher = mock(ChatRoomEventPublisher.class);
         chatRoomPort = mock(ChatRoomPort.class);
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatRoomLeaveService = new ChatRoomLeaveService(
                 chatMessageSendService,
+                chatRoomEventPublisher,
                 chatRoomPort,
                 chatRoomParticipantPort
         );
+        // 단위 테스트에서 트랜잭션 동기화 컨텍스트를 활성화해 afterCommit 콜백을 직접 실행한다.
+        TransactionSynchronizationManager.initSynchronization();
+
         given(chatMessageSendService.saveSystemMessage(
                 ROOM_ID,
                 REQUESTER_ID,
                 MessageType.SYSTEM_LEAVE,
                 SYSTEM_LEAVE_CONTENT
         )).willReturn(systemLeaveMessage());
+    }
+
+    @AfterEach
+    void tearDown() {
+        TransactionSynchronizationManager.clearSynchronization();
+    }
+
+    private void triggerAfterCommit() {
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
     }
 
     @Test
@@ -81,6 +102,7 @@ class ChatRoomLeaveServiceTest {
 
         // when
         chatRoomLeaveService.leaveRoom(REQUESTER_ID, ROOM_ID);
+        triggerAfterCommit();
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
@@ -92,6 +114,7 @@ class ChatRoomLeaveServiceTest {
                 SYSTEM_LEAVE_CONTENT
         );
         verify(chatRoom).inactivate(REQUESTER_ID);
+        then(chatRoomEventPublisher).should().notifyLeft(REQUESTER_ID, ROOM_ID);
     }
 
     @Test
@@ -111,6 +134,7 @@ class ChatRoomLeaveServiceTest {
 
         // when
         chatRoomLeaveService.leaveRoom(REQUESTER_ID, ROOM_ID);
+        triggerAfterCommit();
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
@@ -122,6 +146,7 @@ class ChatRoomLeaveServiceTest {
                 SYSTEM_LEAVE_CONTENT
         );
         assertThat(owner.getRole()).isEqualTo(ParticipantRole.OWNER);
+        then(chatRoomEventPublisher).should().notifyLeft(REQUESTER_ID, ROOM_ID);
     }
 
     @Test
@@ -150,6 +175,7 @@ class ChatRoomLeaveServiceTest {
 
         // when
         chatRoomLeaveService.leaveRoom(REQUESTER_ID, ROOM_ID);
+        triggerAfterCommit();
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
@@ -161,6 +187,7 @@ class ChatRoomLeaveServiceTest {
                 SYSTEM_LEAVE_CONTENT
         );
         verify(firstMember).assignOwnerRole();
+        then(chatRoomEventPublisher).should().notifyLeft(REQUESTER_ID, ROOM_ID);
     }
 
     @Test
@@ -179,6 +206,7 @@ class ChatRoomLeaveServiceTest {
 
         // when
         chatRoomLeaveService.leaveRoom(REQUESTER_ID, ROOM_ID);
+        triggerAfterCommit();
 
         // then
         assertThat(requester.getLeftAt()).isNotNull();
@@ -190,6 +218,7 @@ class ChatRoomLeaveServiceTest {
                 SYSTEM_LEAVE_CONTENT
         );
         verify(chatRoom).inactivate(REQUESTER_ID);
+        then(chatRoomEventPublisher).should().notifyLeft(REQUESTER_ID, ROOM_ID);
     }
 
     @Test
