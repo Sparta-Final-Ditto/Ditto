@@ -2,12 +2,12 @@ package com.sparta.ditto.chat.application.room;
 
 import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidGroupParticipantsException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.ArrayList;
@@ -23,8 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatGroupRoomService {
 
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private final ChatRoomPort chatRoomPort;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
 
     @Transactional
     public ChatGroupRoomResult createGroupRoom(ChatGroupRoomCreateCommand command) {
@@ -37,7 +37,7 @@ public class ChatGroupRoomService {
                 command.participantUserIds()
         );
 
-        ChatRoom chatRoom = chatRoomRepository.save(
+        ChatRoom chatRoom = chatRoomPort.save(
                 ChatRoom.createGroup(command.roomName())
         );
 
@@ -53,7 +53,7 @@ public class ChatGroupRoomService {
                 userId,
                 ParticipantRole.MEMBER
         )));
-        chatRoomParticipantRepository.saveAll(participants);
+        chatRoomParticipantPort.saveAll(participants);
 
         return ChatGroupRoomResult.of(
                 chatRoom.getId(),

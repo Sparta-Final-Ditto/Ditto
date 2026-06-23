@@ -1,11 +1,11 @@
 package com.sparta.ditto.chat.application.participant;
 
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -16,20 +16,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatParticipantValidatorImpl implements ChatParticipantValidator {
 
-    private final ChatRoomRepository chatRoomRepository;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private final ChatRoomPort chatRoomPort;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
 
     @Override
     @Transactional(readOnly = true)
     public void ensureActiveParticipant(UUID roomId, UUID userId) {
-        chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(roomId, userId)
+        chatRoomParticipantPort.findActiveParticipant(roomId, userId)
                 .orElseThrow(() -> participantException(roomId));
     }
 
     @Override
     @Transactional(readOnly = true)
     public void ensureRoomActive(UUID roomId) {
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+        ChatRoom chatRoom = chatRoomPort.findById(roomId)
                 .orElseThrow(() -> new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND));
 
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
@@ -40,12 +40,12 @@ public class ChatParticipantValidatorImpl implements ChatParticipantValidator {
     @Override
     @Transactional(readOnly = true)
     public ChatRoomParticipant getParticipant(UUID roomId, UUID userId) {
-        return chatRoomParticipantRepository.findByRoomIdAndUserId(roomId, userId)
+        return chatRoomParticipantPort.findByRoomIdAndUserId(roomId, userId)
                 .orElseThrow(() -> participantException(roomId));
     }
 
     private BusinessException participantException(UUID roomId) {
-        if (!chatRoomRepository.existsById(roomId)) {
+        if (!chatRoomPort.existsById(roomId)) {
             return new BusinessException(ChatErrorCode.CHAT_ROOM_NOT_FOUND);
         }
         return new BusinessException(ChatErrorCode.CHAT_NOT_PARTICIPANT);

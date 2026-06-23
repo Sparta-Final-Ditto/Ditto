@@ -2,12 +2,15 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
+import com.sparta.ditto.feed.application.dto.FeedResult;
+import com.sparta.ditto.feed.application.dto.GetRandomFeedQuery;
+import com.sparta.ditto.feed.application.dto.UploadUrlCommand;
+import com.sparta.ditto.feed.application.dto.UploadUrlResult;
+import com.sparta.ditto.feed.application.dto.UploadUrlResult.FileResult;
 import com.sparta.ditto.feed.application.service.FeedService;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest.FileRequest;
-import com.sparta.ditto.feed.presentation.dto.response.UploadUrlResponse;
-import com.sparta.ditto.feed.presentation.dto.response.UploadUrlResponse.FileResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,13 +21,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
-
-import com.sparta.ditto.feed.application.dto.response.RandomFeedResponse;
-
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -57,9 +57,9 @@ class FeedControllerTest {
                 List.of(new FileRequest("photo.jpg", "image/jpeg", 5_242_880L))
         );
 
-        when(uploadUrlService.generateUploadUrls(any()))
-                .thenReturn(new UploadUrlResponse(
-                        List.of(new FileResponse("https://s3.example.com/presigned", "feeds/test.jpg"))
+        when(uploadUrlService.generateUploadUrls(any(UploadUrlCommand.class)))
+                .thenReturn(new UploadUrlResult(
+                        List.of(new FileResult("https://s3.example.com/presigned", "feeds/test.jpg"))
                 ));
 
         mockMvc.perform(post("/feeds/upload-url")
@@ -75,13 +75,15 @@ class FeedControllerTest {
     @Test
     @DisplayName("003-9: size 파라미터 누락 → 기본값 20으로 FeedService 호출")
     void tc003_9_size누락_기본값20() throws Exception {
-        when(feedService.getRandomFeed(any(), any(), eq(20)))
-                .thenReturn(new RandomFeedResponse(List.of(), null, false));
+        when(feedService.getRandomFeed(any(GetRandomFeedQuery.class)))
+                .thenReturn(new FeedResult(List.of(), null, false));
 
         mockMvc.perform(get("/feeds/random")
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isOk());
 
-        verify(feedService).getRandomFeed(any(), eq(null), eq(20));
+        verify(feedService).getRandomFeed(
+                argThat(q -> q.cursorPostId() == null && q.size() == 20)
+        );
     }
 }

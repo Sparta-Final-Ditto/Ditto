@@ -19,10 +19,12 @@ import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.annotations.UuidGenerator;
 
 @Getter
 @Entity
+@SQLRestriction("deleted_at IS NULL")
 @Table(
         name = "users",
         indexes = {
@@ -75,13 +77,30 @@ public class User extends BaseEntity {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    private User(String email, String password, String nickname, LoginProvider loginProvider) {
+    private User(String email, String password, String nickname,
+                 Gender gender, String birthdate, LoginProvider loginProvider) {
         this.email = Objects.requireNonNull(email, "email must not be null");
         this.password = password;
         this.nickname = Objects.requireNonNull(nickname, "nickname must not be null");
-        this.loginProvider = Objects.requireNonNull(loginProvider,
-                "loginProvider must not be null");
+        this.gender = Objects.requireNonNull(gender, "gender must not be null");
+        this.birthdate = birthdate;
+        this.loginProvider = Objects.requireNonNull(
+                loginProvider, "loginProvider must not be null");
         this.role = UserRole.USER;
         this.status = UserStatus.ACTIVE;
+    }
+
+    public static User createEmailUser(String email, String encodedPassword,
+                                       String nickname, Gender gender, String birthdate) {
+        return new User(email, encodedPassword, nickname, gender, birthdate, LoginProvider.EMAIL);
+    }
+
+    public static User createOAuthUser(String email, String nickname,
+                                       Gender gender, String birthdate, LoginProvider provider) {
+        return new User(email, null, nickname, gender, birthdate, provider);
+    }
+
+    public void updateLastLoginAt() {
+        this.lastLoginAt = Instant.now();
     }
 }

@@ -7,10 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.time.Instant;
@@ -29,13 +29,13 @@ class ChatRoomMetadataServiceTest {
     private static final Instant MESSAGE_CREATED_AT =
             Instant.parse("2026-06-20T01:00:00Z");
 
-    private ChatRoomRepository chatRoomRepository;
+    private ChatRoomPort chatRoomPort;
     private ChatRoomMetadataService chatRoomMetadataService;
 
     @BeforeEach
     void setUp() {
-        chatRoomRepository = mock(ChatRoomRepository.class);
-        chatRoomMetadataService = new ChatRoomMetadataService(chatRoomRepository);
+        chatRoomPort = mock(ChatRoomPort.class);
+        chatRoomMetadataService = new ChatRoomMetadataService(chatRoomPort);
     }
 
     @Test
@@ -43,7 +43,7 @@ class ChatRoomMetadataServiceTest {
     void updateLastMessage_success() {
         // given
         ChatRoom chatRoom = mock(ChatRoom.class);
-        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
         given(chatRoom.getStatus()).willReturn(RoomStatus.ACTIVE);
 
         // when
@@ -61,7 +61,7 @@ class ChatRoomMetadataServiceTest {
     @DisplayName("채팅방이 없으면 마지막 메시지를 갱신할 수 없다")
     void updateLastMessage_fail_room_not_found() {
         // given
-        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.empty());
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> chatRoomMetadataService.updateLastMessage(
@@ -79,7 +79,7 @@ class ChatRoomMetadataServiceTest {
     void updateLastMessage_fail_room_inactive() {
         // given
         ChatRoom chatRoom = mock(ChatRoom.class);
-        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
         given(chatRoom.getStatus()).willReturn(RoomStatus.INACTIVE);
 
         // when & then

@@ -1,7 +1,8 @@
 package com.sparta.ditto.feed.application;
 
-import com.sparta.ditto.feed.application.dto.response.FeedItemResponse;
-import com.sparta.ditto.feed.application.dto.response.RandomFeedResponse;
+import com.sparta.ditto.feed.application.dto.FeedItemResult;
+import com.sparta.ditto.feed.application.dto.FeedResult;
+import com.sparta.ditto.feed.application.dto.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.service.FeedService;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
@@ -17,7 +18,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
@@ -28,6 +28,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -69,15 +70,15 @@ class FeedServiceTest {
         // given
         List<Post> posts = List.of(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
         when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(null), eq(null), any(PageRequest.class)))
+                eq(List.of(LocationScope.PUBLIC)), eq(null), eq(null), anyInt()))
                 .thenReturn(posts);
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds()).hasSize(1);
-        assertThat(response.hasNext()).isFalse();
+        assertThat(result.feeds()).hasSize(1);
+        assertThat(result.hasNext()).isFalse();
     }
 
     @Test
@@ -91,15 +92,15 @@ class FeedServiceTest {
 
         when(postRepository.findById(cursorPostId)).thenReturn(Optional.of(cursorPost));
         when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), any()))
+                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt()))
                 .thenReturn(List.of());
 
         // when
-        feedService.getRandomFeed(userId, cursorPostId, 20);
+        feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursorPostId, 20));
 
         // then
         verify(postRepository).findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), any());
+                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt());
     }
 
     @Test
@@ -107,15 +108,15 @@ class FeedServiceTest {
     void tc003_3_PUBLIC만_조회() {
         // given
         when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), any(), any(), any()))
+                eq(List.of(LocationScope.PUBLIC)), any(), any(), anyInt()))
                 .thenReturn(List.of());
 
         // when
-        feedService.getRandomFeed(userId, null, 20);
+        feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
         verify(postRepository).findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), any(), any(), any());
+                eq(List.of(LocationScope.PUBLIC)), any(), any(), anyInt());
     }
 
     @Test
@@ -123,14 +124,14 @@ class FeedServiceTest {
     void tc003_7_showLocation_false_neighborhood_null() {
         // given
         Post post = createPost(UUID.randomUUID(), false, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds().get(0).neighborhood()).isNull();
+        assertThat(result.feeds().get(0).neighborhood()).isNull();
     }
 
     @Test
@@ -138,14 +139,14 @@ class FeedServiceTest {
     void tc003_8_showLocation_true_neighborhood_반환() {
         // given
         Post post = createPost(UUID.randomUUID(), true, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds().get(0).neighborhood()).isEqualTo("서울 성동구");
+        assertThat(result.feeds().get(0).neighborhood()).isEqualTo("서울 성동구");
     }
 
     @Test
@@ -157,16 +158,16 @@ class FeedServiceTest {
         for (int i = 0; i < size + 1; i++) {
             posts.add(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
         }
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, size);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, size));
 
         // then
-        assertThat(response.hasNext()).isTrue();
-        assertThat(response.feeds()).hasSize(size);
-        assertThat(response.nextCursor()).isEqualTo(posts.get(size - 1).getId());
+        assertThat(result.hasNext()).isTrue();
+        assertThat(result.feeds()).hasSize(size);
+        assertThat(result.nextCursor()).isEqualTo(posts.get(size - 1).getId());
     }
 
     @Test
@@ -174,15 +175,15 @@ class FeedServiceTest {
     void tc003_11_hasNext_false() {
         // given
         List<Post> posts = List.of(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.hasNext()).isFalse();
-        assertThat(response.nextCursor()).isNull();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
     }
 
     @Test
@@ -192,14 +193,14 @@ class FeedServiceTest {
         Post post = createPost(UUID.randomUUID(), true, LocationScope.PUBLIC);
         PostMedia media = new PostMedia(post, "feeds/test.mp4", MediaType.VIDEO, 1);
         ReflectionTestUtils.setField(post, "mediaList", List.of(media));
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        FeedItemResponse.MediaFileResponse mediaFile = response.feeds().get(0).mediaFiles().get(0);
+        FeedItemResult.MediaResult mediaFile = result.feeds().get(0).mediaFiles().get(0);
         assertThat(mediaFile.s3Key()).isEqualTo("feeds/test.mp4");
         assertThat(mediaFile.mediaUrl()).isEqualTo(CLOUDFRONT_DOMAIN + "/feeds/test.mp4");
         assertThat(mediaFile.mediaType()).isEqualTo("VIDEO");
@@ -209,7 +210,7 @@ class FeedServiceTest {
     @DisplayName("003-13: 응답 DTO에 latitude, longitude 필드 없음")
     void tc003_13_latitude_longitude_없음() {
         // when
-        var componentNames = java.util.Arrays.stream(FeedItemResponse.class.getRecordComponents())
+        var componentNames = java.util.Arrays.stream(FeedItemResult.class.getRecordComponents())
                 .map(rc -> rc.getName())
                 .toList();
 
@@ -223,15 +224,15 @@ class FeedServiceTest {
         // given
         UUID postId = UUID.randomUUID();
         Post post = createPost(postId, true, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), any()))
+        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
         when(likeRepository.findPostIdsByUserIdAndPostIdIn(eq(userId), anyList()))
                 .thenReturn(List.of(postId));
 
         // when
-        RandomFeedResponse response = feedService.getRandomFeed(userId, null, 20);
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        assertThat(response.feeds().get(0).isLiked()).isTrue();
+        assertThat(result.feeds().get(0).isLiked()).isTrue();
     }
 }
