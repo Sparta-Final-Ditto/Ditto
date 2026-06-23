@@ -1,12 +1,10 @@
 package com.sparta.ditto.user.infrastructure.repository;
 
 import com.sparta.ditto.user.domain.follow.Follow;
-
+import com.sparta.ditto.user.domain.user.User;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-
-import com.sparta.ditto.user.domain.user.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -22,5 +20,4 @@ public interface FollowRepository extends JpaRepository<Follow, UUID> {
 
     @Query("SELECT f.following FROM Follow f WHERE f.follower.id = :userId")
     List<User> findFollowingsByUserId(@Param("userId") UUID userId);
-
 }

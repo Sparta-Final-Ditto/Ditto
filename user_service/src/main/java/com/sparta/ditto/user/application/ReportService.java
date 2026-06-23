@@ -7,7 +7,7 @@ import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.ReportRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
-import com.sparta.ditto.user.presentation.dto.request.ReportRequest;
+import com.sparta.ditto.user.presentation.dto.request.UserReportRequest;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ public class ReportService {
     private final UserRepository userRepository;
 
     @Transactional
-    public void report(UUID reporterId, UUID reportedId, ReportRequest request) {
+    public void report(UUID reporterId, UUID reportedId, UserReportRequest request) {
         if (reporterId.equals(reportedId)) {
             throw new CannotSelfReportException();
         }

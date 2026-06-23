@@ -4,7 +4,7 @@ import com.sparta.ditto.user.domain.report.enums.ReportType;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public record ReportRequest(
+public record UserReportRequest(
 
         @NotNull
         ReportType reportType,

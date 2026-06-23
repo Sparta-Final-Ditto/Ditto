@@ -2,11 +2,9 @@ package com.sparta.ditto.user.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.user.application.FollowService;
-
+import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import java.util.List;
 import java.util.UUID;
-
-import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;

@@ -3,7 +3,7 @@ package com.sparta.ditto.user.presentation.dto.request;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-public record PasswordChangeRequest(
+public record UserPasswordChangeRequest(
 
         @NotBlank
         String currentPassword,

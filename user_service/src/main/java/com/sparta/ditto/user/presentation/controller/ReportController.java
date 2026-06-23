@@ -2,7 +2,7 @@ package com.sparta.ditto.user.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.user.application.ReportService;
-import com.sparta.ditto.user.presentation.dto.request.ReportRequest;
+import com.sparta.ditto.user.presentation.dto.request.UserReportRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ public class ReportController {
     public ResponseEntity<ApiResponse<Void>> report(
             @RequestHeader("X-User-Id") UUID reporterId,
             @PathVariable UUID userId,
-            @Valid @RequestBody ReportRequest request) {
+            @Valid @RequestBody UserReportRequest request) {
         reportService.report(reporterId, userId, request);
         return ResponseEntity.ok(ApiResponse.success());
     }

@@ -6,7 +6,7 @@ import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsExceptio
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
-import com.sparta.ditto.user.presentation.dto.request.PasswordChangeRequest;
+import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
@@ -56,11 +56,12 @@ public class UserService {
 
         AuthTokenResponse tokens = nicknameChanged ? tokenManager.issueTokens(user) : null;
 
-        return new UserUpdateResponse(user.getNickname(), user.getBio(), user.getProfileImageUrl(), tokens);
+        return new UserUpdateResponse(
+                user.getNickname(), user.getBio(), user.getProfileImageUrl(), tokens);
     }
 
     @Transactional
-    public AuthTokenResponse changePassword(UUID userId, PasswordChangeRequest request) {
+    public AuthTokenResponse changePassword(UUID userId, UserPasswordChangeRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
 

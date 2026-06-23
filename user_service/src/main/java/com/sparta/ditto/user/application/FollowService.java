@@ -8,11 +8,9 @@ import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.FollowRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
-
+import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import java.util.List;
 import java.util.UUID;
-
-import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,8 +32,10 @@ public class FollowService {
             throw new AlreadyFollowingException();
         }
 
-        User follower = userRepository.findById(followerId).orElseThrow(UserNotFoundException::new);
-        User following = userRepository.findById(followingId).orElseThrow(UserNotFoundException::new);
+        User follower = userRepository.findById(followerId)
+                .orElseThrow(UserNotFoundException::new);
+        User following = userRepository.findById(followingId)
+                .orElseThrow(UserNotFoundException::new);
 
         followRepository.save(Follow.of(follower, following));
     }
@@ -63,5 +63,4 @@ public class FollowService {
                 .map(UserPublicProfileResponse::from)
                 .toList();
     }
-
 }

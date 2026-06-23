@@ -9,11 +9,9 @@ import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.FollowRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
-
+import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import java.util.List;
 import java.util.UUID;
-
-import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,7 +39,6 @@ public class BlockService {
 
         blockRepository.save(Block.of(blocker, blocked));
 
-        // 양방향 팔로우 관계 정리
         followRepository.findByFollowerIdAndFollowingId(blockerId, blockedId)
                 .ifPresent(followRepository::delete);
         followRepository.findByFollowerIdAndFollowingId(blockedId, blockerId)
