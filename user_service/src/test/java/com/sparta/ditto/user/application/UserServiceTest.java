@@ -115,4 +115,27 @@ class UserServiceTest {
             then(tokenManager).shouldHaveNoInteractions();
         }
     }
+
+    @Nested
+    class DeleteAccount {
+
+        @Test
+        void 성공() {
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+
+            userService.deleteAccount(userId);
+
+            assertThat(user.isDeleted()).isTrue();
+            then(tokenManager).should().deleteToken(userId);
+        }
+
+        @Test
+        void 유저_없음_예외() {
+            given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.deleteAccount(userId))
+                    .isInstanceOf(UserNotFoundException.class);
+            then(tokenManager).shouldHaveNoInteractions();
+        }
+    }
 }
