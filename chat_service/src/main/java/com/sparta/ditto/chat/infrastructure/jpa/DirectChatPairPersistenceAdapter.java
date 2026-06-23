@@ -1,10 +1,12 @@
 package com.sparta.ditto.chat.infrastructure.jpa;
 
 import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
 import com.sparta.ditto.chat.domain.room.DirectChatPair;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -24,7 +26,11 @@ public class DirectChatPairPersistenceAdapter implements DirectChatPairPort {
     }
 
     @Override
-    public DirectChatPair saveAndFlush(DirectChatPair directChatPair) {
-        return directChatPairRepository.saveAndFlush(directChatPair);
+    public DirectChatPair saveForUniqueCheck(DirectChatPair directChatPair) {
+        try {
+            return directChatPairRepository.saveAndFlush(directChatPair);
+        } catch (DataIntegrityViolationException ex) {
+            throw new DirectChatPairUniqueConflictException(ex);
+        }
     }
 }

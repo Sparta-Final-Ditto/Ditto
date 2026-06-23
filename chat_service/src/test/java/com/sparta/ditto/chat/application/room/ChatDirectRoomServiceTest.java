@@ -12,6 +12,7 @@ import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -24,7 +25,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -122,7 +122,7 @@ class ChatDirectRoomServiceTest {
         ChatRoom savedRoom = mockChatRoom(RoomStatus.ACTIVE);
         given(directChatPairPort.findByOrderedUserIds(REQUESTER_ID, TARGET_USER_ID))
                 .willReturn(Optional.empty());
-        given(chatRoomPort.saveAndFlush(any(ChatRoom.class))).willReturn(savedRoom);
+        given(chatRoomPort.saveForUniqueCheck(any(ChatRoom.class))).willReturn(savedRoom);
 
         // when
         ChatDirectRoomResult result = chatDirectRoomService.createOrGetDirectRoom(command());
@@ -133,7 +133,7 @@ class ChatDirectRoomServiceTest {
         assertThat(result.created()).isTrue();
         assertThat(result.reactivated()).isFalse();
         verify(chatRoomParticipantPort).saveAll(any());
-        verify(directChatPairPort).saveAndFlush(any(DirectChatPair.class));
+        verify(directChatPairPort).saveForUniqueCheck(any(DirectChatPair.class));
     }
 
     @Test
@@ -161,9 +161,11 @@ class ChatDirectRoomServiceTest {
         ChatRoom existingRoom = mockChatRoom(RoomStatus.ACTIVE);
         given(directChatPairPort.findByOrderedUserIds(REQUESTER_ID, TARGET_USER_ID))
                 .willReturn(Optional.empty(), Optional.of(directChatPair));
-        given(chatRoomPort.saveAndFlush(any(ChatRoom.class))).willReturn(savedRoom);
-        given(directChatPairPort.saveAndFlush(any(DirectChatPair.class)))
-                .willThrow(new DataIntegrityViolationException("duplicate direct room"));
+        given(chatRoomPort.saveForUniqueCheck(any(ChatRoom.class))).willReturn(savedRoom);
+        given(directChatPairPort.saveForUniqueCheck(any(DirectChatPair.class)))
+                .willThrow(new DirectChatPairUniqueConflictException(
+                        new RuntimeException("duplicate direct room")
+                ));
         given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(existingRoom));
 
         // when

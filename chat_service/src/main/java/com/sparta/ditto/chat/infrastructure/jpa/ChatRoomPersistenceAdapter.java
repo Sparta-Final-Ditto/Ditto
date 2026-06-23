@@ -31,7 +31,7 @@ public class ChatRoomPersistenceAdapter implements ChatRoomPort {
     }
 
     @Override
-    public ChatRoom saveAndFlush(ChatRoom chatRoom) {
+    public ChatRoom saveForUniqueCheck(ChatRoom chatRoom) {
         return chatRoomRepository.saveAndFlush(chatRoom);
     }
 

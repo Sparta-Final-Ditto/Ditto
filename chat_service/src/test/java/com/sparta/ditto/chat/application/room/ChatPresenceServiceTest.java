@@ -20,7 +20,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DataAccessResourceFailureException;
 
 @DisplayName("ChatPresenceService 테스트")
 class ChatPresenceServiceTest {
@@ -89,7 +88,7 @@ class ChatPresenceServiceTest {
     @DisplayName("Redis 갱신에 실패하면 presence 요청을 서버 오류로 처리한다")
     void updatePresence_fail_redis_error() {
         // given
-        doThrow(new DataAccessResourceFailureException("redis unavailable"))
+        doThrow(new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR))
                 .when(chatPresencePort)
                 .enterRoom(REQUESTER_ID, ROOM_ID);
 

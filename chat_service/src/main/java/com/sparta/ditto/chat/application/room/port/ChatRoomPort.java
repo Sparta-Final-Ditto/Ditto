@@ -14,7 +14,7 @@ public interface ChatRoomPort {
 
     ChatRoom save(ChatRoom chatRoom);
 
-    ChatRoom saveAndFlush(ChatRoom chatRoom);
+    ChatRoom saveForUniqueCheck(ChatRoom chatRoom);
 
     List<ChatRoom> findAllByIdsOrderByLastMessageAtDesc(Collection<UUID> roomIds);
 }

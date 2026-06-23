@@ -5,6 +5,7 @@ import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
@@ -17,7 +18,6 @@ import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -51,7 +51,7 @@ public class ChatDirectRoomService {
             return transactionTemplate.execute(
                     status -> createDirectRoom(requesterId, targetUserId)
             );
-        } catch (DataIntegrityViolationException ex) {
+        } catch (DirectChatPairUniqueConflictException ex) {
             // 실패한 생성 트랜잭션과 분리된 새 트랜잭션에서 기존 방을 재조회한다.
             ChatDirectRoomResult roomAfterConflict = transactionTemplate.execute(
                     status -> findRoomAfterUniqueConflict(requesterId, targetUserId)
@@ -105,13 +105,13 @@ public class ChatDirectRoomService {
     }
 
     private ChatDirectRoomResult createDirectRoom(UUID requesterId, UUID targetUserId) {
-        ChatRoom chatRoom = chatRoomPort.saveAndFlush(ChatRoom.createDirect());
+        ChatRoom chatRoom = chatRoomPort.saveForUniqueCheck(ChatRoom.createDirect());
         // 1:1 채팅방은 별도 방장 없이 두 사용자를 모두 MEMBER로 생성한다.
         chatRoomParticipantPort.saveAll(List.of(
                 ChatRoomParticipant.join(chatRoom.getId(), requesterId, ParticipantRole.MEMBER),
                 ChatRoomParticipant.join(chatRoom.getId(), targetUserId, ParticipantRole.MEMBER)
         ));
-        directChatPairPort.saveAndFlush(DirectChatPair.create(
+        directChatPairPort.saveForUniqueCheck(DirectChatPair.create(
                 chatRoom.getId(),
                 requesterId,
                 targetUserId

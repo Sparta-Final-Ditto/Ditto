@@ -10,5 +10,5 @@ public interface DirectChatPairPort {
 
     Optional<DirectChatPair> findByOrderedUserIds(UUID user1Id, UUID user2Id);
 
-    DirectChatPair saveAndFlush(DirectChatPair directChatPair);
+    DirectChatPair saveForUniqueCheck(DirectChatPair directChatPair);
 }
