@@ -40,8 +40,9 @@ public class MatchingHistory extends BaseEntity {
     @Column(nullable = false)
     private Boolean locationFilterOn;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    private String status;
+    private MatchStatus status;
 
     public static MatchingHistory of(
             UUID userId,
@@ -58,16 +59,16 @@ public class MatchingHistory extends BaseEntity {
         history.finalScore = finalScore;
         history.genderFilter = genderFilter;
         history.locationFilterOn = locationFilterOn;
-        history.status = "PENDING";
+        history.status = MatchStatus.PENDING;
         history.matchedAt = Instant.now();
         return history;
     }
 
     public void accept() {
-        this.status = "ACCEPTED";
+        this.status = MatchStatus.ACCEPTED;
     }
 
     public void reject() {
-        this.status = "REJECTED";
+        this.status = MatchStatus.REJECTED;
     }
 }

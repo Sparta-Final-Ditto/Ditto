@@ -9,7 +9,7 @@ import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.message.port.DedupBeginResult;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
-import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
+import com.sparta.ditto.chat.domain.exception.ChatDuplicateProcessingException;
 import com.sparta.ditto.chat.domain.message.MessageIdGenerator;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.common.exception.BusinessException;
@@ -48,7 +48,7 @@ public class ChatMessageSendService {
             case NEW -> saveAndPublish(command);
             case DUPLICATE_COMPLETED -> ackDuplicate(command, dedup.messageId());
             case DUPLICATE_PROCESSING ->
-                    throw new BusinessException(ChatErrorCode.CHAT_DUPLICATE_PROCESSING);
+                    throw new ChatDuplicateProcessingException();
         };
     }
 
