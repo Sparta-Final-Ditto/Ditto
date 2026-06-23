@@ -2,6 +2,7 @@ package com.sparta.ditto.user.presentation.dto.response;
 
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.enums.Gender;
+import java.time.LocalDate;
 import java.util.UUID;
 
 public record UserProfileResponse(
@@ -9,7 +10,7 @@ public record UserProfileResponse(
         String email,
         String nickname,
         Gender gender,
-        String birthdate,
+        LocalDate birthdate,
         String profileImageUrl,
         String bio
 ) {

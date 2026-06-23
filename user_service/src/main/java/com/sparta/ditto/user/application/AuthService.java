@@ -50,7 +50,8 @@ public class AuthService {
         userRepository.save(user);
 
         userEventProducer.sendUserCreated(
-                UserCreatedEvent.of(user.getId(), user.getGender().name(), user.getBirthdate()));
+                UserCreatedEvent.of(
+                        user.getId(), user.getGender().name(), user.getBirthdate().toString()));
     }
 
     @Transactional
