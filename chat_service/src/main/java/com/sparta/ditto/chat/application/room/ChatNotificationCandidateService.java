@@ -1,8 +1,8 @@
 package com.sparta.ditto.chat.application.room;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
@@ -16,7 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatNotificationCandidateService {
 
     private final ChatParticipantValidator chatParticipantValidator;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
 
     @Transactional(readOnly = true)
     public List<UUID> findNotificationCandidateUserIds(UUID roomId, UUID senderId) {
@@ -29,7 +29,7 @@ public class ChatNotificationCandidateService {
 
         // PostgreSQL 메타데이터 기준 1차 후보만 만든다.
         // Redis active_room 필터링과 Kafka 발행은 메시지 전송 흐름에서 처리한다.
-        return chatRoomParticipantRepository.findAllByRoomIdAndLeftAtIsNull(roomId).stream()
+        return chatRoomParticipantPort.findActiveParticipants(roomId).stream()
                 .filter(participant -> !participant.getUserId().equals(senderId))
                 .filter(ChatRoomParticipant::isNotificationEnabled)
                 .map(ChatRoomParticipant::getUserId)

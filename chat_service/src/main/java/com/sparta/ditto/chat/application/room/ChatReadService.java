@@ -3,12 +3,11 @@ package com.sparta.ditto.chat.application.room;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.dto.command.ChatReadCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatReadResult;
+import com.sparta.ditto.chat.application.room.port.ChatReadMessagePort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.exception.ChatMessageNotFoundException;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.time.Instant;
@@ -22,8 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatReadService {
 
     private final ChatParticipantValidator chatParticipantValidator;
-    private final ChatRoomParticipantRepository chatRoomParticipantRepository;
-    private final ChatMessageMongoRepository chatMessageMongoRepository;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
+    private final ChatReadMessagePort chatReadMessagePort;
 
     @Transactional
     public ChatReadResult updateReadState(ChatReadCommand command) {
@@ -33,8 +32,8 @@ public class ChatReadService {
 
         chatParticipantValidator.ensureRoomActive(command.roomId());
 
-        ChatRoomParticipant participant = chatRoomParticipantRepository
-                .findByRoomIdAndUserIdAndLeftAtIsNull(
+        ChatRoomParticipant participant = chatRoomParticipantPort
+                .findActiveParticipant(
                         command.roomId(),
                         command.requesterId()
                 )
@@ -56,7 +55,7 @@ public class ChatReadService {
             ChatRoomParticipant participant,
             ChatReadCommand command
     ) {
-        ChatMessageDocument requestedMessage = findMessage(
+        ChatReadMessagePort.ReadMessage requestedMessage = findMessage(
                 command.roomId(),
                 command.lastReadMessageId()
         );
@@ -65,24 +64,27 @@ public class ChatReadService {
             return true;
         }
 
-        ChatMessageDocument currentMessage = findMessage(command.roomId(), currentMessageId);
+        ChatReadMessagePort.ReadMessage currentMessage = findMessage(
+                command.roomId(),
+                currentMessageId
+        );
         return isAfter(currentMessage, requestedMessage);
     }
 
-    private ChatMessageDocument findMessage(UUID roomId, String messageId) {
-        return chatMessageMongoRepository.findByMessageIdAndRoomId(messageId, roomId)
+    private ChatReadMessagePort.ReadMessage findMessage(UUID roomId, String messageId) {
+        return chatReadMessagePort.findReadMessage(roomId, messageId)
                 .orElseThrow(ChatMessageNotFoundException::new);
     }
 
     private boolean isAfter(
-            ChatMessageDocument currentMessage,
-            ChatMessageDocument requestedMessage
+            ChatReadMessagePort.ReadMessage currentMessage,
+            ChatReadMessagePort.ReadMessage requestedMessage
     ) {
-        int createdAtCompare = requestedMessage.getCreatedAt()
-                .compareTo(currentMessage.getCreatedAt());
+        int createdAtCompare = requestedMessage.createdAt()
+                .compareTo(currentMessage.createdAt());
         if (createdAtCompare != 0) {
             return createdAtCompare > 0;
         }
-        return requestedMessage.getMessageId().compareTo(currentMessage.getMessageId()) > 0;
+        return requestedMessage.messageId().compareTo(currentMessage.messageId()) > 0;
     }
 }

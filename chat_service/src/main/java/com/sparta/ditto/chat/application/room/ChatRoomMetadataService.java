@@ -1,10 +1,10 @@
 package com.sparta.ditto.chat.application.room;
 
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.time.Instant;
@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatRoomMetadataService {
 
-    private final ChatRoomRepository chatRoomRepository;
+    private final ChatRoomPort chatRoomPort;
 
     @Transactional
     public void updateLastMessage(
@@ -32,7 +32,7 @@ public class ChatRoomMetadataService {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
 
-        ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+        ChatRoom chatRoom = chatRoomPort.findById(roomId)
                 .orElseThrow(ChatRoomNotFoundException::new);
 
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
