@@ -3,6 +3,8 @@ package com.sparta.ditto.match.application;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.match.application.dto.MatchRequestDto;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
+import com.sparta.ditto.match.application.dto.MatchStatusRequestDto;
+import com.sparta.ditto.match.application.dto.RecommendationResponseDto;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
 import com.sparta.ditto.match.application.service.MatchService;
 import com.sparta.ditto.match.domain.entity.MatchStatus;
@@ -19,7 +21,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -127,5 +131,95 @@ class MatchServiceTest {
         assertThat(result.similarityScore()).isEqualTo(0.8f);
         assertThat(result.finalScore()).isEqualTo(0.75f);
         assertThat(result.status()).isEqualTo(MatchStatus.PENDING);
+    }
+
+    @Test
+    @DisplayName("매칭 이력이 없으면 updateMatchStatus에서 예외가 발생한다")
+    void updateMatchStatus_notFound_throwsException() {
+        UUID userId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        MatchStatusRequestDto request = new MatchStatusRequestDto(MatchStatus.ACCEPTED);
+
+        given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> matchService.updateMatchStatus(userId, matchId, request))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> {
+                    BusinessException be = (BusinessException) e;
+                    assert be.getErrorCode() == MatchErrorCode.MATCH_NOT_FOUND;
+                });
+    }
+
+    @Test
+    @DisplayName("ACCEPTED 상태로 updateMatchStatus 호출 시 accept()가 실행되고 저장된다")
+    void updateMatchStatus_accepted_changesStatusToAccepted() {
+        UUID userId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        MatchingHistory history = MatchingHistory.of(userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+        MatchStatusRequestDto request = new MatchStatusRequestDto(MatchStatus.ACCEPTED);
+
+        given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
+        given(matchingHistoryRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        matchService.updateMatchStatus(userId, matchId, request);
+
+        assertThat(history.getStatus()).isEqualTo(MatchStatus.ACCEPTED);
+        verify(matchingHistoryRepository).save(history);
+    }
+
+    @Test
+    @DisplayName("REJECTED 상태로 updateMatchStatus 호출 시 reject()가 실행되고 저장된다")
+    void updateMatchStatus_rejected_changesStatusToRejected() {
+        UUID userId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        MatchingHistory history = MatchingHistory.of(userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+        MatchStatusRequestDto request = new MatchStatusRequestDto(MatchStatus.REJECTED);
+
+        given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
+        given(matchingHistoryRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+
+        matchService.updateMatchStatus(userId, matchId, request);
+
+        assertThat(history.getStatus()).isEqualTo(MatchStatus.REJECTED);
+        verify(matchingHistoryRepository).save(history);
+    }
+
+    @Test
+    @DisplayName("추천 후보가 있으면 getRecommendations는 목록을 반환한다")
+    void getRecommendations_withCandidates_returnsList() {
+        UUID userId = UUID.randomUUID();
+        String candidateId = UUID.randomUUID().toString();
+        Set<String> candidates = Set.of(candidateId);
+
+        given(matchCacheService.getTopCandidates(userId, 5)).willReturn(candidates);
+
+        List<RecommendationResponseDto> result = matchService.getRecommendations(userId, 5);
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).userId()).isEqualTo(UUID.fromString(candidateId));
+    }
+
+    @Test
+    @DisplayName("추천 후보가 없으면 getRecommendations는 빈 목록을 반환한다")
+    void getRecommendations_emptyCandidates_returnsEmptyList() {
+        UUID userId = UUID.randomUUID();
+
+        given(matchCacheService.getTopCandidates(userId, 5)).willReturn(Set.of());
+
+        List<RecommendationResponseDto> result = matchService.getRecommendations(userId, 5);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    @DisplayName("추천 후보가 null이면 getRecommendations는 빈 목록을 반환한다")
+    void getRecommendations_nullCandidates_returnsEmptyList() {
+        UUID userId = UUID.randomUUID();
+
+        given(matchCacheService.getTopCandidates(userId, 5)).willReturn(null);
+
+        List<RecommendationResponseDto> result = matchService.getRecommendations(userId, 5);
+
+        assertThat(result).isEmpty();
     }
 }
