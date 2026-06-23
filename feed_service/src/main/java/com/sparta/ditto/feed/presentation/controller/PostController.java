@@ -9,9 +9,11 @@ import com.sparta.ditto.feed.application.dto.GetCommentsQuery;
 import com.sparta.ditto.feed.application.dto.GetLikesQuery;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import com.sparta.ditto.feed.application.dto.LikeResult;
+import com.sparta.ditto.feed.application.dto.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.PostResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.response.CommentListResponse;
@@ -19,6 +21,7 @@ import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
+import com.sparta.ditto.feed.presentation.dto.response.PostDetailResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -46,6 +49,17 @@ public class PostController {
 
     private final PostCreateFacade postCreateFacade;
     private final PostInteractionService postInteractionService;
+    private final PostService postService;
+
+    @GetMapping("/{postId}")
+    public ResponseEntity<ApiResponse<PostDetailResponse>> getPostDetail(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId
+    ) {
+        PostDetailResult result = postService.getPostDetail(postId, userId);
+        return ResponseEntity.ok(ApiResponse.success(PostDetailResponse.from(result)));
+    }
 
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
