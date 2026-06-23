@@ -22,6 +22,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     private static final List<String> WHITELIST = List.of(
             "/api/v1/auth/login",
             "/api/v1/auth/signup",
+            "/api/v1/auth/reissue",
             "/actuator"
     );
 
@@ -48,14 +49,12 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         Claims claims = jwtUtil.parseClaims(token);
-        String role = claims.get(JwtUtil.CLAIM_ROLE, String.class);
 
         ServerWebExchange modifiedExchange = exchange.mutate()
                 .request(r -> {
                     r.header("X-User-Id", claims.getSubject());
-                    if (role != null) {
-                        r.header("X-User-Role", role);
-                    }
+                    r.header("X-User-Role", claims.get(JwtUtil.CLAIM_ROLE, String.class));
+                    r.header("X-User-Nickname", claims.get(JwtUtil.CLAIM_NICKNAME, String.class));
                 })
                 .build();
 
