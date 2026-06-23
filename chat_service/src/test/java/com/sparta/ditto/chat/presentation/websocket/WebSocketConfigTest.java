@@ -49,7 +49,7 @@ class WebSocketConfigTest {
 
         // then
         verify(registry).setApplicationDestinationPrefixes("/pub");
-        verify(registry).enableSimpleBroker("/sub", "/user/sub");
+        verify(registry).enableSimpleBroker("/sub");
         verify(registry).setUserDestinationPrefix("/user");
     }
 }
