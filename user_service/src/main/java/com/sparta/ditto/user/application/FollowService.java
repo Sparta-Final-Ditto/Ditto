@@ -3,6 +3,7 @@ package com.sparta.ditto.user.application;
 import com.sparta.ditto.user.domain.follow.Follow;
 import com.sparta.ditto.user.domain.follow.exception.AlreadyFollowingException;
 import com.sparta.ditto.user.domain.follow.exception.CannotSelfFollowException;
+import com.sparta.ditto.user.domain.follow.exception.NotFollowingException;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.FollowRepository;
@@ -34,4 +35,17 @@ public class FollowService {
 
         followRepository.save(Follow.of(follower, following));
     }
+
+    @Transactional
+    public void unfollow(UUID followerId, UUID followingId) {
+        if (followerId.equals(followingId)) {
+            throw new CannotSelfFollowException();
+        }
+
+        Follow follow = followRepository.findByFollowerIdAndFollowingId(followerId, followingId)
+                .orElseThrow(NotFollowingException::new);
+
+        followRepository.delete(follow);
+    }
+
 }

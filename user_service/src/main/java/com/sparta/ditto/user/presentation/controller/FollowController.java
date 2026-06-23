@@ -5,6 +5,7 @@ import com.sparta.ditto.user.application.FollowService;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -24,5 +25,13 @@ public class FollowController {
             @PathVariable UUID userId) {
         followService.follow(followerId, userId);
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @DeleteMapping("/{userId}/follow")
+    public ResponseEntity<ApiResponse<Void>> unfollow(
+            @RequestHeader("X-User-Id") UUID followerId,
+            @PathVariable UUID userId) {
+        followService.unfollow(followerId, userId);
+        return ResponseEntity.ok(ApiResponse.deleted());
     }
 }
