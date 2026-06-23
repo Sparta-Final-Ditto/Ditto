@@ -2,16 +2,16 @@ package com.sparta.ditto.chat.application.message;
 
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
 import com.sparta.ditto.chat.application.message.port.ChatMessageDedupStore;
 import com.sparta.ditto.chat.application.message.port.ChatMessagePublisher;
+import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.message.port.DedupBeginResult;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.message.MessageIdGenerator;
 import com.sparta.ditto.chat.domain.message.MessageType;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageDocument;
-import com.sparta.ditto.chat.infrastructure.mongo.ChatMessageMongoRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
@@ -24,7 +24,8 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ChatMessageSendService {
 
-    private final ChatMessageMongoRepository chatMessageMongoRepository;
+    private final ChatMessageCommandPort chatMessageCommandPort;
+    private final ChatMessageQueryPort chatMessageQueryPort;
     private final ChatParticipantValidator chatParticipantValidator;
     private final MessageIdGenerator messageIdGenerator;
     private final ChatRoomMetadataService chatRoomMetadataService;
@@ -55,31 +56,27 @@ public class ChatMessageSendService {
     public SentMessage saveSystemMessage(
             UUID roomId, UUID actorId, MessageType messageType, String content) {
         String messageId = messageIdGenerator.generate();
-        ChatMessageDocument saved = chatMessageMongoRepository.save(
-                ChatMessageDocument.createSystemMessage(
-                        messageId, roomId, actorId, messageType, content));
+        SentMessage saved = chatMessageCommandPort.saveSystemMessage(
+                messageId, roomId, actorId, messageType, content);
 
         chatRoomMetadataService.updateLastMessage(
-                roomId, saved.getMessageId(), saved.getCreatedAt());
+                roomId, saved.messageId(), saved.createdAt());
 
-        SentMessage sentMessage = SentMessage.from(saved);
-        chatMessagePublisher.broadcast(roomId, sentMessage);
-        return sentMessage;
+        chatMessagePublisher.broadcast(roomId, saved);
+        return saved;
     }
 
     private SentMessage saveAndPublish(ChatMessageSendCommand command) {
-        ChatMessageDocument saved;
+        SentMessage saved;
         try {
             String messageId = messageIdGenerator.generate();
-            saved = chatMessageMongoRepository.save(
-                    ChatMessageDocument.createUserMessage(
-                            messageId,
-                            command.roomId(),
-                            command.senderId(),
-                            command.clientMessageId(),
-                            command.messageType(),
-                            command.content()
-                    )
+            saved = chatMessageCommandPort.saveUserMessage(
+                    messageId,
+                    command.roomId(),
+                    command.senderId(),
+                    command.clientMessageId(),
+                    command.messageType(),
+                    command.content()
             );
         } catch (RuntimeException ex) {
             // 저장 실패 → PROCESSING 잠금 해제해 즉시 재시도 가능하게 한다.
@@ -92,19 +89,18 @@ public class ChatMessageSendService {
         // 이후 단계가 실패해도 재시도는 기존 messageId ACK로 멱등 처리된다.
         chatMessageDedupStore.complete(
                 command.roomId(), command.senderId(),
-                command.clientMessageId(), saved.getMessageId());
+                command.clientMessageId(), saved.messageId());
 
         chatRoomMetadataService.updateLastMessage(
-                command.roomId(), saved.getMessageId(), saved.getCreatedAt());
+                command.roomId(), saved.messageId(), saved.createdAt());
 
-        SentMessage sentMessage = SentMessage.from(saved);
-        chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
-        chatMessagePublisher.broadcast(command.roomId(), sentMessage);
-        return sentMessage;
+        chatMessagePublisher.ackToSender(command.senderId(), saved);
+        chatMessagePublisher.broadcast(command.roomId(), saved);
+        return saved;
     }
 
     private SentMessage ackDuplicate(ChatMessageSendCommand command, String messageId) {
-        ChatMessageDocument original = chatMessageMongoRepository.findByMessageId(messageId)
+        SentMessage original = chatMessageQueryPort.findByMessageId(messageId)
                 .orElse(null);
         if (original == null) {
             log.error("Dedup completed but original message missing. "
@@ -116,9 +112,8 @@ public class ChatMessageSendService {
             throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
         }
 
-        SentMessage sentMessage = SentMessage.from(original);
-        chatMessagePublisher.ackToSender(command.senderId(), sentMessage);
-        return sentMessage;
+        chatMessagePublisher.ackToSender(command.senderId(), original);
+        return original;
     }
 
     private void validateUserContent(ChatMessageSendCommand command) {

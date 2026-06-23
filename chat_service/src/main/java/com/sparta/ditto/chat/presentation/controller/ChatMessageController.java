@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.presentation.controller;
 
 import com.sparta.ditto.chat.application.message.ChatMessageService;
+import com.sparta.ditto.chat.application.message.dto.result.ChatMessageCursorResult;
 import com.sparta.ditto.chat.presentation.dto.response.ChatMessageCursorResponse;
 import com.sparta.ditto.common.response.ApiResponse;
 import java.util.UUID;
@@ -30,10 +31,10 @@ public class ChatMessageController {
             // TODO: 인증 공통 모듈 확정 후 JWT 기반 사용자 ID 추출로 교체한다.
             @RequestHeader("X-User-Id") UUID requesterId
     ) {
-        ChatMessageCursorResponse result = (after != null && !after.isBlank())
+        ChatMessageCursorResult result = (after != null && !after.isBlank())
                 ? chatMessageService.getMissedMessages(roomId, after, size, requesterId)
                 : chatMessageService.getPreviousMessages(roomId, before, size, requesterId);
-        return ApiResponse.success(result);
+        return ApiResponse.success(ChatMessageCursorResponse.from(result));
     }
 
     // 메시지 삭제
