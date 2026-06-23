@@ -7,9 +7,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
@@ -33,16 +33,16 @@ class ChatNotificationCandidateServiceTest {
             UUID.fromString("00000000-0000-0000-0000-000000000004");
 
     private ChatParticipantValidator chatParticipantValidator;
-    private ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatNotificationCandidateService chatNotificationCandidateService;
 
     @BeforeEach
     void setUp() {
         chatParticipantValidator = mock(ChatParticipantValidator.class);
-        chatRoomParticipantRepository = mock(ChatRoomParticipantRepository.class);
+        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatNotificationCandidateService = new ChatNotificationCandidateService(
                 chatParticipantValidator,
-                chatRoomParticipantRepository
+                chatRoomParticipantPort
         );
     }
 
@@ -55,7 +55,7 @@ class ChatNotificationCandidateServiceTest {
         ChatRoomParticipant mutedUser = participant(MUTED_USER_ID);
         mutedUser.changeNotificationEnabled(false);
 
-        given(chatRoomParticipantRepository.findAllByRoomIdAndLeftAtIsNull(ROOM_ID))
+        given(chatRoomParticipantPort.findActiveParticipants(ROOM_ID))
                 .willReturn(List.of(sender, receiver, mutedUser));
 
         // when
@@ -76,7 +76,7 @@ class ChatNotificationCandidateServiceTest {
         ChatRoomParticipant leftUser = participant(LEFT_USER_ID);
         leftUser.leave("message-id");
 
-        given(chatRoomParticipantRepository.findAllByRoomIdAndLeftAtIsNull(ROOM_ID))
+        given(chatRoomParticipantPort.findActiveParticipants(ROOM_ID))
                 .willReturn(List.of(receiver));
 
         // when

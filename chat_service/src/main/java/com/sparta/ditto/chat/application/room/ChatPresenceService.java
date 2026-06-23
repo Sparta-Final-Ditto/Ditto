@@ -3,7 +3,7 @@ package com.sparta.ditto.chat.application.room;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.application.room.dto.command.ChatPresenceCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatPresenceResult;
-import com.sparta.ditto.chat.infrastructure.redis.ChatPresenceRedisRepository;
+import com.sparta.ditto.chat.application.room.port.ChatPresencePort;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 public class ChatPresenceService {
 
     private final ChatParticipantValidator chatParticipantValidator;
-    private final ChatPresenceRedisRepository chatPresenceRedisRepository;
+    private final ChatPresencePort chatPresencePort;
 
     public ChatPresenceResult updatePresence(ChatPresenceCommand command) {
         if (command == null) {
@@ -37,8 +37,8 @@ public class ChatPresenceService {
         }
 
         runRedisUpdate("heartbeat", userId, null, () -> {
-            chatPresenceRedisRepository.refreshOnline(userId);
-            chatPresenceRedisRepository.refreshActiveRoomTtlIfPresent(userId);
+            chatPresencePort.refreshOnline(userId);
+            chatPresencePort.refreshActiveRoomTtlIfPresent(userId);
         });
     }
 
@@ -46,8 +46,8 @@ public class ChatPresenceService {
         chatParticipantValidator.ensureRoomActive(command.roomId());
         chatParticipantValidator.ensureActiveParticipant(command.roomId(), command.requesterId());
         runRedisUpdate("enter", command.requesterId(), command.roomId(), () -> {
-            chatPresenceRedisRepository.refreshOnline(command.requesterId());
-            chatPresenceRedisRepository.enterRoom(command.requesterId(), command.roomId());
+            chatPresencePort.refreshOnline(command.requesterId());
+            chatPresencePort.enterRoom(command.requesterId(), command.roomId());
         });
         return ChatPresenceResult.of(command.roomId(), command.status());
     }
@@ -57,7 +57,7 @@ public class ChatPresenceService {
                 "leave",
                 command.requesterId(),
                 command.roomId(),
-                () -> chatPresenceRedisRepository.leaveRoomIfCurrent(
+                () -> chatPresencePort.leaveRoomIfCurrent(
                         command.requesterId(),
                         command.roomId()
                 )

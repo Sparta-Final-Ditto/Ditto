@@ -6,12 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomParticipantRepository;
-import com.sparta.ditto.chat.infrastructure.jpa.ChatRoomRepository;
 import com.sparta.ditto.common.exception.BusinessException;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,17 +27,17 @@ class ChatParticipantValidatorImplTest {
     private static final UUID USER_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000001");
 
-    private ChatRoomRepository chatRoomRepository;
-    private ChatRoomParticipantRepository chatRoomParticipantRepository;
+    private ChatRoomPort chatRoomPort;
+    private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatParticipantValidator validator;
 
     @BeforeEach
     void setUp() {
-        chatRoomRepository = mock(ChatRoomRepository.class);
-        chatRoomParticipantRepository = mock(ChatRoomParticipantRepository.class);
+        chatRoomPort = mock(ChatRoomPort.class);
+        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         validator = new ChatParticipantValidatorImpl(
-                chatRoomRepository,
-                chatRoomParticipantRepository
+                chatRoomPort,
+                chatRoomParticipantPort
         );
     }
 
@@ -46,7 +46,7 @@ class ChatParticipantValidatorImplTest {
     void ensureActiveParticipant_success() {
         // given
         ChatRoomParticipant participant = mock(ChatRoomParticipant.class);
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+        given(chatRoomParticipantPort.findActiveParticipant(
                 ROOM_ID,
                 USER_ID
         )).willReturn(Optional.of(participant));
@@ -60,11 +60,11 @@ class ChatParticipantValidatorImplTest {
     @DisplayName("현재 참여자가 아니면 실패한다")
     void ensureActiveParticipant_fail_not_participant() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+        given(chatRoomParticipantPort.findActiveParticipant(
                 ROOM_ID,
                 USER_ID
         )).willReturn(Optional.empty());
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
+        given(chatRoomPort.existsById(ROOM_ID)).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> validator.ensureActiveParticipant(ROOM_ID, USER_ID))
@@ -77,11 +77,11 @@ class ChatParticipantValidatorImplTest {
     @DisplayName("채팅방이 없으면 현재 참여자 검증에 실패한다")
     void ensureActiveParticipant_fail_room_not_found() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+        given(chatRoomParticipantPort.findActiveParticipant(
                 ROOM_ID,
                 USER_ID
         )).willReturn(Optional.empty());
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(false);
+        given(chatRoomPort.existsById(ROOM_ID)).willReturn(false);
 
         // when & then
         assertThatThrownBy(() -> validator.ensureActiveParticipant(ROOM_ID, USER_ID))
@@ -94,11 +94,11 @@ class ChatParticipantValidatorImplTest {
     @DisplayName("나간 참여자는 현재 참여자로 볼 수 없다")
     void ensureActiveParticipant_fail_left_participant() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserIdAndLeftAtIsNull(
+        given(chatRoomParticipantPort.findActiveParticipant(
                 ROOM_ID,
                 USER_ID
         )).willReturn(Optional.empty());
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
+        given(chatRoomPort.existsById(ROOM_ID)).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> validator.ensureActiveParticipant(ROOM_ID, USER_ID))
@@ -112,7 +112,7 @@ class ChatParticipantValidatorImplTest {
     void ensureRoomActive_success() {
         // given
         ChatRoom chatRoom = mockChatRoom(RoomStatus.ACTIVE);
-        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
 
         // when & then
         assertThatCode(() -> validator.ensureRoomActive(ROOM_ID))
@@ -123,7 +123,7 @@ class ChatParticipantValidatorImplTest {
     @DisplayName("채팅방이 없으면 실패한다")
     void ensureRoomActive_fail_room_not_found() {
         // given
-        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.empty());
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> validator.ensureRoomActive(ROOM_ID))
@@ -137,7 +137,7 @@ class ChatParticipantValidatorImplTest {
     void ensureRoomActive_fail_room_inactive() {
         // given
         ChatRoom chatRoom = mockChatRoom(RoomStatus.INACTIVE);
-        given(chatRoomRepository.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
 
         // when & then
         assertThatThrownBy(() -> validator.ensureRoomActive(ROOM_ID))
@@ -151,7 +151,7 @@ class ChatParticipantValidatorImplTest {
     void getParticipant_success() {
         // given
         ChatRoomParticipant participant = mock(ChatRoomParticipant.class);
-        given(chatRoomParticipantRepository.findByRoomIdAndUserId(ROOM_ID, USER_ID))
+        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, USER_ID))
                 .willReturn(Optional.of(participant));
 
         // when
@@ -165,9 +165,9 @@ class ChatParticipantValidatorImplTest {
     @DisplayName("참여자 메타데이터가 없으면 실패한다")
     void getParticipant_fail_not_participant() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserId(ROOM_ID, USER_ID))
+        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, USER_ID))
                 .willReturn(Optional.empty());
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(true);
+        given(chatRoomPort.existsById(ROOM_ID)).willReturn(true);
 
         // when & then
         assertThatThrownBy(() -> validator.getParticipant(ROOM_ID, USER_ID))
@@ -180,9 +180,9 @@ class ChatParticipantValidatorImplTest {
     @DisplayName("채팅방이 없으면 참여자 메타데이터 조회에 실패한다")
     void getParticipant_fail_room_not_found() {
         // given
-        given(chatRoomParticipantRepository.findByRoomIdAndUserId(ROOM_ID, USER_ID))
+        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, USER_ID))
                 .willReturn(Optional.empty());
-        given(chatRoomRepository.existsById(ROOM_ID)).willReturn(false);
+        given(chatRoomPort.existsById(ROOM_ID)).willReturn(false);
 
         // when & then
         assertThatThrownBy(() -> validator.getParticipant(ROOM_ID, USER_ID))
