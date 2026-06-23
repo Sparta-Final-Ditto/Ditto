@@ -57,4 +57,11 @@ public class FollowService {
                 .map(UserPublicProfileResponse::from)
                 .toList();
     }
+
+    public List<UserPublicProfileResponse> getFollowings(UUID userId) {
+        return followRepository.findFollowingsByUserId(userId).stream()
+                .map(UserPublicProfileResponse::from)
+                .toList();
+    }
+
 }

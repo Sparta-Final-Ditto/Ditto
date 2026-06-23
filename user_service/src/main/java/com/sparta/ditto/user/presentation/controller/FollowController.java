@@ -45,4 +45,10 @@ public class FollowController {
             @PathVariable UUID userId) {
         return ResponseEntity.ok(ApiResponse.success(followService.getFollowers(userId)));
     }
+
+    @GetMapping("/{userId}/followings")
+    public ResponseEntity<ApiResponse<List<UserPublicProfileResponse>>> getFollowings(
+            @PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(followService.getFollowings(userId)));
+    }
 }
