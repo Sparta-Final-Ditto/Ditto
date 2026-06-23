@@ -5,6 +5,7 @@ import com.sparta.ditto.user.application.UserService;
 import com.sparta.ditto.user.presentation.dto.request.PasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
 import jakarta.validation.Valid;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,6 +47,12 @@ public class UserController {
             @RequestHeader("X-User-Id") UUID userId,
             @Valid @RequestBody PasswordChangeRequest request) {
         return ResponseEntity.ok(ApiResponse.updated(userService.changePassword(userId, request)));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponse<UserPublicProfileResponse>> getPublicProfile(
+            @PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(userService.getPublicProfile(userId)));
     }
 
     @DeleteMapping("/me")

@@ -9,6 +9,7 @@ import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.PasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
 import java.util.UUID;
@@ -30,6 +31,12 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(UserNotFoundException::new);
         return UserProfileResponse.from(user);
+    }
+
+    public UserPublicProfileResponse getPublicProfile(UUID targetUserId) {
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(UserNotFoundException::new);
+        return UserPublicProfileResponse.from(user);
     }
 
     @Transactional
