@@ -1,5 +1,5 @@
 """
-check_batch.py 기반 — run_nightly_batch() 단위 테스트.
+check_batch.py 기반 — run_batch() 단위 테스트.
 AsyncSessionLocal·PgRepository를 mock 처리하여 CI에서 실행 가능.
 """
 import uuid
@@ -7,11 +7,11 @@ import unittest
 import numpy as np
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.embedding.application.service.batch_service import run_nightly_batch
+from app.embedding.infrastructure.batch.batch_embedding import run_batch
 from app.config.settings import settings
 from tests.helpers import make_profile, make_vectors
 
-_BATCH_MODULE = "app.embedding.application.service.batch_service"
+_BATCH_MODULE = "app.embedding.infrastructure.batch.batch_embedding"
 
 
 class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
@@ -41,7 +41,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.reset_failed_to_done.return_value = 2
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = []
 
-        await run_nightly_batch()
+        await run_batch()
 
         self.mock_post_repo.reset_failed_to_done.assert_called_once()
 
@@ -53,7 +53,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.find_all_done_vectors_ordered.return_value = make_vectors(3)
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
-        await run_nightly_batch()
+        await run_batch()
 
         self.assertEqual(self.mock_profile_repo.upsert.call_count, len(user_ids))
 
@@ -63,7 +63,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
         self.mock_post_repo.find_all_done_vectors_ordered.return_value = []
 
-        await run_nightly_batch()
+        await run_batch()
 
         self.mock_profile_repo.upsert.assert_not_called()
 
@@ -75,7 +75,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.find_all_done_vectors_ordered.return_value = make_vectors(min_count)
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
-        await run_nightly_batch()
+        await run_batch()
 
         kw = self.mock_profile_repo.upsert.call_args.kwargs
         self.assertEqual(kw["record_count"], min_count)
@@ -89,7 +89,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.find_all_done_vectors_ordered.return_value = make_vectors(min_count - 1)
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
-        await run_nightly_batch()
+        await run_batch()
 
         kw = self.mock_profile_repo.upsert.call_args.kwargs
         self.assertFalse(kw["active"])
@@ -109,7 +109,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
 
         self.mock_post_repo.find_all_done_vectors_ordered.side_effect = vectors_by_user
 
-        await run_nightly_batch()
+        await run_batch()
 
         self.mock_profile_repo.upsert.assert_called_once()
         self.assertEqual(self.mock_profile_repo.upsert.call_args.kwargs["user_id"], user_b)
@@ -122,7 +122,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.find_all_done_vectors_ordered.return_value = single_vector
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
-        await run_nightly_batch()
+        await run_batch()
 
         kw = self.mock_profile_repo.upsert.call_args.kwargs
         self.assertTrue(np.allclose(kw["vector"], single_vector[0]))

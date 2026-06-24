@@ -7,9 +7,9 @@ import uuid
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.embedding.application.event.post_consumer import PostConsumer
+from app.embedding.infrastructure.kafka.post_consumer import PostConsumer
 
-_CONSUMER_MODULE = "app.embedding.application.event.post_consumer"
+_CONSUMER_MODULE = "app.embedding.infrastructure.kafka.post_consumer"
 
 
 def _make_message(
