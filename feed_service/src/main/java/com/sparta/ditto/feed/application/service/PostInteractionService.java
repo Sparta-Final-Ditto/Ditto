@@ -42,7 +42,8 @@ public class PostInteractionService {
     // -------------------------------------------------------
     @Transactional
     public LikeResult addLike(UUID userId, UUID postId, String userNickname) {
-        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(PostNotFoundException::new);
 
         if (likeRepository.existsByPostIdAndUserId(postId, userId)) {
             throw new DuplicateLikeException();
@@ -63,7 +64,8 @@ public class PostInteractionService {
     // -------------------------------------------------------
     @Transactional
     public LikeResult removeLike(UUID userId, UUID postId) {
-        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(PostNotFoundException::new);
         Like like = likeRepository.findByPostIdAndUserId(postId, userId)
                 .orElseThrow(LikeNotFoundException::new);
         likeRepository.delete(like);
@@ -76,7 +78,8 @@ public class PostInteractionService {
     // -------------------------------------------------------
     @Transactional(readOnly = true)
     public LikeListResult getLikes(GetLikesQuery query) {
-        Post post = postRepository.findById(query.postId()).orElseThrow(PostNotFoundException::new);
+        Post post = postRepository.findByIdAndDeletedAtIsNull(query.postId())
+                .orElseThrow(PostNotFoundException::new);
 
         Instant cursorAt = null;
         UUID cursorId = null;
@@ -106,7 +109,7 @@ public class PostInteractionService {
     public void deleteComment(UUID requesterId, String requesterRole, UUID postId, UUID commentId) {
         Comment comment = commentRepository.findByIdAndDeletedAtIsNull(commentId)
                 .orElseThrow(CommentNotFoundException::new);
-        Post post = postRepository.findById(postId)
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(PostNotFoundException::new);
 
         boolean isCommentAuthor = requesterId.equals(comment.getUserId());
@@ -127,7 +130,7 @@ public class PostInteractionService {
     // -------------------------------------------------------
     @Transactional(readOnly = true)
     public CommentListResult getComments(GetCommentsQuery query) {
-        Post post = postRepository.findById(query.postId())
+        Post post = postRepository.findByIdAndDeletedAtIsNull(query.postId())
                 .orElseThrow(PostNotFoundException::new);
 
         Instant cursorAt = null;
@@ -161,7 +164,8 @@ public class PostInteractionService {
     @Transactional
     public CommentResult createComment(
             UUID userId, String nickname, UUID postId, CreateCommentCommand command) {
-        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(PostNotFoundException::new);
         Comment comment = commentRepository.save(
                 new Comment(postId, userId, nickname, command.content()));
         postRepository.incrementCommentCount(postId);

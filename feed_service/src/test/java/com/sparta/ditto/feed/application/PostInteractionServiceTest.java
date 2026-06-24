@@ -72,7 +72,7 @@ class PostInteractionServiceTest {
     void addLike_정상요청_isLiked_true_likeCount_증가() {
         // given
         Post post = createPost(ownerId, 5);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(false);
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
         when(outboxEventPort.buildPostLiked(any(Post.class), any(UUID.class)))
@@ -95,7 +95,7 @@ class PostInteractionServiceTest {
     void addLike_중복좋아요_DuplicateLikeException() {
         // given
         Post post = createPost(ownerId, 5);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(true);
 
         // when & then
@@ -112,7 +112,7 @@ class PostInteractionServiceTest {
     void addLike_본인게시글_좋아요적용_outbox저장안함() {
         // given - likerId == ownerId (본인 게시글)
         Post post = createPost(likerId, 3);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(false);
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
 
@@ -132,7 +132,7 @@ class PostInteractionServiceTest {
         // given
         Post post = createPost(ownerId, 5);
         Like like = new Like(postId, likerId);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
 
         // when
@@ -150,7 +150,7 @@ class PostInteractionServiceTest {
     void removeLike_좋아요없음_LikeNotFoundException() {
         // given
         Post post = createPost(ownerId, 5);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.empty());
 
         // when & then
@@ -168,7 +168,7 @@ class PostInteractionServiceTest {
         // given
         Post post = createPost(ownerId, 0);
         Like like = new Like(postId, likerId);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
 
         // when
@@ -185,7 +185,7 @@ class PostInteractionServiceTest {
         // given
         Post post = createPost(ownerId, 3);
         Like like = new Like(postId, likerId);
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.findByPostIdAndUserId(postId, likerId)).thenReturn(Optional.of(like));
 
         // when
@@ -214,7 +214,7 @@ class PostInteractionServiceTest {
         Post post = createPost(ownerId, 0);
         Comment savedComment = createSavedComment(postId, commenterId, "댓글 내용");
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
         when(outboxEventPort.buildPostCommented(any(), any(), any()))
                 .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", "{}"));
@@ -234,7 +234,7 @@ class PostInteractionServiceTest {
     @DisplayName("없는 postId → 404, POST_NOT_FOUND")
     void createComment_없는postId_PostNotFoundException() {
         // given
-        when(postRepository.findById(postId)).thenReturn(Optional.empty());
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> postInteractionService.createComment(
@@ -252,7 +252,7 @@ class PostInteractionServiceTest {
         Post post = createPost(ownerId, 0);
         Comment savedComment = createSavedComment(postId, commenterId, "댓글 내용");
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
         when(outboxEventPort.buildPostCommented(any(), any(), any()))
                 .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", "{}"));
@@ -277,7 +277,7 @@ class PostInteractionServiceTest {
         Comment savedComment = createSavedComment(postId, commenterId, "댓글");
         OutboxEvent outboxEvent = new OutboxEvent("post-events", "POST_COMMENTED", "{}");
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
         when(outboxEventPort.buildPostCommented(any(), any(), any())).thenReturn(outboxEvent);
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
@@ -297,7 +297,7 @@ class PostInteractionServiceTest {
         Post post = createPost(ownerId, 0);
         Comment savedComment = createSavedComment(postId, ownerId, "댓글");
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
 
         // when

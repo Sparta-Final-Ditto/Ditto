@@ -40,7 +40,8 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public PostDetailResult getPostDetail(UUID postId, UUID requesterId) {
-        Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(PostNotFoundException::new);
         List<Comment> comments = commentRepository.findByPostIdAndDeletedAtIsNull(postId);
         return PostDetailResult.from(post, requesterId, comments, cloudfrontDomain);
     }

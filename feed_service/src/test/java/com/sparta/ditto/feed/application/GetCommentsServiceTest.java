@@ -72,7 +72,7 @@ class GetCommentsServiceTest {
         Post post = createPost(postOwnerId);
         Comment myComment = createComment(requesterId);
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdWithCursor(eq(postId), isNull(), isNull(), anyInt()))
                 .thenReturn(List.of(myComment));
 
@@ -94,7 +94,7 @@ class GetCommentsServiceTest {
         Post post = createPost(postOwnerId);
         Comment otherComment = createComment(otherUserId);
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdWithCursor(eq(postId), isNull(), isNull(), anyInt()))
                 .thenReturn(List.of(otherComment));
 
@@ -114,7 +114,7 @@ class GetCommentsServiceTest {
         Post post = createPost(postOwnerId);
         Comment myComment = createComment(requesterId);
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdWithCursor(eq(postId), isNull(), isNull(), anyInt()))
                 .thenReturn(List.of(myComment));
 
@@ -134,7 +134,7 @@ class GetCommentsServiceTest {
         Post post = createPost(postOwnerId);
         Comment otherComment = createComment(commentAuthorId);
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdWithCursor(eq(postId), isNull(), isNull(), anyInt()))
                 .thenReturn(List.of(otherComment));
 
@@ -155,7 +155,7 @@ class GetCommentsServiceTest {
         Post post = createPost(postOwnerId);
         Comment otherComment = createComment(commentAuthorId);
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdWithCursor(eq(postId), isNull(), isNull(), anyInt()))
                 .thenReturn(List.of(otherComment));
 
@@ -176,7 +176,7 @@ class GetCommentsServiceTest {
         Post post = createPost(postOwnerId);
         Comment otherComment = createComment(commentAuthorId);
 
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.findByPostIdWithCursor(eq(postId), isNull(), isNull(), anyInt()))
                 .thenReturn(List.of(otherComment));
 
