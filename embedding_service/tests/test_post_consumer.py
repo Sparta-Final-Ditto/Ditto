@@ -1,8 +1,11 @@
 """
-check_flows.py 기반 — PostConsumer.handle() 단위 테스트.
+PostConsumer.handle() 단위 테스트.
 Kafka·DB·모델 없이 CI에서 실행 가능.
+
+feed_service Envelope 구조:
+  { "eventId": str, "eventType": str, "occurredAt": str, "payload": dict }
+payload는 consumer_base의 json.loads()를 거쳐 이미 dict로 전달된다.
 """
-import json
 import uuid
 import unittest
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -25,7 +28,12 @@ def _make_message(
         "content": content,
         "tags": tags if tags is not None else ["태그1"],
     }
-    return {"eventType": event_type, "payload": json.dumps(payload)}
+    return {
+        "eventId": str(uuid.uuid4()),
+        "eventType": event_type,
+        "occurredAt": "2026-06-25T00:00:00Z",
+        "payload": payload,
+    }
 
 
 class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
@@ -60,7 +68,7 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
         """POST_CREATED 외 이벤트 — embed_and_store 미호출."""
         for event_type in ["POST_UPDATED", "POST_DELETED", "USER_CREATED"]:
             self.mock_svc.embed_and_store.reset_mock()
-            await self.consumer.handle({"eventType": event_type, "payload": "{}"})
+            await self.consumer.handle({"eventType": event_type, "payload": {}})
             self.mock_svc.embed_and_store.assert_not_called()
 
     async def test_payload_parsed_correctly(self):
@@ -80,30 +88,36 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
     async def test_missing_tags_defaults_to_empty_list(self):
         """tags 키 없는 페이로드 — hashtags=[] 기본값 처리."""
         payload = {"postId": str(uuid.uuid4()), "userId": str(uuid.uuid4()), "content": "내용"}
-        msg = {"eventType": "POST_CREATED", "payload": json.dumps(payload)}
+        msg = {"eventType": "POST_CREATED", "payload": payload}
 
         await self.consumer.handle(msg)
 
         call_args = self.mock_svc.embed_and_store.call_args
         self.assertEqual(call_args.args[3], [])
 
-    async def test_invalid_payload_json_logs_and_returns(self):
-        """페이로드 JSON 파싱 실패 — 예외 전파 없음."""
-        msg = {"eventType": "POST_CREATED", "payload": "not-json"}
-        await self.consumer.handle(msg)  # 예외 없이 반환
+    async def test_invalid_payload_type_logs_and_returns(self):
+        """payload가 dict가 아닌 타입(str 등) — 예외 전파 없음."""
+        msg = {"eventType": "POST_CREATED", "payload": "not-a-dict"}
+        await self.consumer.handle(msg)
+        self.mock_svc.embed_and_store.assert_not_called()
+
+    async def test_missing_payload_key_logs_and_returns(self):
+        """payload 키 자체가 없는 메시지 — 예외 전파 없음."""
+        msg = {"eventType": "POST_CREATED"}
+        await self.consumer.handle(msg)
         self.mock_svc.embed_and_store.assert_not_called()
 
     async def test_missing_required_field_logs_and_returns(self):
         """필수 필드(postId) 누락 — 예외 전파 없음."""
         payload = {"userId": str(uuid.uuid4()), "content": "내용"}
-        msg = {"eventType": "POST_CREATED", "payload": json.dumps(payload)}
+        msg = {"eventType": "POST_CREATED", "payload": payload}
         await self.consumer.handle(msg)
         self.mock_svc.embed_and_store.assert_not_called()
 
     async def test_invalid_uuid_format_logs_and_returns(self):
         """UUID 형식 오류 — 예외 전파 없음."""
         payload = {"postId": "not-a-uuid", "userId": str(uuid.uuid4()), "content": "내용"}
-        msg = {"eventType": "POST_CREATED", "payload": json.dumps(payload)}
+        msg = {"eventType": "POST_CREATED", "payload": payload}
         await self.consumer.handle(msg)
         self.mock_svc.embed_and_store.assert_not_called()
 

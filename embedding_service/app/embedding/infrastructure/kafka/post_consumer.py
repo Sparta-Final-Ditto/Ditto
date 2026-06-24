@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 from uuid import UUID
 
@@ -17,8 +16,8 @@ logger = logging.getLogger(__name__)
 class PostConsumer(KafkaConsumerBase):
     """
     feed_service 'post-events' 토픽 수신.
-    Outbox 메시지 구조: { "eventType": "POST_CREATED", "payload": "{...}" }
-    payload 내부: { "postId", "userId", "content", "tags", ... }
+    Envelope 구조: { "eventId", "eventType", "occurredAt", "payload": { ... } }
+    payload: { "postId", "userId", "content", "tags", ... }
     """
 
     def __init__(self) -> None:
@@ -29,12 +28,12 @@ class PostConsumer(KafkaConsumerBase):
             return
 
         try:
-            payload = json.loads(message["payload"])
+            payload: dict = message["payload"]
             post_id = UUID(payload["postId"])
             user_id = UUID(payload["userId"])
             content: str = payload["content"]
             hashtags: list[str] = payload.get("tags", [])
-        except (KeyError, ValueError) as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error(f"[PostConsumer] 페이로드 파싱 실패: {e} | raw={message}")
             return
 
