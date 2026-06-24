@@ -25,7 +25,26 @@ spring:
       port: ${REDIS_PORT}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 kafka:
   topic:
     chat-message-created: chat-message-created
+
+chat:
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://localhost:8081}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceChatValidation:
+        sliding-window-size: 20
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2
+        ignore-exceptions:
+          - com.sparta.ditto.common.exception.BusinessException

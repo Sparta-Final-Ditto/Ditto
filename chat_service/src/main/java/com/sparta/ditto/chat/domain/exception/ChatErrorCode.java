@@ -18,7 +18,9 @@ public enum ChatErrorCode implements ErrorCode {
     CHAT_INVALID_DIRECT_TARGET("CHAT-008", "1:1 채팅 상대가 올바르지 않습니다.", 400),
     CHAT_BLOCKED_USER("CHAT-009", "차단 관계인 사용자와 채팅할 수 없습니다.", 403),
     CHAT_INVALID_GROUP_PARTICIPANTS("CHAT-010", "그룹 채팅방은 본인을 포함해 3명 이상이어야 합니다.", 400),
-    CHAT_DUPLICATE_PROCESSING("CHAT-011", "이미 처리 중인 메시지입니다.", 409);
+    CHAT_DUPLICATE_PROCESSING("CHAT-011", "이미 처리 중인 메시지입니다.", 409),
+    CHAT_USER_NOT_FOUND("CHAT-012", "채팅 대상 사용자를 찾을 수 없습니다.", 404),
+    CHAT_USER_VALIDATION_FAILED("CHAT-013", "채팅 사용자 검증에 실패했습니다.", 500);
 
     private final String code;
     private final String message;

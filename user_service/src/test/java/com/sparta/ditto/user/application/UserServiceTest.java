@@ -2,16 +2,20 @@ package com.sparta.ditto.user.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 
+import com.sparta.ditto.user.domain.block.exception.BlockedUserException;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.enums.Gender;
 import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
-import com.sparta.ditto.user.infrastructure.kafka.UserInterestsRegisteredEvent;
 import com.sparta.ditto.user.infrastructure.kafka.UserEventProducer;
+import com.sparta.ditto.user.infrastructure.kafka.UserInterestsRegisteredEvent;
+import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
@@ -45,6 +49,9 @@ class UserServiceTest {
     private UserRepository userRepository;
 
     @Mock
+    private BlockRepository blockRepository;
+
+    @Mock
     private TokenManager tokenManager;
 
     @Mock
@@ -60,7 +67,12 @@ class UserServiceTest {
     void setUp() {
         userId = UUID.randomUUID();
         user = User.createEmailUser(
-                "test@test.com", "encodedPassword", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
+                "test@test.com",
+                "encodedPassword",
+                "testNick",
+                Gender.MALE,
+                LocalDate.of(1990, 1, 1)
+        );
         ReflectionTestUtils.setField(user, "id", userId);
     }
 
@@ -106,6 +118,80 @@ class UserServiceTest {
 
             assertThatThrownBy(() -> userService.getPublicProfile(userId))
                     .isInstanceOf(UserNotFoundException.class);
+        }
+    }
+
+    @Nested
+    class ValidateChatUsers {
+
+        @Test
+        void 성공() {
+            UUID targetUserId = UUID.randomUUID();
+            given(userRepository.countByIdIn(any())).willReturn(2L);
+            given(blockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId))
+                    .willReturn(false);
+            given(blockRepository.existsByBlockerIdAndBlockedId(targetUserId, userId))
+                    .willReturn(false);
+
+            userService.validateChatUsers(userId, List.of(targetUserId), true);
+
+            then(blockRepository).should()
+                    .existsByBlockerIdAndBlockedId(userId, targetUserId);
+            then(blockRepository).should()
+                    .existsByBlockerIdAndBlockedId(targetUserId, userId);
+        }
+
+        @Test
+        void 요청자_없음_예외() {
+            UUID targetUserId = UUID.randomUUID();
+            given(userRepository.countByIdIn(any())).willReturn(1L);
+
+            assertThatThrownBy(() ->
+                    userService.validateChatUsers(userId, List.of(targetUserId), true))
+                    .isInstanceOf(UserNotFoundException.class);
+
+            then(blockRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        void 대상_없음_예외() {
+            UUID targetUserId = UUID.randomUUID();
+            given(userRepository.countByIdIn(any())).willReturn(1L);
+
+            assertThatThrownBy(() ->
+                    userService.validateChatUsers(userId, List.of(targetUserId), true))
+                    .isInstanceOf(UserNotFoundException.class);
+
+            then(blockRepository).shouldHaveNoInteractions();
+        }
+
+        @Test
+        void 요청자가_대상을_차단했으면_예외() {
+            UUID targetUserId = UUID.randomUUID();
+            given(userRepository.countByIdIn(any())).willReturn(2L);
+            given(blockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId))
+                    .willReturn(true);
+
+            assertThatThrownBy(() ->
+                    userService.validateChatUsers(userId, List.of(targetUserId), true))
+                    .isInstanceOf(BlockedUserException.class);
+
+            then(blockRepository).should(never())
+                    .existsByBlockerIdAndBlockedId(targetUserId, userId);
+        }
+
+        @Test
+        void 대상이_요청자를_차단했으면_예외() {
+            UUID targetUserId = UUID.randomUUID();
+            given(userRepository.countByIdIn(any())).willReturn(2L);
+            given(blockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId))
+                    .willReturn(false);
+            given(blockRepository.existsByBlockerIdAndBlockedId(targetUserId, userId))
+                    .willReturn(true);
+
+            assertThatThrownBy(() ->
+                    userService.validateChatUsers(userId, List.of(targetUserId), true))
+                    .isInstanceOf(BlockedUserException.class);
         }
     }
 

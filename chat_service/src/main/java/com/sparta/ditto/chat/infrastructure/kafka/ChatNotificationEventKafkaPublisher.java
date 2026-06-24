@@ -31,7 +31,7 @@ public class ChatNotificationEventKafkaPublisher implements ChatNotificationEven
                         log.error("chat-message-created 발행 실패. roomId={}, messageId={}",
                                 event.roomId(), event.messageId(), ex);
                     } else {
-                        log.debug("chat-message-created 발행 완료. roomId={}, messageId={}, receivers={}",
+                        log.debug("알림 발행 완료. roomId={}, messageId={}, receiverCount={}",
                                 event.roomId(), event.messageId(), event.receiverIds().size());
                     }
                 });

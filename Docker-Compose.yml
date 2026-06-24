@@ -98,6 +98,8 @@ services:
       dockerfile: user_service/Dockerfile
     container_name: ditto-user-service
     ports:
+      # 로컬 개발 편의용 포트 공개입니다.
+      # 운영 환경에서는 user-service를 외부에 직접 노출하지 않고 gateway/internal network로만 접근해야 합니다.
       - "8081:8081"
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/ditto_user
@@ -177,6 +179,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      USER_SERVICE_URL: http://user-service:8081
     depends_on:
       postgres:
         condition: service_healthy

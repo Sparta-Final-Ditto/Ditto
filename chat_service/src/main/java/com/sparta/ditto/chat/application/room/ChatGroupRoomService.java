@@ -4,6 +4,7 @@ import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCom
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidGroupParticipantsException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
@@ -27,6 +28,7 @@ public class ChatGroupRoomService {
 
     private final ChatRoomPort chatRoomPort;
     private final ChatRoomParticipantPort chatRoomParticipantPort;
+    private final ChatUserValidationPort chatUserValidationPort;
 
     @Transactional
     public ChatGroupRoomResult createGroupRoom(ChatGroupRoomCreateCommand command) {
@@ -38,6 +40,7 @@ public class ChatGroupRoomService {
                 requesterId,
                 command.participantUserIds()
         );
+        chatUserValidationPort.validateGroupChatParticipants(requesterId, memberUserIds);
 
         ChatRoom chatRoom = chatRoomPort.save(
                 ChatRoom.createGroup(command.roomName())

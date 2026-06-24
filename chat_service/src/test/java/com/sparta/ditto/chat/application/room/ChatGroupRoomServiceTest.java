@@ -4,13 +4,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
+import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
@@ -40,15 +44,18 @@ class ChatGroupRoomServiceTest {
 
     private ChatRoomPort chatRoomPort;
     private ChatRoomParticipantPort chatRoomParticipantPort;
+    private ChatUserValidationPort chatUserValidationPort;
     private ChatGroupRoomService chatGroupRoomService;
 
     @BeforeEach
     void setUp() {
         chatRoomPort = mock(ChatRoomPort.class);
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
+        chatUserValidationPort = mock(ChatUserValidationPort.class);
         chatGroupRoomService = new ChatGroupRoomService(
                 chatRoomPort,
-                chatRoomParticipantPort
+                chatRoomParticipantPort,
+                chatUserValidationPort
         );
     }
 
@@ -67,6 +74,10 @@ class ChatGroupRoomServiceTest {
         assertThat(result.roomType()).isEqualTo(RoomType.GROUP);
         assertThat(result.roomName()).isEqualTo(ROOM_NAME);
         assertThat(result.status()).isEqualTo(RoomStatus.ACTIVE);
+        verify(chatUserValidationPort).validateGroupChatParticipants(
+                REQUESTER_ID,
+                List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID)
+        );
 
         ArgumentCaptor<List<ChatRoomParticipant>> captor = ArgumentCaptor.captor();
         verify(chatRoomParticipantPort).saveAll(captor.capture());
@@ -107,6 +118,24 @@ class ChatGroupRoomServiceTest {
         assertThat(captor.getValue())
                 .extracting(ChatRoomParticipant::getUserId)
                 .containsExactly(REQUESTER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID);
+    }
+
+    @Test
+    @DisplayName("user-service 검증에서 차단 관계가 확인되면 그룹방을 생성하지 않는다")
+    void createGroupRoom_should_reject_blocked_user_before_room_creation() {
+        // given
+        doThrow(new ChatBlockedUserException())
+                .when(chatUserValidationPort)
+                .validateGroupChatParticipants(
+                        REQUESTER_ID,
+                        List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID)
+                );
+
+        // when & then
+        assertThatThrownBy(() -> chatGroupRoomService.createGroupRoom(command()))
+                .isInstanceOf(ChatBlockedUserException.class);
+        verify(chatRoomPort, never()).save(any(ChatRoom.class));
+        verify(chatRoomParticipantPort, never()).saveAll(any());
     }
 
     @Test
