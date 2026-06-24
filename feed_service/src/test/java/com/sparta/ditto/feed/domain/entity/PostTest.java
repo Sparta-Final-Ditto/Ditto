@@ -100,4 +100,5 @@ class PostTest {
 
         assertThat(post.getCommentCount()).isZero();
     }
+
 }

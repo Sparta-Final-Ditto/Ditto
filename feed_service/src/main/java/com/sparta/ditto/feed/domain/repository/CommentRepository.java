@@ -15,4 +15,6 @@ public interface CommentRepository {
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
 
     List<Comment> findByPostIdWithCursor(UUID postId, Instant cursorAt, UUID cursorId, int limit);
+
+    List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId);
 }

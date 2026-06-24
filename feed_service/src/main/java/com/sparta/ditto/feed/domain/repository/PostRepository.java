@@ -33,4 +33,8 @@ public interface PostRepository {
     List<Post> findFeedByUserIdsAndLocationScopeWithCursor(
             List<UUID> userIds, List<LocationScope> scopes,
             Instant cursorAt, UUID cursorId, int limit);
+
+    List<Post> findByUserIdAndScopesWithCursor(
+            UUID userId, List<LocationScope> allowedScopes,
+            Instant cursorAt, UUID cursorId, int limit);
 }

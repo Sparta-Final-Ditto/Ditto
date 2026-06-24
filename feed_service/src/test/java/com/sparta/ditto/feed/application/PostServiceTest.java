@@ -8,6 +8,7 @@ import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.application.UploadUrlResult.port.out.OutboxEventPort;
+import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,9 @@ class PostServiceTest {
 
     @Mock
     private PostRepository postRepository;
+
+    @Mock
+    private CommentRepository commentRepository;
 
     @Mock
     private OutboxEventRepository outboxEventRepository;

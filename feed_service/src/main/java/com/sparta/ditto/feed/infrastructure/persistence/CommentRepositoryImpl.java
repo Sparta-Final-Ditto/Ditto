@@ -37,4 +37,9 @@ public class CommentRepositoryImpl implements CommentRepository {
         return jpaRepository.findByPostIdWithCursor(
                 postId, cursorAt, cursorId, PageRequest.of(0, limit));
     }
+
+    @Override
+    public List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId) {
+        return jpaRepository.findByPostIdAndDeletedAtIsNull(postId);
+    }
 }

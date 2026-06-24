@@ -6,6 +6,7 @@ import com.sparta.ditto.feed.application.dto.result.CommentResult;
 import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class PostControllerGetCommentsTest {
     @MockBean
     private PostInteractionService postInteractionService;
 
+    @MockBean
+    private PostService postService;
+
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
     private final UUID requesterId = UUID.fromString("770e8400-e29b-41d4-a716-446655440002");
 
@@ -49,7 +53,7 @@ class PostControllerGetCommentsTest {
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(get("/posts/{postId}/comments", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", requesterId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isNotFound())
@@ -82,7 +86,7 @@ class PostControllerGetCommentsTest {
                 .thenReturn(listResult);
 
         // when & then
-        mockMvc.perform(get("/posts/{postId}/comments", postId)
+        mockMvc.perform(get("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", requesterId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())

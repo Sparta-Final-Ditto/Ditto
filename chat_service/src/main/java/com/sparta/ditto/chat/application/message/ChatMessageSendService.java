@@ -31,6 +31,7 @@ public class ChatMessageSendService {
     private final ChatRoomMetadataService chatRoomMetadataService;
     private final ChatMessagePublisher chatMessagePublisher;
     private final ChatMessageDedupStore chatMessageDedupStore;
+    private final ChatMessageNotificationService chatMessageNotificationService;
 
     // 사용자 메시지 전송: 검증 → 중복 확인 → 저장 → last message 갱신 → ACK → 브로드캐스트
     public SentMessage sendUserMessage(ChatMessageSendCommand command) {
@@ -63,6 +64,9 @@ public class ChatMessageSendService {
                 roomId, saved.messageId(), saved.createdAt());
 
         chatMessagePublisher.broadcast(roomId, saved);
+        log.debug("System chat message saved and broadcast. "
+                        + "roomId={}, actorId={}, messageId={}, messageType={}",
+                roomId, actorId, saved.messageId(), messageType);
         return saved;
     }
 
@@ -96,6 +100,20 @@ public class ChatMessageSendService {
 
         chatMessagePublisher.ackToSender(command.senderId(), saved);
         chatMessagePublisher.broadcast(command.roomId(), saved);
+
+        // 알림 발행 실패는 메시지 전송 성공을 막지 않는다
+        try {
+            chatMessageNotificationService.dispatch(saved);
+        } catch (RuntimeException ex) {
+            log.error("알림 이벤트 발행 실패. roomId={}, messageId={}",
+                    command.roomId(), saved.messageId(), ex);
+        }
+
+        log.debug("User chat message saved and published. "
+                        + "roomId={}, senderId={}, clientMessageId={}, "
+                        + "messageId={}, messageType={}",
+                command.roomId(), command.senderId(), command.clientMessageId(),
+                saved.messageId(), saved.messageType());
         return saved;
     }
 
@@ -113,6 +131,10 @@ public class ChatMessageSendService {
         }
 
         chatMessagePublisher.ackToSender(command.senderId(), original);
+        log.debug("Duplicate chat message acknowledged with existing message. "
+                        + "roomId={}, senderId={}, clientMessageId={}, messageId={}",
+                command.roomId(), command.senderId(), command.clientMessageId(),
+                original.messageId());
         return original;
     }
 

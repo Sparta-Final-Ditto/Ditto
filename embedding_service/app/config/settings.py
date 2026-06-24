@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     MIN_RECORDS_FOR_MATCHING: int = 3
     KAFKA_BOOTSTRAP_SERVERS: str = "localhost:9092"
     KAFKA_TOPIC_POST_EVENTS: str = "post-events"
+    KAFKA_TOPIC_USER_EVENTS: str = "USER_REGISTERED"
     KAFKA_CONSUMER_GROUP: str = "embedding-service-group"
 
     class Config:

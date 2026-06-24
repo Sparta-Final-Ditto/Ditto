@@ -11,6 +11,7 @@ import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import java.time.Instant;
@@ -48,6 +49,9 @@ class PostControllerTest {
 
     @MockBean
     private PostInteractionService postInteractionService;
+
+    @MockBean
+    private PostService postService;
 
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
@@ -94,12 +98,13 @@ class PostControllerTest {
     @DisplayName("존재하지 않는 게시글 좋아요 → 404, POST_NOT_FOUND")
     void addLike_게시글없음_404_POST_NOT_FOUND() throws Exception {
         // given
-        when(postInteractionService.addLike(any(UUID.class), any(UUID.class)))
+        when(postInteractionService.addLike(any(UUID.class), any(UUID.class), anyString()))
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(post("/posts/{postId}/likes", postId)
-                        .header("X-User-Id", userId.toString()))
+        mockMvc.perform(post("/api/v1/posts/{postId}/likes", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "테스트닉네임"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
@@ -113,7 +118,7 @@ class PostControllerTest {
                 .thenThrow(new PostNotFoundException());
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/likes", postId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/likes", postId)
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
@@ -128,7 +133,7 @@ class PostControllerTest {
                 .thenThrow(new LikeNotFoundException());
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/likes", postId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/likes", postId)
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
@@ -141,7 +146,7 @@ class PostControllerTest {
         when(postCreateFacade.createPost(any(CreatePostCommand.class)))
                 .thenReturn(successResult);
 
-        mockMvc.perform(post("/posts")
+        mockMvc.perform(post("/api/v1/posts")
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "새벽러너")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -189,7 +194,7 @@ class PostControllerTest {
         when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any(CreateCommentCommand.class)))
                 .thenReturn(commentResult);
 
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -203,7 +208,7 @@ class PostControllerTest {
     @Test
     @DisplayName("content 누락 → 400, COMMON-001")
     void createComment_content_누락_400_COMMON_001() throws Exception {
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -216,7 +221,7 @@ class PostControllerTest {
     @Test
     @DisplayName("공백만 입력 → 400, COMMON-001")
     void createComment_공백입력_400_COMMON_001() throws Exception {
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -230,7 +235,7 @@ class PostControllerTest {
     @DisplayName("201자 입력 → 400, COMMON-001")
     void createComment_201자_입력_400_COMMON_001() throws Exception {
         String over200 = "a".repeat(201);
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -247,7 +252,7 @@ class PostControllerTest {
                 any(UUID.class), anyString(), any(UUID.class), any()))
                 .thenThrow(new PostNotFoundException());
 
-        mockMvc.perform(post("/posts/{postId}/comments", postId)
+        mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Nickname", "닉네임")
                         .contentType(MediaType.APPLICATION_JSON)

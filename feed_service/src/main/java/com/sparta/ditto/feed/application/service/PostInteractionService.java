@@ -41,14 +41,14 @@ public class PostInteractionService {
     // 좋아요 추가
     // -------------------------------------------------------
     @Transactional
-    public LikeResult addLike(UUID userId, UUID postId) {
+    public LikeResult addLike(UUID userId, UUID postId, String userNickname) {
         Post post = postRepository.findById(postId).orElseThrow(PostNotFoundException::new);
 
         if (likeRepository.existsByPostIdAndUserId(postId, userId)) {
             throw new DuplicateLikeException();
         }
 
-        likeRepository.save(new Like(postId, userId));
+        likeRepository.save(new Like(postId, userId, userNickname));
         postRepository.incrementLikeCount(postId);
 
         if (!userId.equals(post.getUserId())) {

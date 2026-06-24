@@ -12,10 +12,12 @@ import java.security.Principal;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.Message;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Controller;
 @RequiredArgsConstructor
 @Slf4j
 public class ChatMessageStompController {
+
+    private static final String CHAT_ROOM_PATH = "/chat/rooms/";
 
     private final ChatMessageSendService chatMessageSendService;
 
@@ -56,6 +60,9 @@ public class ChatMessageStompController {
     ) {
         ErrorCode errorCode = ex.getErrorCode();
         UUID clientMessageId = (request != null) ? request.clientMessageId() : null;
+        log.warn("STOMP chat message business exception. "
+                        + "roomId={}, clientMessageId={}, errorCode={}",
+                roomId, clientMessageId, errorCode.getCode());
         return ChatStompErrorResponse.of(
                 errorCode.getCode(),
                 errorType(errorCode),
@@ -68,16 +75,51 @@ public class ChatMessageStompController {
     // 예상하지 못한 전송 실패도 연결을 끊지 않고 사용자 에러 채널로 전달한다.
     @MessageExceptionHandler(Exception.class)
     @SendToUser("/sub/chat/errors")
-    public ChatStompErrorResponse handleException(Exception ex) {
-        log.error("Unhandled STOMP message exception", ex);
+    public ChatStompErrorResponse handleException(Exception ex, Message<?> message) {
+        UUID roomId = extractRoomId(message);
+        UUID clientMessageId = extractClientMessageId(message);
+        log.error("Unhandled STOMP message exception. roomId={}, clientMessageId={}",
+                roomId, clientMessageId, ex);
 
         return ChatStompErrorResponse.of(
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(),
                 CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
-                null,
-                null
+                roomId,
+                clientMessageId
         );
+    }
+
+    private UUID extractRoomId(Message<?> message) {
+        String destination = SimpMessageHeaderAccessor.getDestination(message.getHeaders());
+        if (destination == null) {
+            return null;
+        }
+
+        int roomPathIndex = destination.indexOf(CHAT_ROOM_PATH);
+        if (roomPathIndex < 0) {
+            return null;
+        }
+
+        int roomIdStartIndex = roomPathIndex + CHAT_ROOM_PATH.length();
+        int roomIdEndIndex = destination.indexOf('/', roomIdStartIndex);
+        String roomId = roomIdEndIndex < 0
+                ? destination.substring(roomIdStartIndex)
+                : destination.substring(roomIdStartIndex, roomIdEndIndex);
+
+        try {
+            return UUID.fromString(roomId);
+        } catch (IllegalArgumentException parseException) {
+            return null;
+        }
+    }
+
+    private UUID extractClientMessageId(Message<?> message) {
+        Object payload = message.getPayload();
+        if (payload instanceof ChatMessageSendRequest request) {
+            return request.clientMessageId();
+        }
+        return null;
     }
 
     private String errorType(ErrorCode errorCode) {
