@@ -13,6 +13,8 @@ public interface PostRepository {
 
     Optional<Post> findById(UUID id);
 
+    Optional<Post> findByIdAndDeletedAtIsNull(UUID id);
+
     boolean existsByIdAndUserId(UUID id, UUID userId);
 
     void incrementLikeCount(UUID postId);

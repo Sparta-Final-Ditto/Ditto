@@ -7,12 +7,21 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CommentJpaRepository extends JpaRepository<Comment, UUID> {
 
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Comment c SET c.deletedAt = :now, c.deletedBy = :deletedBy"
+            + " WHERE c.postId = :postId AND c.deletedAt IS NULL")
+    int softDeleteAllByPostId(
+            @Param("postId") UUID postId,
+            @Param("deletedBy") UUID deletedBy,
+            @Param("now") Instant now);
 
     List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId);
 

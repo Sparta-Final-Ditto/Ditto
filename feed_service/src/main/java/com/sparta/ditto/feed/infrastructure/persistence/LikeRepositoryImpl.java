@@ -9,6 +9,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
@@ -51,5 +52,11 @@ public class LikeRepositoryImpl implements LikeRepository {
             UUID postId, Instant cursorAt, UUID cursorId, int limit) {
         return jpaRepository.findLikesWithCursor(
                 postId, cursorAt, cursorId, PageRequest.of(0, limit));
+    }
+
+    @Override
+    @Transactional
+    public int softDeleteAllByPostId(UUID postId, UUID deletedBy) {
+        return jpaRepository.softDeleteAllByPostId(postId, deletedBy, Instant.now());
     }
 }
