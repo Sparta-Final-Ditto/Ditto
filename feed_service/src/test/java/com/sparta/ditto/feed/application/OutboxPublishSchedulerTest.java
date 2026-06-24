@@ -13,7 +13,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -60,7 +59,7 @@ class OutboxPublishSchedulerTest {
         when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         doThrow(new RuntimeException("Kafka 연결 실패"))
-                .when(outboxEventPublisher).publish(anyString(), anyString());
+                .when(outboxEventPublisher).publish(any(OutboxEvent.class));
 
         // when
         scheduler.publishPendingEvents();
@@ -79,7 +78,7 @@ class OutboxPublishSchedulerTest {
         when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         doThrow(new RuntimeException("Kafka 연결 실패"))
-                .when(outboxEventPublisher).publish(anyString(), anyString());
+                .when(outboxEventPublisher).publish(any(OutboxEvent.class));
 
         // when
         scheduler.publishPendingEvents();
@@ -103,7 +102,7 @@ class OutboxPublishSchedulerTest {
         scheduler.publishPendingEvents();
 
         // then
-        verify(outboxEventPublisher, never()).publish(anyString(), anyString());
+        verify(outboxEventPublisher, never()).publish(any(OutboxEvent.class));
         verify(outboxEventRepository, never()).save(any());
     }
 }

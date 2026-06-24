@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.dto;
+package com.sparta.ditto.feed.application.dto.result;
 
 import com.sparta.ditto.feed.domain.entity.Comment;
 import java.time.Instant;

@@ -1,12 +1,12 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.CreatePostCommand;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
 import com.sparta.ditto.feed.application.dto.PostDetailResult;
-import com.sparta.ditto.feed.application.dto.PostResult;
 import com.sparta.ditto.feed.application.dto.UserPostItemResult;
 import com.sparta.ditto.feed.application.dto.UserPostsResult;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;

@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.dto;
+package com.sparta.ditto.feed.application.dto.query;
 
 import java.util.UUID;
 

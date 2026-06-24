@@ -7,9 +7,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.dto.GetLikesQuery;
-import com.sparta.ditto.feed.application.dto.LikeListResult;
-import com.sparta.ditto.feed.application.dto.LikeListResult.LikeUserResult;
+import com.sparta.ditto.feed.application.dto.query.GetLikesQuery;
+import com.sparta.ditto.feed.application.dto.result.LikeListResult;
+import com.sparta.ditto.feed.application.dto.result.LikeListResult.LikeUserResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;

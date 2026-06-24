@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
-import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
