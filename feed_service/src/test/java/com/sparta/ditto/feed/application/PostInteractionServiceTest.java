@@ -80,7 +80,7 @@ class PostInteractionServiceTest {
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        LikeResult result = postInteractionService.addLike(likerId, postId);
+        LikeResult result = postInteractionService.addLike(likerId, postId, "테스트닉네임");
 
         // then
         assertThat(result.isLiked()).isTrue();
@@ -99,7 +99,7 @@ class PostInteractionServiceTest {
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(true);
 
         // when & then
-        assertThatThrownBy(() -> postInteractionService.addLike(likerId, postId))
+        assertThatThrownBy(() -> postInteractionService.addLike(likerId, postId, "테스트닉네임"))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
                         .isEqualTo("DUPLICATE_LIKE"));
@@ -117,7 +117,7 @@ class PostInteractionServiceTest {
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
-        LikeResult result = postInteractionService.addLike(likerId, postId);
+        LikeResult result = postInteractionService.addLike(likerId, postId, "테스트닉네임");
 
         // then
         assertThat(result.isLiked()).isTrue();

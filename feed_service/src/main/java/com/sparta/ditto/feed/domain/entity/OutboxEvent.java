@@ -1,9 +1,7 @@
 package com.sparta.ditto.feed.domain.entity;
 
-import com.sparta.ditto.feed.domain.converter.JsonConverter;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
