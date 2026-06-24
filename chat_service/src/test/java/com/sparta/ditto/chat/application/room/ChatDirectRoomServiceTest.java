@@ -4,15 +4,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
 import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
+import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -42,6 +46,7 @@ class ChatDirectRoomServiceTest {
     private ChatRoomPort chatRoomPort;
     private ChatRoomParticipantPort chatRoomParticipantPort;
     private DirectChatPairPort directChatPairPort;
+    private ChatUserValidationPort chatUserValidationPort;
     private ChatDirectRoomService chatDirectRoomService;
 
     @BeforeEach
@@ -49,6 +54,7 @@ class ChatDirectRoomServiceTest {
         chatRoomPort = mock(ChatRoomPort.class);
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         directChatPairPort = mock(DirectChatPairPort.class);
+        chatUserValidationPort = mock(ChatUserValidationPort.class);
         TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
         given(transactionTemplate.execute(any())).willAnswer(invocation -> {
             TransactionCallback<?> callback = invocation.getArgument(0);
@@ -59,6 +65,7 @@ class ChatDirectRoomServiceTest {
                 chatRoomPort,
                 chatRoomParticipantPort,
                 directChatPairPort,
+                chatUserValidationPort,
                 transactionTemplate
         );
     }
@@ -85,6 +92,7 @@ class ChatDirectRoomServiceTest {
         assertThat(result.status()).isEqualTo(RoomStatus.ACTIVE);
         assertThat(result.created()).isFalse();
         assertThat(result.reactivated()).isFalse();
+        verify(chatUserValidationPort).validateDirectChatTarget(REQUESTER_ID, TARGET_USER_ID);
     }
 
     @Test
@@ -132,6 +140,7 @@ class ChatDirectRoomServiceTest {
         assertThat(result.status()).isEqualTo(RoomStatus.ACTIVE);
         assertThat(result.created()).isTrue();
         assertThat(result.reactivated()).isFalse();
+        verify(chatUserValidationPort).validateDirectChatTarget(REQUESTER_ID, TARGET_USER_ID);
         verify(chatRoomParticipantPort).saveAll(any());
         verify(directChatPairPort).saveForUniqueCheck(any(DirectChatPair.class));
     }
@@ -146,6 +155,21 @@ class ChatDirectRoomServiceTest {
         // when & then
         assertThatThrownBy(() -> chatDirectRoomService.createOrGetDirectRoom(command))
                 .isInstanceOf(ChatInvalidDirectTargetException.class);
+    }
+
+    @Test
+    @DisplayName("user-service 검증에서 차단 관계가 확인되면 방을 조회하거나 생성하지 않는다")
+    void createOrGetDirectRoom_should_reject_blocked_user_before_room_lookup() {
+        // given
+        doThrow(new ChatBlockedUserException())
+                .when(chatUserValidationPort)
+                .validateDirectChatTarget(REQUESTER_ID, TARGET_USER_ID);
+
+        // when & then
+        assertThatThrownBy(() -> chatDirectRoomService.createOrGetDirectRoom(command()))
+                .isInstanceOf(ChatBlockedUserException.class);
+        verify(directChatPairPort, never()).findByOrderedUserIds(any(), any());
+        verify(chatRoomPort, never()).saveForUniqueCheck(any(ChatRoom.class));
     }
 
     @Test

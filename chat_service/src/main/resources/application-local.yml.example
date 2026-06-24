@@ -17,3 +17,7 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: localhost:9092
+
+chat:
+  user-service:
+    base-url: http://localhost:8081

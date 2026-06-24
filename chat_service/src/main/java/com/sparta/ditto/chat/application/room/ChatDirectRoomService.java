@@ -4,6 +4,7 @@ import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCo
 import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
 import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
@@ -30,6 +31,7 @@ public class ChatDirectRoomService {
     private final ChatRoomPort chatRoomPort;
     private final ChatRoomParticipantPort chatRoomParticipantPort;
     private final DirectChatPairPort directChatPairPort;
+    private final ChatUserValidationPort chatUserValidationPort;
     private final TransactionTemplate transactionTemplate;
 
     public ChatDirectRoomResult createOrGetDirectRoom(ChatDirectRoomCreateCommand command) {
@@ -93,7 +95,7 @@ public class ChatDirectRoomService {
         if (requesterId.equals(targetUserId)) {
             throw new ChatInvalidDirectTargetException();
         }
-        // TODO: user-service 연동 방식 확정 후 차단 관계 검증을 추가한다.
+        chatUserValidationPort.validateDirectChatTarget(requesterId, targetUserId);
     }
 
     private ChatDirectRoomResult returnExistingOrReactivateRoom(DirectChatPair directChatPair) {

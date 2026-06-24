@@ -1,11 +1,13 @@
 package com.sparta.ditto.user.application;
 
+import com.sparta.ditto.user.domain.block.exception.BlockedUserException;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
 import com.sparta.ditto.user.domain.user.exception.NicknameAlreadyExistsException;
 import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.kafka.UserEventProducer;
 import com.sparta.ditto.user.infrastructure.kafka.UserInterestsRegisteredEvent;
+import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
@@ -15,6 +17,9 @@ import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final BlockRepository blockRepository;
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
     private final UserEventProducer userEventProducer;
@@ -41,6 +47,26 @@ public class UserService {
         User user = userRepository.findById(targetUserId)
                 .orElseThrow(UserNotFoundException::new);
         return UserPublicProfileResponse.from(user);
+    }
+
+    public void validateChatUsers(
+            UUID requesterId,
+            List<UUID> targetUserIds,
+            boolean checkBlock
+    ) {
+        if (!userRepository.existsById(requesterId)) {
+            throw new UserNotFoundException();
+        }
+
+        Set<UUID> uniqueTargetUserIds = new LinkedHashSet<>(targetUserIds);
+        for (UUID targetUserId : uniqueTargetUserIds) {
+            if (!userRepository.existsById(targetUserId)) {
+                throw new UserNotFoundException();
+            }
+            if (checkBlock && isBlockedEitherDirection(requesterId, targetUserId)) {
+                throw new BlockedUserException();
+            }
+        }
     }
 
     @Transactional
@@ -94,5 +120,10 @@ public class UserService {
                 .orElseThrow(UserNotFoundException::new);
         user.delete(userId);
         tokenManager.deleteToken(userId);
+    }
+
+    private boolean isBlockedEitherDirection(UUID requesterId, UUID targetUserId) {
+        return blockRepository.existsByBlockerIdAndBlockedId(requesterId, targetUserId)
+                || blockRepository.existsByBlockerIdAndBlockedId(targetUserId, requesterId);
     }
 }
