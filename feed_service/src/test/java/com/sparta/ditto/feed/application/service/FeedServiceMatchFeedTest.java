@@ -30,7 +30,7 @@ import org.springframework.test.util.ReflectionTestUtils;
  * Resilience4j(CB/Retry) 동작은 별도 통합 테스트(RED-2)에서 검증한다.
  */
 @ExtendWith(MockitoExtension.class)
-class 가FeedServiceMatchFeedTest {
+class FeedServiceMatchFeedTest {
 
     private static final String CLOUDFRONT_DOMAIN = "https://test.cloudfront.net";
     private static final int EXPECTED_RECOMMEND_LIMIT = 50;
