@@ -1,5 +1,7 @@
 package com.sparta.ditto.chat.application.room;
 
+import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.room.dto.result.ChatParticipantResult;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomDetailResult;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomSummaryResult;
@@ -11,6 +13,7 @@ import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -22,12 +25,9 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatRoomQueryService {
 
-    // TODO: B 메시지 조회 기능과 통합되면 lastMessage/unreadCount 계산 결과로 교체한다.
-    private static final String LAST_MESSAGE_NOT_CONNECTED = null;
-    private static final long UNREAD_COUNT_NOT_CONNECTED = 0L;
-
     private final ChatRoomPort chatRoomPort;
     private final ChatRoomParticipantPort chatRoomParticipantPort;
+    private final ChatMessageQueryPort chatMessageQueryPort;
 
     @Transactional(readOnly = true)
     public ChatRoomDetailResult getRoom(UUID requesterId, UUID roomId) {
@@ -72,13 +72,70 @@ public class ChatRoomQueryService {
                 .toList();
 
         // 방 목록 정렬은 PostgreSQL 메타데이터의 lastMessageAt을 우선 사용한다.
-        return chatRoomPort.findAllByIdsOrderByLastMessageAtDesc(roomIds)
-                .stream()
-                .map(chatRoom -> toSummaryResult(
-                        chatRoom,
-                        participantByRoomId.get(chatRoom.getId())
+        List<ChatRoom> rooms = chatRoomPort.findAllByIdsOrderByLastMessageAtDesc(roomIds);
+
+        // 방들의 lastMessageId로 마지막 메시지 본문을 한 번에 조회한다 (N+1 방지).
+        Map<String, SentMessage> lastMessageById = findLastMessages(rooms);
+
+        return rooms.stream()
+                .map(room -> toSummaryResult(
+                        room,
+                        participantByRoomId.get(room.getId()),
+                        lastMessageById,
+                        requesterId
                 ))
                 .toList();
+    }
+
+    private Map<String, SentMessage> findLastMessages(List<ChatRoom> rooms) {
+        List<String> lastMessageIds = rooms.stream()
+                .map(ChatRoom::getLastMessageId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (lastMessageIds.isEmpty()) {
+            return Map.of();
+        }
+        return chatMessageQueryPort.findByMessageIds(lastMessageIds).stream()
+                .collect(Collectors.toMap(SentMessage::messageId, Function.identity()));
+    }
+
+    private ChatRoomSummaryResult toSummaryResult(
+            ChatRoom chatRoom,
+            ChatRoomParticipant participant,
+            Map<String, SentMessage> lastMessageById,
+            UUID requesterId
+    ) {
+        long unreadCount = chatMessageQueryPort.countUnread(
+                chatRoom.getId(),
+                participant.getLastReadMessageId(),
+                requesterId
+        );
+        return ChatRoomSummaryResult.of(
+                chatRoom.getId(),
+                chatRoom.getRoomType(),
+                chatRoom.getRoomName(),
+                resolveLastMessagePreview(chatRoom, lastMessageById),
+                chatRoom.getLastMessageAt(),
+                unreadCount,
+                participant.isNotificationEnabled()
+        );
+    }
+
+    private String resolveLastMessagePreview(
+            ChatRoom chatRoom, Map<String, SentMessage> lastMessageById) {
+        String lastMessageId = chatRoom.getLastMessageId();
+        if (lastMessageId == null) {
+            return null;
+        }
+        SentMessage lastMessage = lastMessageById.get(lastMessageId);
+        if (lastMessage == null) {
+            return null;
+        }
+        // 삭제된 메시지는 본문 대신 null로 내려 표시 정책은 클라이언트가 정한다.
+        if (lastMessage.deletedAt() != null) {
+            return null;
+        }
+        return lastMessage.content();
     }
 
     private static ChatParticipantResult toParticipantResult(ChatRoomParticipant participant) {
@@ -87,21 +144,6 @@ public class ChatRoomQueryService {
                 participant.getRole(),
                 participant.getJoinedAt(),
                 participant.getLeftAt()
-        );
-    }
-
-    private static ChatRoomSummaryResult toSummaryResult(
-            ChatRoom chatRoom,
-            ChatRoomParticipant participant
-    ) {
-        return ChatRoomSummaryResult.of(
-                chatRoom.getId(),
-                chatRoom.getRoomType(),
-                chatRoom.getRoomName(),
-                LAST_MESSAGE_NOT_CONNECTED,
-                chatRoom.getLastMessageAt(),
-                UNREAD_COUNT_NOT_CONNECTED,
-                participant.isNotificationEnabled()
         );
     }
 }

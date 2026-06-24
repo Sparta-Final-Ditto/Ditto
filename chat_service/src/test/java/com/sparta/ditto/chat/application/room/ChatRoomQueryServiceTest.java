@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomDetailResult;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomSummaryResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
@@ -39,15 +40,18 @@ class ChatRoomQueryServiceTest {
 
     private ChatRoomPort chatRoomPort;
     private ChatRoomParticipantPort chatRoomParticipantPort;
+    private ChatMessageQueryPort chatMessageQueryPort;
     private ChatRoomQueryService chatRoomQueryService;
 
     @BeforeEach
     void setUp() {
         chatRoomPort = mock(ChatRoomPort.class);
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
+        chatMessageQueryPort = mock(ChatMessageQueryPort.class);
         chatRoomQueryService = new ChatRoomQueryService(
                 chatRoomPort,
-                chatRoomParticipantPort
+                chatRoomParticipantPort,
+                chatMessageQueryPort
         );
     }
 
