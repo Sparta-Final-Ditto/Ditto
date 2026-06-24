@@ -5,6 +5,7 @@ import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
 import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -163,5 +164,29 @@ public class ChatMessageMongoAdapter implements ChatMessageCommandPort, ChatMess
                         roomId, joinedAt, afterCreatedAt, afterMessageId,
                         upperCreatedAt, upperMessageId, Limit.of(limit))
                 .stream().map(this::toSentMessage).toList();
+    }
+
+    @Override
+    public List<SentMessage> findByMessageIds(Collection<String> messageIds) {
+        if (messageIds == null || messageIds.isEmpty()) {
+            return List.of();
+        }
+        return chatMessageMongoRepository.findByMessageIdIn(messageIds)
+                .stream()
+                .map(this::toSentMessage)
+                .toList();
+    }
+
+    @Override
+    public long countUnread(UUID roomId, String lastReadMessageId, UUID myUserId) {
+        // 한 번도 읽지 않았으면 방 전체에서 내 메시지를 제외하고 센다.
+        if (lastReadMessageId == null || lastReadMessageId.isBlank()) {
+            return chatMessageMongoRepository.countUnreadAll(roomId, myUserId);
+        }
+        // lastRead 메시지를 찾으면 그 위치 이후를, 못 찾으면(정합성 깨짐) 전체로 폴백한다.
+        return chatMessageMongoRepository.findByMessageIdAndRoomId(lastReadMessageId, roomId)
+                .map(cursor -> chatMessageMongoRepository.countUnreadAfter(
+                        roomId, myUserId, cursor.getCreatedAt(), cursor.getMessageId()))
+                .orElseGet(() -> chatMessageMongoRepository.countUnreadAll(roomId, myUserId));
     }
 }

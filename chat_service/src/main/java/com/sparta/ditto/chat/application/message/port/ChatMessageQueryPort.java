@@ -2,6 +2,7 @@ package com.sparta.ditto.chat.application.message.port;
 
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -43,4 +44,10 @@ public interface ChatMessageQueryPort {
             UUID roomId, Instant joinedAt,
             Instant afterCreatedAt, String afterMessageId,
             Instant upperCreatedAt, String upperMessageId, int limit);
+
+    // 방 목록 lastMessage 본문 채우기용 batch 조회
+    List<SentMessage> findByMessageIds(Collection<String> messageIds);
+
+    // 방 목록 unreadCount 계산용
+    long countUnread(UUID roomId, String lastReadMessageId, UUID myUserId);
 }
