@@ -28,3 +28,9 @@ spring:
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.info: false
+
+kafka:
+  topic:
+    chat-message-created: chat-message-created
