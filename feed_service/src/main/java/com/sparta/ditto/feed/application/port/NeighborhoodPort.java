@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.UploadUrlResult.port.out;
+package com.sparta.ditto.feed.application.port;
 
 /**
  * 역지오코딩(위경도 → 동네명 변환) 포트 인터페이스.

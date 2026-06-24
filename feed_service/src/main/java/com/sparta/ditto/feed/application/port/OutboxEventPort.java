@@ -1,4 +1,4 @@
-package com.sparta.ditto.feed.application.UploadUrlResult.port.out;
+package com.sparta.ditto.feed.application.port;
 
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;

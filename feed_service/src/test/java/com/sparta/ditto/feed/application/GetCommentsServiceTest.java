@@ -2,7 +2,7 @@ package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.feed.application.dto.result.CommentListResult;
 import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
-import com.sparta.ditto.feed.application.UploadUrlResult.port.out.OutboxEventPort;
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;

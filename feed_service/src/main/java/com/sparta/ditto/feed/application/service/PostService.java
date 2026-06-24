@@ -7,7 +7,7 @@ import com.sparta.ditto.feed.application.dto.UserPostsResult;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.dto.result.PostResult;
-import com.sparta.ditto.feed.application.UploadUrlResult.port.out.OutboxEventPort;
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;

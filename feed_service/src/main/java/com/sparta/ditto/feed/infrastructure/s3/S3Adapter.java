@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.infrastructure.s3;
 
-import com.sparta.ditto.feed.application.UploadUrlResult.port.out.S3Port;
+import com.sparta.ditto.feed.application.port.S3Port;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
