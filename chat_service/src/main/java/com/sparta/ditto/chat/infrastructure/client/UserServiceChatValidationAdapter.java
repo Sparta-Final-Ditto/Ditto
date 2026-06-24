@@ -52,10 +52,16 @@ public class UserServiceChatValidationAdapter implements ChatUserValidationPort 
             userServiceChatValidationCircuitBreaker.executeRunnable(() ->
                     callUserService(requesterId, targetUserIds, checkBlock)
             );
-        } catch (ChatUserNotFoundException | ChatBlockedUserException ex) {
+        } catch (
+                ChatUserNotFoundException
+                | ChatBlockedUserException
+                | ChatUserValidationFailedException ex
+        ) {
             throw ex;
         } catch (FeignException ex) {
-            throw mapFeignException(ex);
+            log.warn("User service chat validation rejected. status={}, errorCode={}",
+                    ex.status(), extractErrorCode(ex));
+            throw new ChatUserValidationFailedException();
         } catch (CallNotPermittedException ex) {
             log.warn("User service chat validation circuit breaker is open. requesterId={}",
                     requesterId);
@@ -77,32 +83,26 @@ public class UserServiceChatValidationAdapter implements ChatUserValidationPort 
                     new ChatUserValidationRequest(requesterId, targetUserIds, checkBlock)
             );
         } catch (FeignException ex) {
-            RuntimeException businessException = mapBusinessException(ex);
-            if (businessException != null) {
-                throw businessException;
+            RuntimeException clientException = mapClientException(ex);
+            if (clientException != null) {
+                throw clientException;
             }
             throw ex;
         }
     }
 
-    private RuntimeException mapFeignException(FeignException ex) {
-        RuntimeException businessException = mapBusinessException(ex);
-        if (businessException != null) {
-            throw businessException;
-        }
-
-        log.warn("User service chat validation rejected. status={}, errorCode={}",
-                ex.status(), extractErrorCode(ex));
-        throw new ChatUserValidationFailedException();
-    }
-
-    private RuntimeException mapBusinessException(FeignException ex) {
+    private RuntimeException mapClientException(FeignException ex) {
         String code = extractErrorCode(ex);
         if (USER_NOT_FOUND_CODE.equals(code)) {
             return new ChatUserNotFoundException();
         }
         if (BLOCKED_USER_CODE.equals(code)) {
             return new ChatBlockedUserException();
+        }
+        if (ex.status() >= 400 && ex.status() < 500) {
+            log.warn("User service chat validation client error. status={}, errorCode={}",
+                    ex.status(), code);
+            return new ChatUserValidationFailedException();
         }
         return null;
     }

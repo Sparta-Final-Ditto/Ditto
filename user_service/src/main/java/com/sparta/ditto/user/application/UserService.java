@@ -54,15 +54,16 @@ public class UserService {
             List<UUID> targetUserIds,
             boolean checkBlock
     ) {
-        if (!userRepository.existsById(requesterId)) {
+        Set<UUID> uniqueTargetUserIds = new LinkedHashSet<>(targetUserIds);
+        Set<UUID> userIdsToValidate = new LinkedHashSet<>();
+        userIdsToValidate.add(requesterId);
+        userIdsToValidate.addAll(uniqueTargetUserIds);
+
+        if (userRepository.countByIdIn(userIdsToValidate) != userIdsToValidate.size()) {
             throw new UserNotFoundException();
         }
 
-        Set<UUID> uniqueTargetUserIds = new LinkedHashSet<>(targetUserIds);
         for (UUID targetUserId : uniqueTargetUserIds) {
-            if (!userRepository.existsById(targetUserId)) {
-                throw new UserNotFoundException();
-            }
             if (checkBlock && isBlockedEitherDirection(requesterId, targetUserId)) {
                 throw new BlockedUserException();
             }

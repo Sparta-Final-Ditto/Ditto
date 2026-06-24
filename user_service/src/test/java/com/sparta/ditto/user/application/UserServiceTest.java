@@ -2,6 +2,7 @@ package com.sparta.ditto.user.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
@@ -126,8 +127,7 @@ class UserServiceTest {
         @Test
         void 성공() {
             UUID targetUserId = UUID.randomUUID();
-            given(userRepository.existsById(userId)).willReturn(true);
-            given(userRepository.existsById(targetUserId)).willReturn(true);
+            given(userRepository.countByIdIn(any())).willReturn(2L);
             given(blockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId))
                     .willReturn(false);
             given(blockRepository.existsByBlockerIdAndBlockedId(targetUserId, userId))
@@ -144,7 +144,7 @@ class UserServiceTest {
         @Test
         void 요청자_없음_예외() {
             UUID targetUserId = UUID.randomUUID();
-            given(userRepository.existsById(userId)).willReturn(false);
+            given(userRepository.countByIdIn(any())).willReturn(1L);
 
             assertThatThrownBy(() ->
                     userService.validateChatUsers(userId, List.of(targetUserId), true))
@@ -156,8 +156,7 @@ class UserServiceTest {
         @Test
         void 대상_없음_예외() {
             UUID targetUserId = UUID.randomUUID();
-            given(userRepository.existsById(userId)).willReturn(true);
-            given(userRepository.existsById(targetUserId)).willReturn(false);
+            given(userRepository.countByIdIn(any())).willReturn(1L);
 
             assertThatThrownBy(() ->
                     userService.validateChatUsers(userId, List.of(targetUserId), true))
@@ -169,8 +168,7 @@ class UserServiceTest {
         @Test
         void 요청자가_대상을_차단했으면_예외() {
             UUID targetUserId = UUID.randomUUID();
-            given(userRepository.existsById(userId)).willReturn(true);
-            given(userRepository.existsById(targetUserId)).willReturn(true);
+            given(userRepository.countByIdIn(any())).willReturn(2L);
             given(blockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId))
                     .willReturn(true);
 
@@ -185,8 +183,7 @@ class UserServiceTest {
         @Test
         void 대상이_요청자를_차단했으면_예외() {
             UUID targetUserId = UUID.randomUUID();
-            given(userRepository.existsById(userId)).willReturn(true);
-            given(userRepository.existsById(targetUserId)).willReturn(true);
+            given(userRepository.countByIdIn(any())).willReturn(2L);
             given(blockRepository.existsByBlockerIdAndBlockedId(userId, targetUserId))
                     .willReturn(false);
             given(blockRepository.existsByBlockerIdAndBlockedId(targetUserId, userId))
