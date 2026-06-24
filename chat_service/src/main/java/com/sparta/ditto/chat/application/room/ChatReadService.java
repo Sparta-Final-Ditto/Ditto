@@ -13,9 +13,11 @@ import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatReadService {
@@ -42,6 +44,13 @@ public class ChatReadService {
         Instant readAt = Instant.now();
         if (shouldUpdateReadPosition(participant, command)) {
             participant.updateLastRead(command.lastReadMessageId(), readAt);
+            log.debug("Chat read position updated. userId={}, roomId={}, messageId={}",
+                    command.requesterId(), command.roomId(), command.lastReadMessageId());
+        } else {
+            log.debug("Chat read position ignored because requested message is not newer. "
+                            + "userId={}, roomId={}, requestedMessageId={}, currentMessageId={}",
+                    command.requesterId(), command.roomId(),
+                    command.lastReadMessageId(), participant.getLastReadMessageId());
         }
 
         return ChatReadResult.of(
