@@ -78,4 +78,17 @@ public interface ChatMessageMongoRepository extends MongoRepository<ChatMessageD
 
     // 방 목록: 여러 messageId(=_id)로 마지막 메시지 batch 조회
     List<ChatMessageDocument> findByMessageIdIn(Collection<String> messageIds);
+
+    // unread: lastRead 없음 → 방 전체에서 내 메시지·삭제 제외
+    @Query(value = "{ 'room_id': ?0, 'sender_id': { '$ne': ?1 }, 'deleted_at': null }",
+            count = true)
+    long countUnreadAll(UUID roomId, UUID myUserId);
+
+    // unread: lastRead 커서 (createdAt,_id) 이후 + 내 메시지·삭제 제외
+    @Query(value = "{ 'room_id': ?0, 'sender_id': { '$ne': ?1 }, 'deleted_at': null, "
+            + "'$or': [ { 'created_at': { '$gt': ?2 } }, "
+            + "{ 'created_at': ?2, '_id': { '$gt': ?3 } } ] }",
+            count = true)
+    long countUnreadAfter(UUID roomId, UUID myUserId,
+                          Instant lastReadCreatedAt, String lastReadMessageId);
 }

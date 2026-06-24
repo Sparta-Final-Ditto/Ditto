@@ -47,4 +47,7 @@ public interface ChatMessageQueryPort {
 
     // 방 목록 lastMessage 본문 채우기용 batch 조회
     List<SentMessage> findByMessageIds(Collection<String> messageIds);
+
+    // 방 목록 unreadCount 계산용
+    long countUnread(UUID roomId, String lastReadMessageId, UUID myUserId);
 }
