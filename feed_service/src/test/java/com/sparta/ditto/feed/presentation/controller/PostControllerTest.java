@@ -12,6 +12,7 @@ import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFil
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
+import com.sparta.ditto.feed.domain.exception.ForbiddenException;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import java.time.Instant;
@@ -28,6 +29,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -260,5 +263,57 @@ class PostControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    // ============================================================
+    // DELETE /posts/{postId} (게시글 삭제)
+    // ============================================================
+
+    @Test
+    @DisplayName("작성자가 자신의 게시글 삭제 → 200 OK, message DELETED")
+    void deletePost_정상삭제_200_DELETED() throws Exception {
+        // given
+        doNothing().when(postService).deletePost(any(UUID.class), any(UUID.class), anyString());
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/posts/{postId}", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Role", "USER"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("DELETED"))
+                .andExpect(jsonPath("$.data").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("없는 게시글 삭제 → 404 POST_NOT_FOUND")
+    void deletePost_없는게시글_404_POST_NOT_FOUND() throws Exception {
+        // given
+        doThrow(new PostNotFoundException())
+                .when(postService).deletePost(any(UUID.class), any(UUID.class), anyString());
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/posts/{postId}", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Role", "USER"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("권한 없는 USER 삭제 → 403 FORBIDDEN")
+    void deletePost_권한없음_403_FORBIDDEN() throws Exception {
+        // given
+        doThrow(new ForbiddenException())
+                .when(postService).deletePost(any(UUID.class), any(UUID.class), anyString());
+
+        // when & then
+        mockMvc.perform(delete("/api/v1/posts/{postId}", postId)
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Role", "USER"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 }

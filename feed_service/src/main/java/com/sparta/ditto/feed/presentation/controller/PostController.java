@@ -169,6 +169,19 @@ public class PostController {
     }
 
     // -------------------------------------------------------
+    // 게시글 삭제
+    // -------------------------------------------------------
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<ApiResponse<Void>> deletePost(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId
+    ) {
+        postService.deletePost(postId, userId, userRole);
+        return ResponseEntity.ok(ApiResponse.deleted());
+    }
+
+    // -------------------------------------------------------
     // 댓글 삭제
     // -------------------------------------------------------
     @DeleteMapping("/{postId}/comments/{commentId}")
