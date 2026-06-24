@@ -7,11 +7,15 @@ import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.GetCommentsQuery;
 import com.sparta.ditto.feed.application.dto.GetLikesQuery;
+import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
 import com.sparta.ditto.feed.application.dto.LikeListResult;
 import com.sparta.ditto.feed.application.dto.LikeResult;
+import com.sparta.ditto.feed.application.dto.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.UserPostsResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.response.CommentListResponse;
@@ -19,6 +23,8 @@ import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
+import com.sparta.ditto.feed.presentation.dto.response.PostDetailResponse;
+import com.sparta.ditto.feed.presentation.dto.response.UserPostsResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -40,13 +46,45 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/posts")
+@RequestMapping("/api/v1/posts")
 @RequiredArgsConstructor
 public class PostController {
 
     private final PostCreateFacade postCreateFacade;
     private final PostInteractionService postInteractionService;
+    private final PostService postService;
 
+    // -------------------------------------------------------
+    // 3*3 게시글 목록 조회
+    // -------------------------------------------------------
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<ApiResponse<UserPostsResponse>> getUserPosts(
+            @RequestHeader("X-User-Id") UUID requesterId,
+            @PathVariable UUID userId,
+            @RequestParam(required = false) UUID cursor,
+            @RequestParam(defaultValue = "21") @Min(1) @Max(21) int size
+    ) {
+        UserPostsResult result = postService.getUserPosts(
+                new GetUserPostsQuery(requesterId, userId, cursor, size));
+        return ResponseEntity.ok(ApiResponse.success(UserPostsResponse.from(result)));
+    }
+
+    // -------------------------------------------------------
+    // 게시글 조회
+    // -------------------------------------------------------
+    @GetMapping("/{postId}")
+    public ResponseEntity<ApiResponse<PostDetailResponse>> getPostDetail(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId
+    ) {
+        PostDetailResult result = postService.getPostDetail(postId, userId);
+        return ResponseEntity.ok(ApiResponse.success(PostDetailResponse.from(result)));
+    }
+
+    // -------------------------------------------------------
+    // 게시글 생성
+    // -------------------------------------------------------
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
             @RequestHeader("X-User-Id") UUID userId,
@@ -75,15 +113,22 @@ public class PostController {
                 .body(ApiResponse.created(CreatePostResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // 좋아요 생성
+    // -------------------------------------------------------
     @PostMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> addLike(
             @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Nickname") String nickname,
             @PathVariable UUID postId
     ) {
-        LikeResult result = postInteractionService.addLike(userId, postId);
+        LikeResult result = postInteractionService.addLike(userId, postId, nickname);
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // 좋아요 삭제
+    // -------------------------------------------------------
     @DeleteMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> removeLike(
             @RequestHeader("X-User-Id") UUID userId,
@@ -93,6 +138,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // 댓글 목록 조회
+    // -------------------------------------------------------
     @GetMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentListResponse>> getComments(
             @RequestHeader("X-User-Id") UUID userId,
@@ -106,6 +154,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(CommentListResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // 좋아요 목록 조회
+    // -------------------------------------------------------
     @GetMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeListResponse>> getLikes(
             @PathVariable UUID postId,
@@ -117,6 +168,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
     }
 
+    // -------------------------------------------------------
+    // 댓글 삭제
+    // -------------------------------------------------------
     @DeleteMapping("/{postId}/comments/{commentId}")
     public ResponseEntity<ApiResponse<Void>> deleteComment(
             @RequestHeader("X-User-Id") UUID userId,
@@ -128,6 +182,9 @@ public class PostController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
+    // -------------------------------------------------------
+    // 댓글 생성
+    // -------------------------------------------------------
     @PostMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @RequestHeader("X-User-Id") UUID userId,
