@@ -70,4 +70,12 @@ public class PostRepositoryImpl implements PostRepository {
         return jpaRepository.findByUserIdWithCursor(
                 userId, cursorAt, cursorId, PageRequest.of(0, limit));
     }
+
+    @Override
+    public List<Post> findFeedByUserIdsAndLocationScopeWithCursor(
+            List<UUID> userIds, List<LocationScope> scopes,
+            Instant cursorAt, UUID cursorId, int limit) {
+        return jpaRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+                userIds, scopes, cursorAt, cursorId, PageRequest.of(0, limit));
+    }
 }
