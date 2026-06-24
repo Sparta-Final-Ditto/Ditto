@@ -3,6 +3,7 @@ package com.sparta.ditto.feed.presentation.controller;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
+import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.CommentNotFoundException;
 import com.sparta.ditto.feed.domain.exception.ForbiddenException;
 import java.util.UUID;
@@ -35,6 +36,9 @@ class PostControllerDeleteCommentTest {
     @MockBean
     private PostInteractionService postInteractionService;
 
+    @MockBean
+    private PostService postService;
+
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
     private final UUID commentId = UUID.fromString("770e8400-e29b-41d4-a716-446655440002");
@@ -51,7 +55,7 @@ class PostControllerDeleteCommentTest {
                 .deleteComment(any(UUID.class), anyString(), any(UUID.class), any(UUID.class));
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/comments/{commentId}", postId, commentId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/comments/{commentId}", postId, commentId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isForbidden())
@@ -71,7 +75,7 @@ class PostControllerDeleteCommentTest {
                 .deleteComment(any(UUID.class), anyString(), any(UUID.class), any(UUID.class));
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/comments/{commentId}", postId, commentId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/comments/{commentId}", postId, commentId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isNotFound())
@@ -90,7 +94,7 @@ class PostControllerDeleteCommentTest {
                 .deleteComment(any(UUID.class), anyString(), any(UUID.class), any(UUID.class));
 
         // when & then
-        mockMvc.perform(delete("/posts/{postId}/comments/{commentId}", postId, commentId)
+        mockMvc.perform(delete("/api/v1/posts/{postId}/comments/{commentId}", postId, commentId)
                         .header("X-User-Id", userId.toString())
                         .header("X-User-Role", "USER"))
                 .andExpect(status().isOk())

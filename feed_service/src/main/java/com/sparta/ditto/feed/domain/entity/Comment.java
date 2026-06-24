@@ -52,4 +52,11 @@ public class Comment extends BaseEntity {
     public Comment(UUID postId, UUID userId, String content) {
         this(postId, userId, "", content);
     }
+
+    public boolean isUpdated() {
+        if (getCreatedAt() == null || getUpdatedAt() == null) {
+            return false;
+        }
+        return getUpdatedAt().isAfter(getCreatedAt());
+    }
 }
