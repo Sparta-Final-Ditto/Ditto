@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
-import com.sparta.ditto.feed.application.dto.PostResult;
+import com.sparta.ditto.feed.application.dto.result.PostResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

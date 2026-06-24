@@ -2,11 +2,11 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.dto.CommentResult;
-import com.sparta.ditto.feed.application.dto.CreateCommentCommand;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand;
-import com.sparta.ditto.feed.application.dto.PostResult;
-import com.sparta.ditto.feed.application.dto.PostResult.MediaFileResult;
+import com.sparta.ditto.feed.application.dto.result.CommentResult;
+import com.sparta.ditto.feed.application.dto.command.CreateCommentCommand;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.result.PostResult;
+import com.sparta.ditto.feed.application.dto.result.PostResult.MediaFileResult;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;

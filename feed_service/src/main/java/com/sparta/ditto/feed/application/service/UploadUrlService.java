@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.UploadUrlCommand;
-import com.sparta.ditto.feed.application.dto.UploadUrlCommand.FileItem;
-import com.sparta.ditto.feed.application.dto.UploadUrlResult;
-import com.sparta.ditto.feed.application.dto.UploadUrlResult.FileResult;
+import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand;
+import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand.FileItem;
+import com.sparta.ditto.feed.application.dto.result.UploadUrlResult;
+import com.sparta.ditto.feed.application.dto.result.UploadUrlResult.FileResult;
 import com.sparta.ditto.feed.application.port.S3Port;
 import com.sparta.ditto.feed.domain.exception.FilesEmptyException;
 import com.sparta.ditto.feed.domain.exception.ImageCountExceededException;

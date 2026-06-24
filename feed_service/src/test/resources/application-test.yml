@@ -4,7 +4,21 @@ spring:
       ddl-auto: create-drop
     show-sql: true
   kafka:
-    bootstrap-servers: ${spring.embedded.kafka.brokers}
+    bootstrap-servers: localhost:9092
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
 
 app:
   cloudfront:
@@ -14,3 +28,25 @@ app:
   matching-service:
     base-url: http://localhost:8083
     timeout-ms: 1000
+
+resilience4j:
+  circuitbreaker:
+    circuit-breaker-aspect-order: 1
+    instances:
+      matchServiceClient:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 4
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 700ms
+        wait-duration-in-open-state: 1s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    retry-aspect-order: 2
+    instances:
+      matchServiceClient:
+        max-attempts: 2
+        wait-duration: 10ms
+        enable-exponential-backoff: false

@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.sparta.ditto.feed.application.dto.CommentResult;
+import com.sparta.ditto.feed.application.dto.result.CommentResult;
 import java.time.Instant;
 import java.util.UUID;
 

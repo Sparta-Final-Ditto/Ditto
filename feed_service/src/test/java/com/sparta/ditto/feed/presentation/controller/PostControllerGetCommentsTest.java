@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
-import com.sparta.ditto.feed.application.dto.CommentListResult;
-import com.sparta.ditto.feed.application.dto.CommentResult;
-import com.sparta.ditto.feed.application.dto.GetCommentsQuery;
+import com.sparta.ditto.feed.application.dto.result.CommentListResult;
+import com.sparta.ditto.feed.application.dto.result.CommentResult;
+import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;

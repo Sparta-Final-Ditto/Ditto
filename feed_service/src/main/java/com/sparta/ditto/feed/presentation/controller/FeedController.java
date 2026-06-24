@@ -1,10 +1,11 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
-import com.sparta.ditto.feed.application.dto.FeedResult;
-import com.sparta.ditto.feed.application.dto.GetRandomFeedQuery;
-import com.sparta.ditto.feed.application.dto.UploadUrlCommand;
-import com.sparta.ditto.feed.application.dto.UploadUrlResult;
+import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand;
+import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
+import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
+import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.dto.result.UploadUrlResult;
 import com.sparta.ditto.feed.application.service.FeedService;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest;
@@ -58,6 +59,16 @@ public class FeedController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
         FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursor, size));
+        return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
+    }
+
+    @GetMapping("/match")
+    public ResponseEntity<ApiResponse<RandomFeedResponse>> getMatchFeed(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(required = false) UUID cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
+    ) {
+        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
     }
 }

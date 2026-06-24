@@ -1,8 +1,8 @@
 package com.sparta.ditto.feed.application.facade;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand;
-import com.sparta.ditto.feed.application.dto.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
+import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.application.port.NeighborhoodPort;
 import com.sparta.ditto.feed.application.port.S3Port;
