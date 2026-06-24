@@ -1,5 +1,6 @@
 package com.sparta.ditto.chat.application.message;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -44,6 +45,7 @@ class ChatMessageSendServiceTest {
     private ChatRoomMetadataService chatRoomMetadataService;
     private ChatMessagePublisher chatMessagePublisher;
     private ChatMessageDedupStore chatMessageDedupStore;
+    private ChatMessageNotificationService chatMessageNotificationService;
     private ChatMessageSendService chatMessageSendService;
 
     @BeforeEach
@@ -55,10 +57,12 @@ class ChatMessageSendServiceTest {
         chatRoomMetadataService = mock(ChatRoomMetadataService.class);
         chatMessagePublisher = mock(ChatMessagePublisher.class);
         chatMessageDedupStore = mock(ChatMessageDedupStore.class);
+        chatMessageNotificationService = mock(ChatMessageNotificationService.class);
         chatMessageSendService = new ChatMessageSendService(
                 chatMessageCommandPort, chatMessageQueryPort, chatParticipantValidator,
                 messageIdGenerator, chatRoomMetadataService,
-                chatMessagePublisher, chatMessageDedupStore);
+                chatMessagePublisher, chatMessageDedupStore,
+                chatMessageNotificationService);
     }
 
     @Test
@@ -208,6 +212,43 @@ class ChatMessageSendServiceTest {
         verify(chatMessageDedupStore)
                 .release(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID));
         verify(chatMessagePublisher, never()).ackToSender(any(), any());
+    }
+
+    @Test
+    @DisplayName("성공 - 신규 메시지 전송 시 알림 dispatch를 호출한다")
+    void sendUserMessage_dispatchesNotification() {
+        // given
+        given(chatMessageDedupStore.begin(any(), any(), any()))
+                .willReturn(DedupBeginResult.newRequest());
+        given(messageIdGenerator.generate()).willReturn("msg-1");
+        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
+                .willReturn(existingMessage("msg-1"));
+
+        // when
+        chatMessageSendService.sendUserMessage(command());
+
+        // then
+        verify(chatMessageNotificationService).dispatch(any(SentMessage.class));
+    }
+
+    @Test
+    @DisplayName("격리 - 알림 발행이 실패해도 전송은 성공한다")
+    void sendUserMessage_notificationFailureDoesNotBreakSend() {
+        // given
+        given(chatMessageDedupStore.begin(any(), any(), any()))
+                .willReturn(DedupBeginResult.newRequest());
+        given(messageIdGenerator.generate()).willReturn("msg-1");
+        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
+                .willReturn(existingMessage("msg-1"));
+        willThrow(new RuntimeException("kafka down"))
+                .given(chatMessageNotificationService).dispatch(any());
+
+        // when
+        SentMessage result = chatMessageSendService.sendUserMessage(command());
+
+        // then
+        assertThat(result).isNotNull();
+        verify(chatMessagePublisher).broadcast(eq(ROOM_ID), any(SentMessage.class));
     }
 
     private ChatMessageSendCommand command() {
