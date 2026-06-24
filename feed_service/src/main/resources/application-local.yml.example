@@ -15,6 +15,13 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: localhost:9092
+  cloud:
+    openfeign:
+      client:
+        config:
+          match-service:
+            connect-timeout: 500
+            read-timeout: 1000
 
 cloud:
   aws:
@@ -34,15 +41,6 @@ app:
   matching-service:
     base-url: http://localhost:8083
     timeout-ms: 1000
-
-spring:
-  cloud:
-    openfeign:
-      client:
-        config:
-          match-service:
-            connect-timeout: 500
-            read-timeout: 1000
 
 resilience4j:
   circuitbreaker:
