@@ -8,8 +8,10 @@ import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatPresenceService {
@@ -35,6 +37,7 @@ public class ChatPresenceService {
 
         chatPresencePort.refreshOnline(userId);
         chatPresencePort.refreshActiveRoomTtlIfPresent(userId);
+        log.debug("Chat presence heartbeat refreshed. userId={}", userId);
     }
 
     private ChatPresenceResult enterRoom(ChatPresenceCommand command) {
@@ -42,11 +45,15 @@ public class ChatPresenceService {
         chatParticipantValidator.ensureActiveParticipant(command.roomId(), command.requesterId());
         chatPresencePort.refreshOnline(command.requesterId());
         chatPresencePort.enterRoom(command.requesterId(), command.roomId());
+        log.info("Chat presence entered. userId={}, roomId={}",
+                command.requesterId(), command.roomId());
         return ChatPresenceResult.of(command.roomId(), command.status());
     }
 
     private ChatPresenceResult leaveRoom(ChatPresenceCommand command) {
         chatPresencePort.leaveRoomIfCurrent(command.requesterId(), command.roomId());
+        log.info("Chat presence left. userId={}, roomId={}",
+                command.requesterId(), command.roomId());
         return ChatPresenceResult.of(command.roomId(), command.status());
     }
 }

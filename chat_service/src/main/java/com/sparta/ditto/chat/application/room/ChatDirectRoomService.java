@@ -18,9 +18,11 @@ import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatDirectRoomService {
@@ -44,13 +46,21 @@ public class ChatDirectRoomService {
 
         ChatDirectRoomResult existingRoom = resolveExistingRoom(orderedUserIds);
         if (existingRoom != null) {
+            log.info(
+                    "Direct chat room resolved. requesterId={}, targetUserId={}, "
+                            + "roomId={}, created={}, reactivated={}",
+                    requesterId, targetUserId, existingRoom.roomId(),
+                    existingRoom.created(), existingRoom.reactivated());
             return existingRoom;
         }
 
         try {
-            return transactionTemplate.execute(
+            ChatDirectRoomResult result = transactionTemplate.execute(
                     status -> createDirectRoom(requesterId, targetUserId)
             );
+            log.info("Direct chat room created. requesterId={}, targetUserId={}, roomId={}",
+                    requesterId, targetUserId, result.roomId());
+            return result;
         } catch (DirectChatPairUniqueConflictException ex) {
             // 실패한 생성 트랜잭션과 분리된 새 트랜잭션에서 기존 방을 재조회한다.
             ChatDirectRoomResult roomAfterConflict = transactionTemplate.execute(
@@ -59,6 +69,9 @@ public class ChatDirectRoomService {
             if (roomAfterConflict == null) {
                 throw ex;
             }
+            log.info("Direct chat room resolved after unique conflict. "
+                            + "requesterId={}, targetUserId={}, roomId={}",
+                    requesterId, targetUserId, roomAfterConflict.roomId());
             return roomAfterConflict;
         }
     }
