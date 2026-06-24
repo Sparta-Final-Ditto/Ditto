@@ -74,4 +74,20 @@ public class OutboxEventAdapter implements OutboxEventPort {
             throw new RuntimeException("POST_COMMENTED outbox payload 직렬화 실패", e);
         }
     }
+
+    @Override
+    public OutboxEvent buildPostDeleted(Post post, UUID deletedBy) {
+        record Payload(String postId, String userId, String deletedAt) {}
+
+        try {
+            String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
+                    post.getId().toString(),
+                    post.getUserId().toString(),
+                    Instant.now().toString()
+            ));
+            return new OutboxEvent("post-events", "POST_DELETED", payload);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("POST_DELETED outbox payload 직렬화 실패", e);
+        }
+    }
 }

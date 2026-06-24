@@ -12,8 +12,10 @@ import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.entity.PostTag;
+import com.sparta.ditto.feed.domain.exception.ForbiddenException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
+import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.service.PostValidator;
@@ -32,6 +34,7 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
+    private final LikeRepository likeRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPort outboxEventPort;
 
@@ -74,6 +77,25 @@ public class PostService {
                 .toList();
 
         return new UserPostsResult(items, nextCursor, hasNext);
+    }
+
+    @Transactional
+    public void deletePost(UUID postId, UUID requesterId, String requesterRole) {
+        Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
+                .orElseThrow(PostNotFoundException::new);
+
+        boolean isAuthor = requesterId.equals(post.getUserId());
+        boolean isAdmin = "ADMIN".equals(requesterRole);
+
+        if (!isAuthor && !isAdmin) {
+            throw new ForbiddenException();
+        }
+
+        post.delete(requesterId);
+        // PostMedia, PostTag는 Post aggregate 소속이며, Post.deletedAt으로 접근이 차단되므로 별도 soft delete 불필요.
+        commentRepository.softDeleteAllByPostId(postId, requesterId);
+        likeRepository.softDeleteAllByPostId(postId, requesterId);
+        outboxEventRepository.save(outboxEventPort.buildPostDeleted(post, requesterId));
     }
 
     @Transactional

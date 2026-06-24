@@ -8,9 +8,12 @@ import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.application.port.OutboxEventPort;
+import com.sparta.ditto.feed.domain.exception.ForbiddenException;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
+import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
+import com.sparta.ditto.feed.domain.type.LocationScope;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -24,13 +27,19 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class PostServiceTest {
@@ -40,6 +49,9 @@ class PostServiceTest {
 
     @Mock
     private CommentRepository commentRepository;
+
+    @Mock
+    private LikeRepository likeRepository;
 
     @Mock
     private OutboxEventRepository outboxEventRepository;
@@ -460,5 +472,192 @@ class PostServiceTest {
         assertThat(result.postId()).isNotNull();
         assertThat(result.authorUserId()).isEqualTo(userId);
         assertThat(result.authorNickname()).isNull();
+    }
+
+    // ============================================================
+    // DELETE /posts/{postId} (게시글 삭제) — TC-FEED-API-015
+    // ============================================================
+
+    private Post createExistingPost(UUID ownerId) {
+        Post post = new Post(ownerId, "닉네임", "내용", "서울 성동구",
+                37.5563, 127.0374, LocationScope.PUBLIC, true);
+        ReflectionTestUtils.setField(post, "id", UUID.randomUUID());
+        return post;
+    }
+
+    @Test
+    @DisplayName("TC-015-1: 작성자가 자신의 게시글 삭제 → 성공")
+    void deletePost_작성자_삭제_성공() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(requesterId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+
+        // when & then
+        assertThatCode(() -> postService.deletePost(postId, requesterId, "USER"))
+                .doesNotThrowAnyException();
+
+        verify(commentRepository).softDeleteAllByPostId(postId, requesterId);
+        verify(likeRepository).softDeleteAllByPostId(postId, requesterId);
+        verify(outboxEventRepository).save(any(OutboxEvent.class));
+    }
+
+    @Test
+    @DisplayName("TC-015-3: 없는 게시글 삭제 → 404 POST_NOT_FOUND")
+    void deletePost_없는게시글_PostNotFoundException() {
+        // given
+        UUID postId = UUID.randomUUID();
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> postService.deletePost(postId, UUID.randomUUID(), "USER"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                        .isEqualTo("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("TC-015-4: 이미 삭제된 게시글 삭제 → 404 POST_NOT_FOUND")
+    void deletePost_이미삭제된게시글_PostNotFoundException() {
+        // given: findByIdAndDeletedAtIsNull은 삭제된 게시글에 대해 empty를 반환
+        UUID postId = UUID.randomUUID();
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> postService.deletePost(postId, UUID.randomUUID(), "USER"))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                        .isEqualTo("POST_NOT_FOUND"));
+    }
+
+    @Test
+    @DisplayName("TC-015-2/10: 작성자 아닌 USER가 게시글 삭제 → 403 FORBIDDEN")
+    void deletePost_타인USER_ForbiddenException() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        UUID strangerId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(ownerId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+
+        // when & then
+        assertThatThrownBy(() -> postService.deletePost(postId, strangerId, "USER"))
+                .isInstanceOf(ForbiddenException.class);
+
+        verify(commentRepository, never()).softDeleteAllByPostId(any(), any());
+        verify(likeRepository, never()).softDeleteAllByPostId(any(), any());
+        verify(outboxEventRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("TC-015-9: ADMIN이 타인 게시글 삭제 → 성공")
+    void deletePost_ADMIN_타인게시글_삭제_성공() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        UUID adminId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(ownerId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+
+        // when & then
+        assertThatCode(() -> postService.deletePost(postId, adminId, "ADMIN"))
+                .doesNotThrowAnyException();
+
+        verify(commentRepository).softDeleteAllByPostId(postId, adminId);
+        verify(likeRepository).softDeleteAllByPostId(postId, adminId);
+    }
+
+    @Test
+    @DisplayName("TC-015-5: 게시글 삭제 시 댓글 일괄 소프트 삭제 호출")
+    void deletePost_댓글_cascade_softDelete_호출() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(requesterId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+
+        // when
+        postService.deletePost(postId, requesterId, "USER");
+
+        // then
+        verify(commentRepository).softDeleteAllByPostId(postId, requesterId);
+    }
+
+    @Test
+    @DisplayName("TC-015-6: 게시글 삭제 시 좋아요 일괄 소프트 삭제 호출")
+    void deletePost_좋아요_cascade_softDelete_호출() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(requesterId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+
+        // when
+        postService.deletePost(postId, requesterId, "USER");
+
+        // then
+        verify(likeRepository).softDeleteAllByPostId(postId, requesterId);
+    }
+
+    @Test
+    @DisplayName("TC-015-7: 게시글 삭제 시 POST_DELETED Outbox 이벤트 저장")
+    void deletePost_POST_DELETED_outbox_저장() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(requesterId);
+        ReflectionTestUtils.setField(post, "id", postId);
+        OutboxEvent expectedEvent = new OutboxEvent("post-events", "POST_DELETED", "{}");
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        when(outboxEventPort.buildPostDeleted(any(Post.class), eq(requesterId)))
+                .thenReturn(expectedEvent);
+
+        // when
+        postService.deletePost(postId, requesterId, "USER");
+
+        // then
+        verify(outboxEventPort).buildPostDeleted(any(Post.class), eq(requesterId));
+        verify(outboxEventRepository).save(expectedEvent);
+    }
+
+    @Test
+    @DisplayName("TC-015-8: 댓글 cascade 실패 시 Outbox 이벤트 저장 안됨")
+    void deletePost_cascade_실패시_outbox_미저장() {
+        // given
+        UUID requesterId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(requesterId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+        doThrow(new RuntimeException("DB error")).when(commentRepository)
+                .softDeleteAllByPostId(postId, requesterId);
+
+        // when & then
+        assertThatThrownBy(() -> postService.deletePost(postId, requesterId, "USER"))
+                .isInstanceOf(RuntimeException.class);
+
+        verify(outboxEventRepository, never()).save(any());
+        verify(likeRepository, never()).softDeleteAllByPostId(any(), any());
     }
 }
