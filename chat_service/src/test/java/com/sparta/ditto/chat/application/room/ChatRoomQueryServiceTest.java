@@ -6,6 +6,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomDetailResult;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomSummaryResult;
@@ -13,6 +14,7 @@ import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -241,6 +243,61 @@ class ChatRoomQueryServiceTest {
                 .containsExactly(ROOM_ID, OLD_ROOM_ID);
     }
 
+    @Test
+    @DisplayName("성공 - 마지막 메시지 본문과 unreadCount가 채워진다")
+    void getMyRooms_fills_lastMessage_and_unreadCount() {
+        // given
+        ChatRoomParticipant participant = mockParticipant(
+                ROOM_ID, REQUESTER_ID, ParticipantRole.MEMBER, true);
+        given(participant.getLastReadMessageId()).willReturn("read-msg-id");
+
+        ChatRoom room = mockChatRoom(ROOM_ID, RoomType.GROUP, "스터디방");
+        given(room.getLastMessageId()).willReturn("last-msg-id");
+        given(room.getLastMessageAt()).willReturn(Instant.parse("2026-06-20T01:00:00Z"));
+
+        given(chatRoomParticipantPort.findVisibleActiveParticipantsByUserId(REQUESTER_ID))
+                .willReturn(List.of(participant));
+        given(chatRoomPort.findAllByIdsOrderByLastMessageAtDesc(List.of(ROOM_ID)))
+                .willReturn(List.of(room));
+        given(chatMessageQueryPort.findByMessageIds(List.of("last-msg-id")))
+                .willReturn(List.of(sentMessage("last-msg-id", "오늘 같이 공부해요")));
+        given(chatMessageQueryPort.countUnread(ROOM_ID, "read-msg-id", REQUESTER_ID))
+                .willReturn(3L);
+
+        // when
+        List<ChatRoomSummaryResult> results = chatRoomQueryService.getMyRooms(REQUESTER_ID);
+
+        // then
+        assertThat(results).hasSize(1);
+        assertThat(results.get(0).lastMessage()).isEqualTo("오늘 같이 공부해요");
+        assertThat(results.get(0).unreadCount()).isEqualTo(3L);
+        verify(chatMessageQueryPort).findByMessageIds(List.of("last-msg-id"));
+        verify(chatMessageQueryPort).countUnread(ROOM_ID, "read-msg-id", REQUESTER_ID);
+    }
+
+    @Test
+    @DisplayName("성공 - 삭제된 마지막 메시지는 본문을 null로 내린다")
+    void getMyRooms_deleted_lastMessage_returns_null_preview() {
+        // given
+        ChatRoomParticipant participant = mockParticipant(
+                ROOM_ID, REQUESTER_ID, ParticipantRole.MEMBER, true);
+        ChatRoom room = mockChatRoom(ROOM_ID, RoomType.GROUP, "스터디방");
+        given(room.getLastMessageId()).willReturn("last-msg-id");
+
+        given(chatRoomParticipantPort.findVisibleActiveParticipantsByUserId(REQUESTER_ID))
+                .willReturn(List.of(participant));
+        given(chatRoomPort.findAllByIdsOrderByLastMessageAtDesc(List.of(ROOM_ID)))
+                .willReturn(List.of(room));
+        given(chatMessageQueryPort.findByMessageIds(List.of("last-msg-id")))
+                .willReturn(List.of(deletedSentMessage("last-msg-id", "지워진 내용")));
+
+        // when
+        List<ChatRoomSummaryResult> results = chatRoomQueryService.getMyRooms(REQUESTER_ID);
+
+        // then
+        assertThat(results.get(0).lastMessage()).isNull();
+    }
+
     private ChatRoom mockChatRoom(UUID roomId, RoomType roomType, String roomName) {
         ChatRoom chatRoom = mock(ChatRoom.class);
         given(chatRoom.getId()).willReturn(roomId);
@@ -264,5 +321,20 @@ class ChatRoomQueryServiceTest {
         given(participant.getLeftAt()).willReturn(null);
         given(participant.isNotificationEnabled()).willReturn(notificationEnabled);
         return participant;
+    }
+
+    private SentMessage sentMessage(String messageId, String content) {
+        return new SentMessage(
+                messageId, ROOM_ID, OTHER_USER_ID, null, UUID.randomUUID(),
+                MessageType.TEXT, content,
+                Instant.parse("2026-06-20T01:00:00Z"), null);
+    }
+
+    private SentMessage deletedSentMessage(String messageId, String content) {
+        return new SentMessage(
+                messageId, ROOM_ID, OTHER_USER_ID, null, UUID.randomUUID(),
+                MessageType.TEXT, content,
+                Instant.parse("2026-06-20T01:00:00Z"),
+                Instant.parse("2026-06-20T02:00:00Z")); // deletedAt
     }
 }
