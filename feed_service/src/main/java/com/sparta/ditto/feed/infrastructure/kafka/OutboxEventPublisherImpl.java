@@ -53,5 +53,6 @@ public class OutboxEventPublisherImpl implements OutboxEventPublisher {
      * @param occurredAt 이벤트 발생 시각 (ISO-8601)
      * @param payload    이벤트 본문 데이터
      */
-    private record Envelope(String eventId, String eventType, String occurredAt, JsonNode payload) {}
+    private record Envelope(
+            String eventId, String eventType, String occurredAt, JsonNode payload) {}
 }
