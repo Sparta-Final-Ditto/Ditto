@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.infrastructure.mongo;
 
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -74,4 +75,7 @@ public interface ChatMessageMongoRepository extends MongoRepository<ChatMessageD
             UUID roomId, Instant joinedAt,
             Instant afterCreatedAt, String afterMessageId,
             Instant upperCreatedAt, String upperMessageId, Limit limit);
+
+    // 방 목록: 여러 messageId(=_id)로 마지막 메시지 batch 조회
+    List<ChatMessageDocument> findByMessageIdIn(Collection<String> messageIds);
 }
