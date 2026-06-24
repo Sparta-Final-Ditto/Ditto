@@ -4,6 +4,7 @@ import com.sparta.ditto.chat.presentation.dto.stomp.ChatStompErrorResponse;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import com.sparta.ditto.common.exception.ErrorCode;
+import java.security.Principal;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -30,11 +31,15 @@ public class ChatStompExceptionHandler {
             Message<?> message
     ) {
         ErrorCode errorCode = exception.getErrorCode();
+        UUID roomId = extractRoomId(message);
+        UUID userId = extractUserId(message);
+        log.warn("STOMP chat business exception. userId={}, roomId={}, errorCode={}",
+                userId, roomId, errorCode.getCode());
         return ChatStompErrorResponse.of(
                 errorCode.getCode(),
                 errorType(errorCode),
                 errorCode.getMessage(),
-                extractRoomId(message),
+                roomId,
                 null
         );
     }
@@ -45,13 +50,16 @@ public class ChatStompExceptionHandler {
             Exception exception,
             Message<?> message
     ) {
-        log.error("Unhandled STOMP exception", exception);
+        UUID roomId = extractRoomId(message);
+        UUID userId = extractUserId(message);
+        log.error("Unhandled STOMP exception. userId={}, roomId={}",
+                userId, roomId, exception);
 
         return ChatStompErrorResponse.of(
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(),
                 CommonErrorCode.INTERNAL_SERVER_ERROR.name(),
                 CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage(),
-                extractRoomId(message),
+                roomId,
                 null
         );
     }
@@ -76,6 +84,19 @@ public class ChatStompExceptionHandler {
 
         try {
             return UUID.fromString(roomId);
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private UUID extractUserId(Message<?> message) {
+        Principal principal = SimpMessageHeaderAccessor.wrap(message).getUser();
+        if (principal == null || principal.getName() == null || principal.getName().isBlank()) {
+            return null;
+        }
+
+        try {
+            return UUID.fromString(principal.getName());
         } catch (IllegalArgumentException ex) {
             return null;
         }

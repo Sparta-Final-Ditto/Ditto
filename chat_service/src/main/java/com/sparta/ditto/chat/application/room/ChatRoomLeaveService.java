@@ -58,6 +58,8 @@ public class ChatRoomLeaveService {
         if (chatRoom.getRoomType() == RoomType.DIRECT) {
             // 1:1 방은 한 명이 나가면 새 메시지를 막기 위해 방을 비활성화한다.
             chatRoom.inactivate(requesterId);
+            log.info("Direct chat room inactivated after leave. userId={}, roomId={}",
+                    requesterId, roomId);
         } else {
             leaveGroupRoom(chatRoom, requesterParticipant, activeParticipants, requesterId);
         }
@@ -78,6 +80,11 @@ public class ChatRoomLeaveService {
             }
         });
 
+        log.info("Chat room left. userId={}, roomId={}, roomType={}, "
+                        + "roomStatus={}, lastVisibleMessageId={}",
+                requesterId, roomId, chatRoom.getRoomType(), chatRoom.getStatus(),
+                lastVisibleMessageId);
+
         return result(chatRoom, requesterParticipant);
     }
 
@@ -93,6 +100,9 @@ public class ChatRoomLeaveService {
 
         if (remainingParticipants.isEmpty()) {
             chatRoom.inactivate(requesterId);
+            log.info("Group chat room inactivated because last participant left. "
+                            + "userId={}, roomId={}",
+                    requesterId, chatRoom.getId());
             return;
         }
 
@@ -102,7 +112,12 @@ public class ChatRoomLeaveService {
             remainingParticipants.stream()
                     .min(Comparator.comparing(ChatRoomParticipant::getJoinedAt)
                             .thenComparing(ChatRoomParticipant::getUserId))
-                    .ifPresent(ChatRoomParticipant::assignOwnerRole);
+                    .ifPresent(newOwner -> {
+                        newOwner.assignOwnerRole();
+                        log.info("Group chat room owner reassigned. "
+                                        + "roomId={}, previousOwnerId={}, newOwnerId={}",
+                                chatRoom.getId(), requesterId, newOwner.getUserId());
+                    });
         }
     }
 
