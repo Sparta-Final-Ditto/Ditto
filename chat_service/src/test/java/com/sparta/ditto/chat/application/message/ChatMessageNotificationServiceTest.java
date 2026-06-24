@@ -56,7 +56,8 @@ class ChatMessageNotificationServiceTest {
         given(candidateService.findNotificationCandidateUserIds(ROOM_ID, SENDER))
                 .willReturn(List.of(inRoom, elsewhere, offline));
         given(chatPresencePort.findActiveRoomId(inRoom)).willReturn(Optional.of(ROOM_ID));
-        given(chatPresencePort.findActiveRoomId(elsewhere)).willReturn(Optional.of(UUID.randomUUID()));
+        given(chatPresencePort.findActiveRoomId(elsewhere))
+                .willReturn(Optional.of(UUID.randomUUID()));
         given(chatPresencePort.findActiveRoomId(offline)).willReturn(Optional.empty());
 
         ChatRoom room = org.mockito.Mockito.mock(ChatRoom.class);
