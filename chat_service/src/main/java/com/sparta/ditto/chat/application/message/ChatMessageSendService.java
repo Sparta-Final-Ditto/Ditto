@@ -63,6 +63,9 @@ public class ChatMessageSendService {
                 roomId, saved.messageId(), saved.createdAt());
 
         chatMessagePublisher.broadcast(roomId, saved);
+        log.debug("System chat message saved and broadcast. "
+                        + "roomId={}, actorId={}, messageId={}, messageType={}",
+                roomId, actorId, saved.messageId(), messageType);
         return saved;
     }
 
@@ -96,6 +99,11 @@ public class ChatMessageSendService {
 
         chatMessagePublisher.ackToSender(command.senderId(), saved);
         chatMessagePublisher.broadcast(command.roomId(), saved);
+        log.debug("User chat message saved and published. "
+                        + "roomId={}, senderId={}, clientMessageId={}, "
+                        + "messageId={}, messageType={}",
+                command.roomId(), command.senderId(), command.clientMessageId(),
+                saved.messageId(), saved.messageType());
         return saved;
     }
 
@@ -113,6 +121,10 @@ public class ChatMessageSendService {
         }
 
         chatMessagePublisher.ackToSender(command.senderId(), original);
+        log.debug("Duplicate chat message acknowledged with existing message. "
+                        + "roomId={}, senderId={}, clientMessageId={}, messageId={}",
+                command.roomId(), command.senderId(), command.clientMessageId(),
+                original.messageId());
         return original;
     }
 

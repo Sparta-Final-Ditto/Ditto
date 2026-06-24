@@ -9,9 +9,11 @@ import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
 import com.sparta.ditto.chat.domain.exception.ChatMessageForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatMessageNotFoundException;
-
-import java.util.*;
-
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -105,7 +107,8 @@ public class ChatMessageService {
         List<SentMessage> rows;
         if (range.hasUpperBound()) {
             Optional<SentMessage> upperOpt =
-                    chatMessageQueryPort.findByMessageIdAndRoomId(range.lastVisibleMessageId(), roomId);
+                    chatMessageQueryPort.findByMessageIdAndRoomId(
+                            range.lastVisibleMessageId(), roomId);
             if (upperOpt.isEmpty()) {
                 return ChatMessageCursorResult.of(List.of(), null, false); // fail-closed
             }
