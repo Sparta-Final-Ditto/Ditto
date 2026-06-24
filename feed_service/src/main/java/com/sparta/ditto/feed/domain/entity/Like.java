@@ -33,8 +33,6 @@ import lombok.NoArgsConstructor;
 )
 public class Like {
 
-    private static final String TEMP_USER_NICKNAME = "user";
-
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
@@ -52,10 +50,15 @@ public class Like {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    public Like(UUID postId, UUID userId) {
+    public Like(UUID postId, UUID userId, String userNickname) {
         this.postId = postId;
         this.userId = userId;
-        this.userNickname = TEMP_USER_NICKNAME;
+        this.userNickname = userNickname;
+    }
+
+    /** 테스트 전용 — 프로덕션 코드에서 사용 금지 */
+    public Like(UUID postId, UUID userId) {
+        this(postId, userId, "user");
     }
 
     @PrePersist

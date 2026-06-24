@@ -14,6 +14,8 @@ public interface CommentJpaRepository extends JpaRepository<Comment, UUID> {
 
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
 
+    List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId);
+
     @Query(value = """
             SELECT * FROM comments
             WHERE post_id = CAST(:postId AS uuid)
