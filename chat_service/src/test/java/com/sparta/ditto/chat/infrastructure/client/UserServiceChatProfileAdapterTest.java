@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-
 import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
 import com.sparta.ditto.chat.infrastructure.client.UserProfileClientResponse.UserProfileData;
 import java.util.UUID;
