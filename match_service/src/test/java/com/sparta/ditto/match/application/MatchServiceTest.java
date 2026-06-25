@@ -146,12 +146,25 @@ class MatchServiceTest {
                         .isEqualTo(MatchErrorCode.NO_MATCHING_CANDIDATE));
     }
 
+    @Test
+    @DisplayName("락 해제는 항상 실행된다")
+    void createMatch_lockAlwaysReleased() {
+        UUID userId = UUID.randomUUID();
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willThrow(new RuntimeException("error"));
+
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+                .isInstanceOf(BusinessException.class);
+
+        verify(matchingLockService).releaseLock(userId);
+    }
+
 //    // TODO: NPE 이슈로 주석 처리 - 추후 수정 예정
 //    @Test
 //    @DisplayName("정상 매칭 시 매칭 이력이 저장되고 explanation이 포함된 DTO가 반환된다")
-//    void createMatch_success_returnsDto() {
-//        ...
-//    }
+//    void createMatch_success_returnsDto() { ... }
 
     // ── getTodayMatch ──────────────────────────────────────
 
@@ -234,6 +247,22 @@ class MatchServiceTest {
         assertThat(history.getStatus()).isEqualTo(MatchStatus.REJECTED);
     }
 
+    @Test
+    @DisplayName("PENDING 상태는 변경되지 않는다")
+    void updateMatchStatus_pendingStatus_noChange() {
+        UUID matchId = UUID.randomUUID();
+        MatchingHistory history = MatchingHistory.of(
+                UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+
+        given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
+        given(matchingHistoryRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+        matchService.updateMatchStatus(UUID.randomUUID(), matchId,
+                new MatchStatusRequestDto(MatchStatus.PENDING));
+
+        assertThat(history.getStatus()).isEqualTo(MatchStatus.PENDING);
+    }
+
     // ── getRecommendations ──────────────────────────────────────
 
     @Test
@@ -267,6 +296,23 @@ class MatchServiceTest {
         assertThat(matchService.getRecommendations(userId, 5)).isEmpty();
     }
 
+    @Test
+    @DisplayName("추천 후보 limit 적용 확인")
+    void getRecommendations_withLimit_returnsLimitedList() {
+        UUID userId = UUID.randomUUID();
+        Set<String> candidates = Set.of(
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString(),
+                UUID.randomUUID().toString()
+        );
+
+        given(matchCacheService.getTopCandidates(userId, 3)).willReturn(candidates);
+
+        List<RecommendationResponseDto> result = matchService.getRecommendations(userId, 3);
+
+        assertThat(result).hasSize(3);
+    }
+
     // ── getMatchHistory ──────────────────────────────────────
 
     @Test
@@ -296,14 +342,27 @@ class MatchServiceTest {
         assertThat(matchService.getMatchHistory(userId)).isEmpty();
     }
 
+    @Test
+    @DisplayName("여러 이력이 있으면 모두 반환한다")
+    void getMatchHistory_multipleHistories_returnsAll() {
+        UUID userId = UUID.randomUUID();
+        List<MatchingHistory> histories = List.of(
+                MatchingHistory.of(userId, UUID.randomUUID(), 0.9f, 0.85f, "NONE", false),
+                MatchingHistory.of(userId, UUID.randomUUID(), 0.7f, 0.65f, "MALE", true),
+                MatchingHistory.of(userId, UUID.randomUUID(), 0.6f, 0.55f, "FEMALE", false)
+        );
+
+        given(matchingHistoryRepository.findAllByUserId(userId)).willReturn(histories);
+
+        assertThat(matchService.getMatchHistory(userId)).hasSize(3);
+    }
+
     // ── getExplanation ──────────────────────────────────────
 
 //    // TODO: NPE 이슈로 주석 처리 - 추후 수정 예정
 //    @Test
 //    @DisplayName("매칭 설명 조회 - 정상 조회 시 설명을 반환한다")
-//    void getExplanation_success_returnsExplanation() {
-//        ...
-//    }
+//    void getExplanation_success_returnsExplanation() { ... }
 
     @Test
     @DisplayName("매칭 설명 조회 - 내 매칭이 아니면 MATCH_NOT_FOUND 예외가 발생한다")
@@ -334,5 +393,25 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.MATCH_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("매칭 설명 조회 - LLM 실패 시 EXPLANATION_GENERATION_FAILED 예외가 발생한다")
+    void getExplanation_llmFails_throwsException() {
+        UUID userId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        UUID matchedUserId = UUID.randomUUID();
+        MatchingHistory history = MatchingHistory.of(
+                userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
+
+        given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
+        given(matchCacheService.getUserTags(any())).willReturn(Set.of());
+        given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
+                .willThrow(new RuntimeException("LLM 실패"));
+
+        assertThatThrownBy(() -> matchService.getExplanation(userId, matchId))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(MatchErrorCode.EXPLANATION_GENERATION_FAILED));
     }
 }
