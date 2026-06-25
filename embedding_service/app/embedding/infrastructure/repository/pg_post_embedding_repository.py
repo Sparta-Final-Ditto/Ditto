@@ -85,6 +85,36 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         )
         return [row[0] for row in result.all()]
 
+    async def find_done_vectors_after(
+        self, user_id: UUID, after_post_id: UUID | None
+    ) -> list[tuple[UUID, list[float]]]:
+        if after_post_id is None:
+            stmt = (
+                select(UserPostEmbedding.post_id, UserPostEmbedding.vector)
+                .where(
+                    UserPostEmbedding.user_id == user_id,
+                    UserPostEmbedding.embedding_status == "DONE",
+                )
+                .order_by(UserPostEmbedding.embedded_at.asc())
+            )
+        else:
+            subq = (
+                select(UserPostEmbedding.id)
+                .where(UserPostEmbedding.post_id == after_post_id)
+                .scalar_subquery()
+            )
+            stmt = (
+                select(UserPostEmbedding.post_id, UserPostEmbedding.vector)
+                .where(
+                    UserPostEmbedding.user_id == user_id,
+                    UserPostEmbedding.embedding_status == "DONE",
+                    UserPostEmbedding.id > func.coalesce(subq, 0),
+                )
+                .order_by(UserPostEmbedding.embedded_at.asc())
+            )
+        result = await self.db.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
+
     async def reset_failed_to_done(self) -> int:
         result = await self.db.execute(
             update(UserPostEmbedding)

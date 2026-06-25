@@ -1,6 +1,10 @@
 """
-check_batch.py 기반 — run_batch() 단위 테스트.
+run_batch() 단위 테스트.
 AsyncSessionLocal·PgRepository를 mock 처리하여 CI에서 실행 가능.
+
+증분 EMA 경로:
+  - profile.last_processed_record_id 있고 vector 있음 → 신규 벡터만 EMA 갱신
+  - last_processed_record_id=None 또는 vector=None   → 전체 재계산
 """
 import uuid
 import unittest
@@ -9,9 +13,14 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.embedding.infrastructure.batch.batch_embedding import run_batch
 from app.config.settings import settings
-from tests.helpers import make_profile, make_vectors
+from tests.helpers import make_profile, make_vectors, FAKE_VECTOR
 
 _BATCH_MODULE = "app.embedding.infrastructure.batch.batch_embedding"
+
+
+def make_records(n: int) -> list[tuple[uuid.UUID, list[float]]]:
+    """n개의 (post_id, vector) 튜플 목록 생성."""
+    return [(uuid.uuid4(), v) for v in make_vectors(n)]
 
 
 class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
@@ -36,6 +45,8 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         p_post.start()
         p_profile.start()
 
+    # ── 전체 재계산 경로 (last_processed_record_id=None) ─────────────────────
+
     async def test_failed_reset_called_before_ema(self):
         """FAILED → DONE 복구가 EMA 재계산보다 먼저 호출된다."""
         self.mock_post_repo.reset_failed_to_done.return_value = 2
@@ -50,7 +61,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         user_ids = [uuid.uuid4(), uuid.uuid4()]
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = user_ids
-        self.mock_post_repo.find_all_done_vectors_ordered.return_value = make_vectors(3)
+        self.mock_post_repo.find_done_vectors_after.return_value = make_records(3)
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
@@ -61,7 +72,8 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         """DONE 벡터 없는 유저 — upsert 미호출."""
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
-        self.mock_post_repo.find_all_done_vectors_ordered.return_value = []
+        self.mock_post_repo.find_done_vectors_after.return_value = []
+        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
 
@@ -72,7 +84,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         min_count = settings.MIN_RECORDS_FOR_MATCHING
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
-        self.mock_post_repo.find_all_done_vectors_ordered.return_value = make_vectors(min_count)
+        self.mock_post_repo.find_done_vectors_after.return_value = make_records(min_count)
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
@@ -86,7 +98,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         min_count = settings.MIN_RECORDS_FOR_MATCHING
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
-        self.mock_post_repo.find_all_done_vectors_ordered.return_value = make_vectors(min_count - 1)
+        self.mock_post_repo.find_done_vectors_after.return_value = make_records(min_count - 1)
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
@@ -100,14 +112,18 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         user_b = uuid.uuid4()
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [user_a, user_b]
-        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
-        async def vectors_by_user(uid):
+        call_count = 0
+
+        async def vectors_by_user(uid, after_post_id):
+            nonlocal call_count
+            call_count += 1
             if uid == user_a:
                 raise Exception("유저 A DB 오류")
-            return make_vectors(2)
+            return make_records(2)
 
-        self.mock_post_repo.find_all_done_vectors_ordered.side_effect = vectors_by_user
+        self.mock_post_repo.find_done_vectors_after.side_effect = vectors_by_user
+        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
 
@@ -116,16 +132,115 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
 
     async def test_single_vector_stored_as_is(self):
         """벡터가 1개인 유저 — EMA 루프 없이 그 벡터 그대로 저장."""
-        single_vector = make_vectors(1)
+        records = make_records(1)
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
-        self.mock_post_repo.find_all_done_vectors_ordered.return_value = single_vector
+        self.mock_post_repo.find_done_vectors_after.return_value = records
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
 
         kw = self.mock_profile_repo.upsert.call_args.kwargs
-        self.assertTrue(np.allclose(kw["vector"], single_vector[0]))
+        self.assertTrue(np.allclose(kw["vector"], records[0][1]))
+
+    async def test_last_processed_record_id_updated(self):
+        """배치 후 last_processed_record_id가 마지막 post_id로 갱신된다."""
+        records = make_records(3)
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = records
+        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
+
+        await run_batch()
+
+        kw = self.mock_profile_repo.upsert.call_args.kwargs
+        self.assertEqual(kw["last_processed_record_id"], records[-1][0])
+
+    async def test_no_profile_falls_back_to_full_recalc(self):
+        """프로필 행 없음(DB 초기화 등) → 전체 재계산 후 upsert 호출."""
+        records = make_records(3)
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = records
+        self.mock_profile_repo.find_by_user_id.return_value = None  # 프로필 없음
+
+        await run_batch()
+
+        self.mock_profile_repo.upsert.assert_called_once()
+        kw = self.mock_profile_repo.upsert.call_args.kwargs
+        self.assertEqual(kw["record_count"], 3)
+        self.assertEqual(kw["last_processed_record_id"], records[-1][0])
+
+    # ── 증분 처리 경로 (last_processed_record_id 있음) ───────────────────────
+
+    async def test_incremental_uses_existing_ema_as_base(self):
+        """증분 경로: 기존 profile.vector를 EMA 시작점으로 사용한다."""
+        last_post_id = uuid.uuid4()
+        profile = make_profile(
+            record_count=5,
+            active=True,
+            last_processed_record_id=last_post_id,
+        )
+        new_records = make_records(2)
+
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = new_records
+        self.mock_profile_repo.find_by_user_id.return_value = profile
+
+        await run_batch()
+
+        _, call_kwargs = self.mock_post_repo.find_done_vectors_after.call_args
+        # after_post_id가 last_processed_record_id로 전달됐는지 확인
+        self.assertEqual(call_kwargs.get("after_post_id") or
+                         self.mock_post_repo.find_done_vectors_after.call_args.args[1],
+                         last_post_id)
+
+    async def test_incremental_record_count_adds_to_existing(self):
+        """증분 경로: record_count = 기존 + 신규 건수."""
+        last_post_id = uuid.uuid4()
+        profile = make_profile(record_count=5, last_processed_record_id=last_post_id)
+        new_records = make_records(3)
+
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = new_records
+        self.mock_profile_repo.find_by_user_id.return_value = profile
+
+        await run_batch()
+
+        kw = self.mock_profile_repo.upsert.call_args.kwargs
+        self.assertEqual(kw["record_count"], 8)  # 5 + 3
+
+    async def test_incremental_no_new_vectors_skips_upsert(self):
+        """증분 경로: 신규 벡터 없음 → upsert 미호출."""
+        last_post_id = uuid.uuid4()
+        profile = make_profile(record_count=5, last_processed_record_id=last_post_id)
+
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = []
+        self.mock_profile_repo.find_by_user_id.return_value = profile
+
+        await run_batch()
+
+        self.mock_profile_repo.upsert.assert_not_called()
+
+    async def test_incremental_last_processed_record_id_updated_to_latest(self):
+        """증분 경로: last_processed_record_id가 신규 레코드 중 마지막 post_id로 갱신된다."""
+        last_post_id = uuid.uuid4()
+        profile = make_profile(record_count=5, last_processed_record_id=last_post_id)
+        new_records = make_records(3)
+
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = new_records
+        self.mock_profile_repo.find_by_user_id.return_value = profile
+
+        await run_batch()
+
+        kw = self.mock_profile_repo.upsert.call_args.kwargs
+        self.assertEqual(kw["last_processed_record_id"], new_records[-1][0])
 
 
 if __name__ == "__main__":

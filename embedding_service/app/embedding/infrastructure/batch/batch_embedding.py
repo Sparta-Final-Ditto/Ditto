@@ -28,23 +28,38 @@ async def run_batch() -> None:
         success, skip, fail = 0, 0, 0
         for user_id in user_ids:
             try:
-                vectors = await post_repo.find_all_done_vectors_ordered(user_id)
-                if not vectors:
-                    skip += 1
-                    continue
-
-                ema = vectors[0]
-                for vec in vectors[1:]:
-                    ema = update_profile(ema, vec, settings.EMA_ALPHA)
-
                 profile = await profile_repo.find_by_user_id(user_id)
-                new_count = len(vectors)
+                last_id = profile.last_processed_record_id if profile else None
+
+                if last_id is not None and profile is not None and profile.vector is not None:
+                    # 증분: 마지막 처리 이후 신규 벡터만 EMA 갱신
+                    new_records = await post_repo.find_done_vectors_after(user_id, last_id)
+                    if not new_records:
+                        skip += 1
+                        continue
+                    ema = list(profile.vector)
+                    for _, vec in new_records:
+                        ema = update_profile(ema, vec, settings.EMA_ALPHA)
+                    new_count = (profile.record_count or 0) + len(new_records)
+                    new_last_id = new_records[-1][0]
+                else:
+                    # 전체 재계산: 첫 배치 실행 또는 프로필 벡터 없음
+                    all_records = await post_repo.find_done_vectors_after(user_id, None)
+                    if not all_records:
+                        skip += 1
+                        continue
+                    ema = list(all_records[0][1])
+                    for _, vec in all_records[1:]:
+                        ema = update_profile(ema, vec, settings.EMA_ALPHA)
+                    new_count = len(all_records)
+                    new_last_id = all_records[-1][0]
+
                 await profile_repo.upsert(
                     user_id=user_id,
                     vector=ema,
                     record_count=new_count,
                     active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
-                    last_processed_record_id=profile.last_processed_record_id if profile else None,
+                    last_processed_record_id=new_last_id,
                 )
                 success += 1
             except Exception as e:
