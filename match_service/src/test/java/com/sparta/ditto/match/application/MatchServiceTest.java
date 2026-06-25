@@ -343,9 +343,8 @@ class MatchServiceTest {
         UUID userId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         UUID matchedUserId = UUID.randomUUID();
-        MatchingHistory history = MatchingHistory.of(
-                userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
-
+        MatchingHistory history = withId(MatchingHistory.of(
+                userId, matchedUserId, 0.8f, 0.75f, "NONE", false));
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
         given(matchCacheService.getUserTags(any())).willReturn(Set.of("여행", "카페"));
         given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
