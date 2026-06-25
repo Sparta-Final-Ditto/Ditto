@@ -36,14 +36,17 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         p_session = patch(f"{_BATCH_MODULE}.AsyncSessionLocal", return_value=mock_db)
         p_post = patch(f"{_BATCH_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
         p_profile = patch(f"{_BATCH_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
+        p_dlq = patch(f"{_BATCH_MODULE}._reprocess_dlq", new=AsyncMock(return_value=0))
 
         self.addCleanup(p_session.stop)
         self.addCleanup(p_post.stop)
         self.addCleanup(p_profile.stop)
+        self.addCleanup(p_dlq.stop)
 
         p_session.start()
         p_post.start()
         p_profile.start()
+        p_dlq.start()
 
     # ── 전체 재계산 경로 (last_processed_record_id=None) ─────────────────────
 
