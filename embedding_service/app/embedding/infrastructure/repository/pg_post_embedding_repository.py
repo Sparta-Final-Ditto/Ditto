@@ -94,6 +94,7 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
                 .where(
                     UserPostEmbedding.user_id == user_id,
                     UserPostEmbedding.embedding_status == "DONE",
+                    UserPostEmbedding.vector.is_not(None),
                 )
                 .order_by(UserPostEmbedding.embedded_at.asc())
             )
@@ -108,6 +109,7 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
                 .where(
                     UserPostEmbedding.user_id == user_id,
                     UserPostEmbedding.embedding_status == "DONE",
+                    UserPostEmbedding.vector.is_not(None),
                     UserPostEmbedding.id > func.coalesce(subq, 0),
                 )
                 .order_by(UserPostEmbedding.embedded_at.asc())
