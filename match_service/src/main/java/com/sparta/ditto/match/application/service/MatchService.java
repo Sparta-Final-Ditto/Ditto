@@ -145,16 +145,7 @@ public class MatchService {
             );
 
             MatchingHistory saved = matchingHistoryRepository.save(history);
-
-            MatchResponseDto response = new MatchResponseDto(
-                    saved.getId(),
-                    saved.getMatchedUserId(),
-                    saved.getSimilarityScore(),
-                    saved.getFinalScore(),
-                    saved.getMatchedAt(),
-                    saved.getStatus(),
-                    explanation
-            );
+            MatchResponseDto response = saved.toDto(explanation);
 
             matchCacheService.cacheMatchResult(userId, response);
             matchingBitmapService.markAsMatched(userId);
@@ -170,15 +161,7 @@ public class MatchService {
     public MatchResponseDto getTodayMatch(UUID userId) {
         return matchingHistoryRepository
                 .findTodayMatchByUserId(userId, LocalDate.now())
-                .map(m -> new MatchResponseDto(
-                        m.getId(),
-                        m.getMatchedUserId(),
-                        m.getSimilarityScore(),
-                        m.getFinalScore(),
-                        m.getMatchedAt(),
-                        m.getStatus(),
-                        null
-                ))
+                .map(m -> m.toDto(null))
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
     }
 
@@ -217,15 +200,7 @@ public class MatchService {
     public List<MatchResponseDto> getMatchHistory(UUID userId) {
         return matchingHistoryRepository.findAllByUserId(userId)
                 .stream()
-                .map(m -> new MatchResponseDto(
-                        m.getId(),
-                        m.getMatchedUserId(),
-                        m.getSimilarityScore(),
-                        m.getFinalScore(),
-                        m.getMatchedAt(),
-                        m.getStatus(),
-                        null
-                ))
+                .map(m -> m.toDto(null))
                 .toList();
     }
 

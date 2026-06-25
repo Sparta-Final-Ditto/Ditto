@@ -1,6 +1,7 @@
 package com.sparta.ditto.match.domain.entity;
 
 import com.sparta.ditto.common.entity.BaseEntity;
+import com.sparta.ditto.match.application.dto.MatchResponseDto;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -62,6 +63,18 @@ public class MatchingHistory extends BaseEntity {
         history.status = MatchStatus.PENDING;
         history.matchedAt = Instant.now();
         return history;
+    }
+
+    public MatchResponseDto toDto(String explanation) {
+        return new MatchResponseDto(
+                this.id != null ? this.id : UUID.randomUUID(),
+                this.matchedUserId,
+                this.similarityScore,
+                this.finalScore,
+                this.matchedAt,
+                this.status,
+                explanation
+        );
     }
 
     public void accept() {
