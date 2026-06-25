@@ -27,6 +27,7 @@ import java.util.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
@@ -250,13 +251,11 @@ class MatchServiceTest {
                 UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
-        // save는 항상 호출되므로 mock 유지
         given(matchingHistoryRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         matchService.updateMatchStatus(UUID.randomUUID(), matchId,
                 new MatchStatusRequestDto(MatchStatus.PENDING));
 
-        // PENDING이면 accept()/reject() 안 불리므로 상태 그대로
         assertThat(history.getStatus()).isEqualTo(MatchStatus.PENDING);
         verify(matchingHistoryRepository).save(history);
     }
@@ -398,9 +397,9 @@ class MatchServiceTest {
                 userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
-        // any()로 통일해서 두 번 호출 모두 커버
         given(matchCacheService.getUserTags(any())).willReturn(Set.of());
-        given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
+        // float 파라미터는 anyFloat() 사용
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
                 .willThrow(new RuntimeException("LLM 실패"));
 
         assertThatThrownBy(() -> matchService.getExplanation(userId, matchId))
