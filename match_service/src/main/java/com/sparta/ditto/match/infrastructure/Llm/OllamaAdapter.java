@@ -13,9 +13,13 @@ public class OllamaAdapter implements LlmPort {
 
     @Override
     public String generate(String prompt) {
-        return chatClient.prompt()
-                .user(prompt)
-                .call()
-                .content();
+        try {
+            return chatClient.prompt()
+                    .user(prompt)
+                    .call()
+                    .content();
+        } catch (Exception e) {
+            throw new RuntimeException("Ollama 호출 실패: " + e.getMessage());
+        }
     }
 }
