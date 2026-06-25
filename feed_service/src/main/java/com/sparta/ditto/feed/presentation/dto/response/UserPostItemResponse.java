@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import com.sparta.ditto.feed.application.dto.UserPostItemResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostItemResult;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record UserPostItemResponse(

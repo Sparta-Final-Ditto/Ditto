@@ -1,15 +1,14 @@
 package com.sparta.ditto.feed.domain.entity;
 
+import com.sparta.ditto.common.entity.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-import java.time.Instant;
 import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -31,7 +30,7 @@ import lombok.NoArgsConstructor;
                         columnList = "post_id, created_at DESC")
         }
 )
-public class Like {
+public class Like extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -47,9 +46,6 @@ public class Like {
     @Column(name = "user_nickname", nullable = false, updatable = false, length = 100)
     private String userNickname;
 
-    @Column(nullable = false, updatable = false)
-    private Instant createdAt;
-
     public Like(UUID postId, UUID userId, String userNickname) {
         this.postId = postId;
         this.userId = userId;
@@ -59,10 +55,5 @@ public class Like {
     /** 테스트 전용 — 프로덕션 코드에서 사용 금지 */
     public Like(UUID postId, UUID userId) {
         this(postId, userId, "user");
-    }
-
-    @PrePersist
-    void onCreate() {
-        this.createdAt = Instant.now();
     }
 }

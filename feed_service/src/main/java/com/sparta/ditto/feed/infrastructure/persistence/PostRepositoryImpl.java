@@ -28,6 +28,11 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
+    public Optional<Post> findByIdAndDeletedAtIsNull(UUID id) {
+        return jpaRepository.findByIdAndDeletedAtIsNull(id);
+    }
+
+    @Override
     public boolean existsByIdAndUserId(UUID id, UUID userId) {
         return jpaRepository.existsByIdAndUserId(id, userId);
     }

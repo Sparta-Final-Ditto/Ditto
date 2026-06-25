@@ -14,6 +14,8 @@ public interface LikeRepository {
 
     void delete(Like like);
 
+    int softDeleteAllByPostId(UUID postId, UUID deletedBy);
+
     Optional<Like> findByPostIdAndUserId(UUID postId, UUID userId);
 
     boolean existsByPostIdAndUserId(UUID postId, UUID userId);

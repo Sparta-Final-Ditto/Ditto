@@ -1,8 +1,8 @@
 package com.sparta.ditto.feed.presentation.dto.response;
 
-import com.sparta.ditto.feed.application.dto.PostDetailResult;
-import com.sparta.ditto.feed.application.dto.PostDetailResult.CommentItem;
-import com.sparta.ditto.feed.application.dto.PostDetailResult.MediaItem;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult.CommentItem;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult.MediaItem;
 import java.time.Instant;
 import java.util.List;
 

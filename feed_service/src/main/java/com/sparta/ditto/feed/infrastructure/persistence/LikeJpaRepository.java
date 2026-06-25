@@ -7,6 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,9 +21,18 @@ public interface LikeJpaRepository extends JpaRepository<Like, UUID> {
     List<UUID> findPostIdsByUserIdAndPostIdIn(
             @Param("userId") UUID userId, @Param("postIds") List<UUID> postIds);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Like l SET l.deletedAt = :now, l.deletedBy = :deletedBy"
+            + " WHERE l.postId = :postId AND l.deletedAt IS NULL")
+    int softDeleteAllByPostId(
+            @Param("postId") UUID postId,
+            @Param("deletedBy") UUID deletedBy,
+            @Param("now") Instant now);
+
     @Query(value = """
             SELECT * FROM likes
             WHERE post_id = CAST(:postId AS uuid)
+              AND deleted_at IS NULL
               AND (
                 CAST(:cursorAt AS timestamptz) IS NULL
                 OR created_at < CAST(:cursorAt AS timestamptz)

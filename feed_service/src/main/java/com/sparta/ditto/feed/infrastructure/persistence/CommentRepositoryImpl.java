@@ -9,6 +9,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 @RequiredArgsConstructor
@@ -41,5 +42,11 @@ public class CommentRepositoryImpl implements CommentRepository {
     @Override
     public List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId) {
         return jpaRepository.findByPostIdAndDeletedAtIsNull(postId);
+    }
+
+    @Override
+    @Transactional
+    public int softDeleteAllByPostId(UUID postId, UUID deletedBy) {
+        return jpaRepository.softDeleteAllByPostId(postId, deletedBy, Instant.now());
     }
 }

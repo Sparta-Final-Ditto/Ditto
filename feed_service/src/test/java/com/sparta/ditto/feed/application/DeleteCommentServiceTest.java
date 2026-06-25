@@ -78,7 +78,7 @@ class DeleteCommentServiceTest {
         Comment comment = createComment(commentId, commentOwnerId); // 댓글 작성자 != 게시글 작성자
 
         when(commentRepository.findByIdAndDeletedAtIsNull(commentId)).thenReturn(Optional.of(comment));
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenAnswer(i -> i.getArgument(0));
 
         // when - postOwnerId (게시글 작성자)가 타인의 댓글 삭제 시도
@@ -104,7 +104,7 @@ class DeleteCommentServiceTest {
         Comment comment = createComment(commentId, commentOwnerId); // 댓글 작성자 != ADMIN
 
         when(commentRepository.findByIdAndDeletedAtIsNull(commentId)).thenReturn(Optional.of(comment));
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenAnswer(i -> i.getArgument(0));
 
         // when - adminId (ADMIN role)가 타인의 댓글 삭제
@@ -129,7 +129,7 @@ class DeleteCommentServiceTest {
         Comment comment = createComment(commentId, commentOwnerId);
 
         when(commentRepository.findByIdAndDeletedAtIsNull(commentId)).thenReturn(Optional.of(comment));
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenAnswer(i -> i.getArgument(0));
 
         // when - 댓글 작성자 본인이 삭제
@@ -153,7 +153,7 @@ class DeleteCommentServiceTest {
         Comment comment = createComment(commentId, commentOwnerId); // 댓글 작성자 != stranger
 
         when(commentRepository.findByIdAndDeletedAtIsNull(commentId)).thenReturn(Optional.of(comment));
-        when(postRepository.findById(postId)).thenReturn(Optional.of(post));
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
 
         // when & then - 댓글 작성자도, 게시글 작성자도, ADMIN도 아닌 유저 → 403
         assertThatThrownBy(() ->

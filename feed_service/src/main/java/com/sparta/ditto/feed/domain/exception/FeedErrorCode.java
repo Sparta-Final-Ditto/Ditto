@@ -37,7 +37,7 @@ public enum FeedErrorCode implements ErrorCode {
 
     // 댓글
     COMMENT_NOT_FOUND("COMMENT_NOT_FOUND", "댓글을 찾을 수 없습니다.", 404),
-    FORBIDDEN("FORBIDDEN", "댓글 삭제 권한이 없습니다.", 403);
+    FORBIDDEN("FORBIDDEN", "권한이 없습니다.", 403);
 
     private final String code;
     private final String message;

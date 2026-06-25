@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
-import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
-import com.sparta.ditto.feed.application.dto.PostDetailResult;
-import com.sparta.ditto.feed.application.dto.UserPostsResult;
+import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.dto.command.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
@@ -166,6 +166,19 @@ public class PostController {
         LikeListResult result = postInteractionService.getLikes(
                 new GetLikesQuery(postId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
+    }
+
+    // -------------------------------------------------------
+    // 게시글 삭제
+    // -------------------------------------------------------
+    @DeleteMapping("/{postId}")
+    public ResponseEntity<ApiResponse<Void>> deletePost(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId
+    ) {
+        postService.deletePost(postId, userId, userRole);
+        return ResponseEntity.ok(ApiResponse.deleted());
     }
 
     // -------------------------------------------------------
