@@ -1,28 +1,26 @@
 package com.sparta.ditto.match.application.service;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.match.application.dto.MatchRequestDto;
-import com.sparta.ditto.match.application.dto.MatchResponseDto;
-import com.sparta.ditto.match.application.dto.MatchStatusRequestDto;
-import com.sparta.ditto.match.application.dto.RecommendationResponseDto;
+import com.sparta.ditto.match.application.dto.*;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
 import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
 import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
+import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import com.sparta.ditto.match.infrastructure.redis.MatchCacheService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingBitmapService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingLockService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingStatsService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MatchService {
@@ -32,6 +30,10 @@ public class MatchService {
     private final MatchingLockService matchingLockService;
     private final MatchCacheService matchCacheService;
     private final MatchingStatsService matchingStatsService;
+    private final EmbeddingServiceClient embeddingServiceClient;
+    private final UserServiceClient userServiceClient;
+    private final CosineSimilarityCalculator cosineSimilarityCalculator;
+    private final MatchExplanationService matchExplanationService;
 
     @Transactional
     public MatchResponseDto createMatch(UUID userId, MatchRequestDto request) {
@@ -50,23 +52,109 @@ public class MatchService {
             // 3. HyperLogLog 통계 기록
             matchingStatsService.addMatchingUser(userId);
 
-            // 4. Sorted Set에서 배치 점수 기반 후보 조회
-            Set<String> candidates = matchCacheService.getTopCandidates(userId, 10);
+            // 4. 내 벡터 가져오기
+            UserProfileEmbeddingDto myProfile;
+            try {
+                myProfile = embeddingServiceClient.getUserProfile(userId).getData();
+            } catch (Exception e) {
+                throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
+            }
 
-            // 5. TODO: pgvector 코사인 유사도 계산
+            float[] myVector = myProfile.todayVector() != null
+                    ? myProfile.todayVector()
+                    : myProfile.profileVector();
 
-            // 6. 태그, 시간대 Redis에서 조회
-            Set<String> userTags = matchCacheService.getUserTags(userId);
-            String userTimeSlot = matchCacheService.getUserTimeSlot(userId);
+            // 5. 팔로잉 + 차단 유저 제외 Set 구성
+            Set<UUID> excludeIds = buildExcludeIds(userId);
 
-            // 7. TODO: 가중치 스코어링
+            // 6. active 유저 후보군 배치로 벡터 가져오기
+            // TODO: [고도화] HNSW ANN 검색으로 교체 예정
+            //   - 현재: 전체 active 유저 O(N) 코사인 유사도 계산
+            //   - 고도화: pgvector HNSW 인덱스 기반 top-K ANN 검색으로 O(log N)
+            ActiveUserIdsDto activeIds;
+            try {
+                activeIds = embeddingServiceClient.getActiveUserIds().getData();
+            } catch (Exception e) {
+                throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
+            }
 
-            // 8. 매칭 이력 저장
+            List<UUID> candidateIds = activeIds.userIds().stream()
+                    .filter(id -> !id.equals(userId))
+                    .filter(id -> !excludeIds.contains(id))
+                    .limit(100)
+                    .toList();
+
+            if (candidateIds.isEmpty()) {
+                throw new BusinessException(MatchErrorCode.NO_MATCHING_CANDIDATE);
+            }
+
+            // TODO: [고도화] 배치 벡터 조회 → HNSW 검색 결과로 교체
+            ProfileBatchResponseDto batchResponse;
+            try {
+                batchResponse = embeddingServiceClient
+                        .getProfilesBatch(new ProfileBatchRequestDto(candidateIds)).getData();
+            } catch (Exception e) {
+                throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
+            }
+
+            // 7. 태그 Redis에서 조회
+            Set<String> myTags = matchCacheService.getUserTags(userId);
+
+            // 8. 코사인 유사도 + 태그 가중치 스코어링
+            UUID bestMatchId = null;
+            float bestSimilarityScore = 0f;
+            float bestFinalScore = -1f;
+            Set<String> bestMatchTags = new HashSet<>();
+
+            for (UserProfileEmbeddingDto candidate : batchResponse.profiles()) {
+                float[] candidateVector = candidate.todayVector() != null
+                        ? candidate.todayVector()
+                        : candidate.profileVector();
+
+                // 코사인 유사도 [0,1] 정규화 (0.5 가중치)
+                float cosineScore = cosineSimilarityCalculator.calculate(myVector, candidateVector);
+
+                // 자카드 태그 유사도 [0,1] (0.5 가중치)
+                Set<String> candidateTags = matchCacheService.getUserTags(candidate.userId());
+                float tagScore = calculateTagSimilarity(myTags, candidateTags);
+
+                // 최종 점수
+                float finalScore = cosineScore * 0.5f + tagScore * 0.5f;
+
+                log.debug("[Match] candidateId={} cosine={} tag={} final={}",
+                        candidate.userId(), cosineScore, tagScore, finalScore);
+
+                if (finalScore > bestFinalScore) {
+                    bestFinalScore = finalScore;
+                    bestSimilarityScore = cosineScore;
+                    bestMatchId = candidate.userId();
+                    bestMatchTags = candidateTags;
+                }
+            }
+
+            if (bestMatchId == null) {
+                throw new BusinessException(MatchErrorCode.NO_MATCHING_CANDIDATE);
+            }
+
+            // 9. 공통 태그 추출
+            List<String> commonTags = new ArrayList<>(myTags);
+            commonTags.retainAll(bestMatchTags);
+
+            // 10. RAG 매칭 설명 생성 (LLM 실패 시 Fallback 자동 처리)
+            String explanation;
+            try {
+                explanation = matchExplanationService.generateExplanation(
+                        userId, bestMatchId, commonTags, bestFinalScore);
+            } catch (Exception e) {
+                throw new BusinessException(MatchErrorCode.EXPLANATION_GENERATION_FAILED);
+            }
+
+            // 11. 매칭 이력 저장
             MatchingHistory history = MatchingHistory.of(
                     userId,
-                    UUID.randomUUID(),
-                    0.0f,
-                    0.0f,
+                    bestMatchId,
+                    bestSimilarityScore,
+                    bestFinalScore,
                     request.genderFilter(),
                     request.locationFilterOn()
             );
@@ -79,13 +167,14 @@ public class MatchService {
                     saved.getSimilarityScore(),
                     saved.getFinalScore(),
                     saved.getMatchedAt(),
-                    saved.getStatus()
+                    saved.getStatus(),
+                    explanation
             );
 
-            // 9. 매칭 결과 캐싱
+            // 12. 매칭 결과 캐싱
             matchCacheService.cacheMatchResult(userId, response);
 
-            // 10. Bitmap에 오늘 매칭 완료 표시
+            // 13. Bitmap에 오늘 매칭 완료 표시
             matchingBitmapService.markAsMatched(userId);
 
             return response;
@@ -105,33 +194,20 @@ public class MatchService {
                         m.getSimilarityScore(),
                         m.getFinalScore(),
                         m.getMatchedAt(),
-                        m.getStatus()
+                        m.getStatus(),
+                        null  // 조회 시 explanation 없음
                 ))
-                .orElseThrow(() -> new BusinessException(
-                        MatchErrorCode.MATCH_NOT_FOUND
-                ));
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
     }
 
-    // 매칭 수락/거절
     @Transactional
-    public void updateMatchStatus(
-            UUID userId,
-            UUID matchId,
-            MatchStatusRequestDto request
-    ) {
+    public void updateMatchStatus(UUID userId, UUID matchId, MatchStatusRequestDto request) {
         MatchingHistory history = matchingHistoryRepository
                 .findById(matchId)
-                .orElseThrow(() -> new BusinessException(
-                        MatchErrorCode.MATCH_NOT_FOUND
-                ));
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
 
         if (request.status() == MatchStatus.ACCEPTED) {
             history.accept();
-            // TODO: chat_service 채팅방 생성
-            // chatServiceClient.createChatRoom(
-            //     history.getUserId(),
-            //     history.getMatchedUserId()
-            // );
         } else if (request.status() == MatchStatus.REJECTED) {
             history.reject();
         }
@@ -139,7 +215,6 @@ public class MatchService {
         matchingHistoryRepository.save(history);
     }
 
-    // feed_service 추천 목록 제공
     @Transactional(readOnly = true)
     public List<RecommendationResponseDto> getRecommendations(UUID userId, int limit) {
         Set<String> candidates = matchCacheService.getTopCandidates(userId, limit);
@@ -151,8 +226,43 @@ public class MatchService {
         return candidates.stream()
                 .map(candidateId -> new RecommendationResponseDto(
                         UUID.fromString(candidateId),
-                        null  // score는 추후 Sorted Set에서 가져오기
+                        null
                 ))
                 .toList();
+    }
+
+    /**
+     * 팔로잉 + 차단 유저 ID Set 구성
+     * user_service 호출 실패 시 BusinessException 으로 처리
+     */
+    private Set<UUID> buildExcludeIds(UUID userId) {
+        Set<UUID> excludeIds = new HashSet<>();
+
+        try {
+            List<UserPublicProfileDto> followings = userServiceClient
+                    .getFollowings(userId).getData();
+            followings.forEach(f -> excludeIds.add(f.id()));
+        } catch (Exception e) {
+            throw new BusinessException(MatchErrorCode.USER_SERVICE_UNAVAILABLE);
+        }
+
+        try {
+            List<UserPublicProfileDto> blockedUsers = userServiceClient
+                    .getBlockedUsers(userId).getData();
+            blockedUsers.forEach(b -> excludeIds.add(b.id()));
+        } catch (Exception e) {
+            throw new BusinessException(MatchErrorCode.USER_SERVICE_UNAVAILABLE);
+        }
+
+        return excludeIds;
+    }
+
+    private float calculateTagSimilarity(Set<String> tagsA, Set<String> tagsB) {
+        if (tagsA.isEmpty() && tagsB.isEmpty()) return 0f;
+        Set<String> intersection = new HashSet<>(tagsA);
+        intersection.retainAll(tagsB);
+        Set<String> union = new HashSet<>(tagsA);
+        union.addAll(tagsB);
+        return union.isEmpty() ? 0f : (float) intersection.size() / union.size();
     }
 }

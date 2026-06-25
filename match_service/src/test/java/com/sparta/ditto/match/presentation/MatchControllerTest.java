@@ -32,11 +32,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @ExtendWith(MockitoExtension.class)
 class MatchControllerTest {
@@ -65,7 +62,7 @@ class MatchControllerTest {
         MatchRequestDto request = new MatchRequestDto("NONE", false);
         MatchResponseDto response = new MatchResponseDto(
                 matchId, matchedUserId, 0.8f, 0.75f,
-                Instant.now(), MatchStatus.PENDING);
+                Instant.now(), MatchStatus.PENDING, "여행을 좋아하는 두 분이에요!");
 
         given(matchService.createMatch(eq(userId), any(MatchRequestDto.class)))
                 .willReturn(response);
@@ -76,7 +73,8 @@ class MatchControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("PENDING"))
-                .andExpect(jsonPath("$.matchId").value(matchId.toString()));
+                .andExpect(jsonPath("$.matchId").value(matchId.toString()))
+                .andExpect(jsonPath("$.explanation").value("여행을 좋아하는 두 분이에요!"));
     }
 
     @Test
@@ -87,7 +85,7 @@ class MatchControllerTest {
         UUID matchedUserId = UUID.randomUUID();
         MatchResponseDto response = new MatchResponseDto(
                 matchId, matchedUserId, 0.9f, 0.85f,
-                Instant.now(), MatchStatus.ACCEPTED);
+                Instant.now(), MatchStatus.ACCEPTED, null);
 
         given(matchService.getTodayMatch(eq(userId))).willReturn(response);
 
@@ -100,7 +98,7 @@ class MatchControllerTest {
 
     @Test
     @DisplayName("PATCH /api/v1/matching/{matchId}/status - 매칭 상태 업데이트 성공 시 200을 반환한다")
-    void updateMatchStatus_returnsOk() throws Exception {
+    void updateMatchStatus_accepted_returnsOk() throws Exception {
         UUID userId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         MatchStatusRequestDto request = new MatchStatusRequestDto(MatchStatus.ACCEPTED);
@@ -113,7 +111,21 @@ class MatchControllerTest {
     }
 
     @Test
-    @DisplayName("getRecommendations - 추천 목록을 반환한다")
+    @DisplayName("PATCH /api/v1/matching/{matchId}/status - REJECTED 상태로 업데이트 시 200을 반환한다")
+    void updateMatchStatus_rejected_returnsOk() throws Exception {
+        UUID userId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        MatchStatusRequestDto request = new MatchStatusRequestDto(MatchStatus.REJECTED);
+
+        mockMvc.perform(patch("/api/v1/matching/" + matchId + "/status")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/matching/recommendations - 추천 목록을 반환한다")
     void getRecommendations_returnsOk() {
         UUID userId = UUID.randomUUID();
         given(matchService.getRecommendations(eq(userId), anyInt())).willReturn(List.of());
@@ -123,5 +135,24 @@ class MatchControllerTest {
 
         assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(result.getBody()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/matching/recommendations - 추천 목록이 있으면 데이터를 반환한다")
+    void getRecommendations_withData_returnsData() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        List<RecommendationResponseDto> recommendations = List.of(
+                new RecommendationResponseDto(candidateId, 0.85f)
+        );
+
+        given(matchService.getRecommendations(eq(userId), anyInt())).willReturn(recommendations);
+
+        ResponseEntity<ApiResponse<List<RecommendationResponseDto>>> result =
+                matchController.getRecommendations(userId, 50);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(result.getBody().getData()).hasSize(1);
+        assertThat(result.getBody().getData().get(0).userId()).isEqualTo(candidateId);
     }
 }
