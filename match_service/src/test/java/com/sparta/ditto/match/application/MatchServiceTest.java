@@ -255,6 +255,7 @@ class MatchServiceTest {
                 UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
+        // save mock 제거 - PENDING은 save 안 호출됨
         given(matchingHistoryRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         matchService.updateMatchStatus(UUID.randomUUID(), matchId,
@@ -405,7 +406,9 @@ class MatchServiceTest {
                 userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
-        given(matchCacheService.getUserTags(any())).willReturn(Set.of());
+        // null 반환으로 NPE 방지
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(matchedUserId)).willReturn(Set.of());
         given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
                 .willThrow(new RuntimeException("LLM 실패"));
 
