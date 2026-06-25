@@ -48,6 +48,10 @@ public class OutboxEvent {
     @Column(nullable = false)
     private String eventType;
 
+    @Column(nullable = false)
+    private UUID aggregateId;
+
+    //TODO: Hibernate 전용 어노테이션 사용 제거
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String payload;
@@ -71,9 +75,10 @@ public class OutboxEvent {
         this.createdAt = Instant.now();
     }
 
-    public OutboxEvent(String topic, String eventType, String payload) {
+    public OutboxEvent(String topic, String eventType, UUID aggregateId, String payload) {
         this.topic = topic;
         this.eventType = eventType;
+        this.aggregateId = aggregateId;
         this.payload = payload;
     }
 
@@ -88,5 +93,11 @@ public class OutboxEvent {
             this.status = OutboxStatus.FAILED;
             this.failedAt = Instant.now();
         }
+    }
+
+    public void resetToPending() {
+        this.status = OutboxStatus.PENDING;
+        this.retryCount = 0;
+        this.failedAt = null;
     }
 }
