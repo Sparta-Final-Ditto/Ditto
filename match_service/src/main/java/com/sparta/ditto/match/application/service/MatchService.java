@@ -69,8 +69,6 @@ public class MatchService {
 
             // 6. active 유저 후보군 배치로 벡터 가져오기
             // TODO: [고도화] HNSW ANN 검색으로 교체 예정
-            //   - 현재: 전체 active 유저 O(N) 코사인 유사도 계산
-            //   - 고도화: pgvector HNSW 인덱스 기반 top-K ANN 검색으로 O(log N)
             ActiveUserIdsDto activeIds;
             try {
                 activeIds = embeddingServiceClient.getActiveUserIds().getData();
@@ -88,7 +86,6 @@ public class MatchService {
                 throw new BusinessException(MatchErrorCode.NO_MATCHING_CANDIDATE);
             }
 
-            // TODO: [고도화] 배치 벡터 조회 → HNSW 검색 결과로 교체
             ProfileBatchResponseDto batchResponse;
             try {
                 batchResponse = embeddingServiceClient
@@ -111,14 +108,9 @@ public class MatchService {
                         ? candidate.todayVector()
                         : candidate.profileVector();
 
-                // 코사인 유사도 [0,1] 정규화 (0.5 가중치)
                 float cosineScore = cosineSimilarityCalculator.calculate(myVector, candidateVector);
-
-                // 자카드 태그 유사도 [0,1] (0.5 가중치)
                 Set<String> candidateTags = matchCacheService.getUserTags(candidate.userId());
                 float tagScore = calculateTagSimilarity(myTags, candidateTags);
-
-                // 최종 점수
                 float finalScore = cosineScore * 0.5f + tagScore * 0.5f;
 
                 log.debug("[Match] candidateId={} cosine={} tag={} final={}",
@@ -140,7 +132,7 @@ public class MatchService {
             List<String> commonTags = new ArrayList<>(myTags);
             commonTags.retainAll(bestMatchTags);
 
-            // 10. RAG 매칭 설명 생성 (LLM 실패 시 Fallback 자동 처리)
+            // 10. RAG 매칭 설명 생성
             String explanation;
             try {
                 explanation = matchExplanationService.generateExplanation(
@@ -195,7 +187,7 @@ public class MatchService {
                         m.getFinalScore(),
                         m.getMatchedAt(),
                         m.getStatus(),
-                        null  // 조회 시 explanation 없음
+                        null
                 ))
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
     }
@@ -231,10 +223,52 @@ public class MatchService {
                 .toList();
     }
 
-    /**
-     * 팔로잉 + 차단 유저 ID Set 구성
-     * user_service 호출 실패 시 BusinessException 으로 처리
-     */
+    // 매칭 이력 전체 조회
+    @Transactional(readOnly = true)
+    public List<MatchResponseDto> getMatchHistory(UUID userId) {
+        return matchingHistoryRepository.findAllByUserId(userId)
+                .stream()
+                .map(m -> new MatchResponseDto(
+                        m.getId(),
+                        m.getMatchedUserId(),
+                        m.getSimilarityScore(),
+                        m.getFinalScore(),
+                        m.getMatchedAt(),
+                        m.getStatus(),
+                        null
+                ))
+                .toList();
+    }
+
+    // 매칭 설명 조회 (RAG)
+    @Transactional(readOnly = true)
+    public String getExplanation(UUID userId, UUID matchId) {
+        MatchingHistory history = matchingHistoryRepository.findById(matchId)
+                .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
+
+        // 내 매칭인지 검증
+        if (!history.getUserId().equals(userId)) {
+            throw new BusinessException(MatchErrorCode.MATCH_NOT_FOUND);
+        }
+
+        // Redis 캐시에서 공통 태그 조회
+        Set<String> myTags = matchCacheService.getUserTags(userId);
+        Set<String> matchedTags = matchCacheService.getUserTags(history.getMatchedUserId());
+        List<String> commonTags = new ArrayList<>(myTags);
+        commonTags.retainAll(matchedTags);
+
+        try {
+            return matchExplanationService.generateExplanation(
+                    userId,
+                    history.getMatchedUserId(),
+                    commonTags,
+                    history.getFinalScore()
+            );
+        } catch (Exception e) {
+            throw new BusinessException(MatchErrorCode.EXPLANATION_GENERATION_FAILED);
+        }
+    }
+
     private Set<UUID> buildExcludeIds(UUID userId) {
         Set<UUID> excludeIds = new HashSet<>();
 

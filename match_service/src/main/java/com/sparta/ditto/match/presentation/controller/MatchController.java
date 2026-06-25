@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.UUID;
 
-@Tag(name ="매칭" , description = "매칭 API")
+@Tag(name = "매칭", description = "매칭 API")
 @RestController
 @RequestMapping("/api/v1/matching")
 @RequiredArgsConstructor
@@ -40,7 +40,7 @@ public class MatchController {
         return ResponseEntity.ok(matchService.getTodayMatch(userId));
     }
 
-    @Operation(summary = "매칭 사태 업데이트 (수락 / 거절)")
+    @Operation(summary = "매칭 상태 업데이트 (수락 / 거절)")
     @PatchMapping("/{matchId}/status")
     public ResponseEntity<ApiResponse<Void>> updateMatchStatus(
             @RequestHeader("X-User-Id") UUID userId,
@@ -52,12 +52,28 @@ public class MatchController {
     }
 
     @Operation(summary = "추천 유저 목록 조회")
+    @GetMapping("/recommendations")
     public ResponseEntity<ApiResponse<List<RecommendationResponseDto>>> getRecommendations(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestParam(defaultValue = "50") int limit  // default 20 → 50
+            @RequestParam(defaultValue = "50") int limit
     ) {
-        List<RecommendationResponseDto> recommendations =
-                matchService.getRecommendations(userId, limit);
-        return ResponseEntity.ok(ApiResponse.success(recommendations));
+        return ResponseEntity.ok(ApiResponse.success(matchService.getRecommendations(userId, limit)));
+    }
+
+    @Operation(summary = "매칭 이력 전체 조회")
+    @GetMapping("/history")
+    public ResponseEntity<ApiResponse<List<MatchResponseDto>>> getMatchHistory(
+            @RequestHeader("X-User-Id") UUID userId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(matchService.getMatchHistory(userId)));
+    }
+
+    @Operation(summary = "매칭 설명 조회 (RAG)")
+    @GetMapping("/{matchId}/explanation")
+    public ResponseEntity<ApiResponse<String>> getExplanation(
+            @RequestHeader("X-User-Id") UUID userId,
+            @PathVariable UUID matchId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success(matchService.getExplanation(userId, matchId)));
     }
 }
