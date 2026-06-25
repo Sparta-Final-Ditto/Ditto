@@ -4,6 +4,7 @@ from uuid import UUID
 
 from app.common.db.database import AsyncSessionLocal
 from app.common.kafka.consumer_base import KafkaConsumerBase
+from app.common.kafka.dlq_producer import DlqProducer
 from app.config.settings import settings
 from app.embedding.application.service.embedding_service import EmbeddingService
 from app.embedding.infrastructure.model.model_loader import ModelLoader
@@ -53,6 +54,10 @@ class PostConsumer(KafkaConsumerBase):
                     logger.warning(f"[PostConsumer] 임베딩 실패 (시도 {attempt}/3): post_id={post_id}, error={e}")
                     if attempt == 3:
                         logger.error(f"[PostConsumer] 최대 재시도 초과 → FAILED: post_id={post_id}")
-                        await post_repo.update_status(post_id, "FAILED")
+                        try:
+                            await post_repo.update_status(post_id, "FAILED")
+                        except Exception as db_err:
+                            logger.warning(f"[PostConsumer] FAILED 상태 업데이트 실패: {db_err}")
+                        await DlqProducer.send(message, str(e))
                     else:
                         await asyncio.sleep(5)

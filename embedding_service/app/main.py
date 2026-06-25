@@ -24,6 +24,7 @@ from app.common.exception.exception_handler import (
 from app.common.router.health_router import router as health_router
 from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
+from app.common.kafka.dlq_producer import DlqProducer
 from app.embedding.infrastructure.kafka.post_consumer import PostConsumer
 from app.embedding.infrastructure.kafka.user_consumer import UserRegisteredConsumer
 from app.embedding.infrastructure.batch.batch_embedding import run_batch
@@ -49,6 +50,7 @@ TAGS_METADATA = [
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     ModelLoader.load()
+    await DlqProducer.start()
     consumer_task = asyncio.create_task(PostConsumer().start())
     user_consumer_task = asyncio.create_task(UserRegisteredConsumer().start())
 
@@ -60,6 +62,7 @@ async def lifespan(_: FastAPI):
 
     consumer_task.cancel()
     user_consumer_task.cancel()
+    await DlqProducer.stop()
     scheduler.shutdown(wait=False)
 
 

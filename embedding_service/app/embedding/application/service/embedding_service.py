@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import date
 from uuid import UUID
@@ -35,7 +36,7 @@ class EmbeddingService:
     ) -> None:
         """게시글 임베딩 저장 + active 갱신. EMA 벡터 재계산은 새벽 배치에서 처리."""
         text = build_post_text(content, hashtags)
-        vector = self.model.encode(text)
+        vector = await asyncio.to_thread(self.model.encode, text)
 
         is_new = await self.post_repo.find_by_post_id(post_id) is None
         await self.post_repo.save(post_id, user_id, vector)
@@ -93,7 +94,7 @@ class EmbeddingService:
         age_group = _compute_age_group(profile.birthdate)
         gender_label = "남" if profile.gender == "MALE" else "여"
         text = build_initial_text(hashtags, gender_label, age_group)
-        vector = self.model.encode(text)
+        vector = await asyncio.to_thread(self.model.encode, text)
 
         await self.profile_repo.update_initial_vector(user_id, vector)
 
@@ -106,7 +107,7 @@ class EmbeddingService:
     ) -> None:
         """회원가입 시 초기 관심사 기반 프로필 벡터 생성."""
         text = build_initial_text(hashtags, gender, age_group)
-        vector = self.model.encode(text)
+        vector = await asyncio.to_thread(self.model.encode, text)
         await self.profile_repo.upsert(
             user_id=user_id,
             vector=vector,

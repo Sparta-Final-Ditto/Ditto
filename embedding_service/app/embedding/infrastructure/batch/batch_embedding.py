@@ -1,18 +1,74 @@
+import asyncio
+import json
 import logging
 from uuid import UUID
+
+from aiokafka import AIOKafkaConsumer
 
 from app.config.settings import settings
 from app.common.db.database import AsyncSessionLocal
 from app.embedding.domain.algorithm.ema_calculator import update_profile
+from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.infrastructure.repository.pg_post_embedding_repository import PgPostEmbeddingRepository
 from app.embedding.infrastructure.repository.pg_user_profile_repository import PgUserProfileRepository
 
 logger = logging.getLogger(__name__)
 
 
+async def _reprocess_dlq() -> int:
+    """DLQ 토픽에 쌓인 실패 메시지를 재임베딩하여 저장한다."""
+    consumer = AIOKafkaConsumer(
+        settings.KAFKA_TOPIC_DLQ,
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        group_id=f"{settings.KAFKA_CONSUMER_GROUP}-dlq-reprocess",
+        auto_offset_reset="earliest",
+        enable_auto_commit=False,
+    )
+    await consumer.start()
+
+    model = ModelLoader()
+    count = 0
+
+    try:
+        while True:
+            records = await consumer.getmany(timeout_ms=3000, max_records=100)
+            if not records:
+                break
+            async with AsyncSessionLocal() as db:
+                post_repo = PgPostEmbeddingRepository(db)
+                for msgs in records.values():
+                    for msg in msgs:
+                        if msg.value is None:
+                            continue
+                        try:
+                            dlq_msg = json.loads(msg.value.decode("utf-8"))
+                            payload = dlq_msg["original_message"]["payload"]
+                            post_id = UUID(payload["postId"])
+                            user_id = UUID(payload["userId"])
+                            content: str = payload["content"]
+                            hashtags: list[str] = payload.get("tags", [])
+
+                            text = f"{content} {' '.join(hashtags)}"
+                            vector = await asyncio.to_thread(model.encode, text)
+                            await post_repo.save(post_id, user_id, vector)
+                            count += 1
+                            logger.info(f"[Batch] DLQ 재처리 완료: post_id={post_id}")
+                        except Exception as e:
+                            logger.error(f"[Batch] DLQ 재처리 실패: {e}")
+            await consumer.commit()
+    finally:
+        await consumer.stop()
+
+    return count
+
+
 async def run_batch() -> None:
-    """새벽 배치: FAILED 재처리 → 전체 유저 EMA 재계산."""
+    """새벽 배치: DLQ 재처리 → FAILED 복구 → 전체 유저 EMA 재계산."""
     logger.info("[Batch] 새벽 배치 시작")
+
+    dlq_count = await _reprocess_dlq()
+    if dlq_count:
+        logger.info(f"[Batch] DLQ 재처리: {dlq_count}건")
 
     async with AsyncSessionLocal() as db:
         post_repo = PgPostEmbeddingRepository(db)
@@ -28,23 +84,38 @@ async def run_batch() -> None:
         success, skip, fail = 0, 0, 0
         for user_id in user_ids:
             try:
-                vectors = await post_repo.find_all_done_vectors_ordered(user_id)
-                if not vectors:
-                    skip += 1
-                    continue
-
-                ema = vectors[0]
-                for vec in vectors[1:]:
-                    ema = update_profile(ema, vec, settings.EMA_ALPHA)
-
                 profile = await profile_repo.find_by_user_id(user_id)
-                new_count = len(vectors)
+                last_id = profile.last_processed_record_id if profile else None
+
+                if last_id is not None and profile is not None and profile.vector is not None:
+                    # 증분: 마지막 처리 이후 신규 벡터만 EMA 갱신
+                    new_records = await post_repo.find_done_vectors_after(user_id, last_id)
+                    if not new_records:
+                        skip += 1
+                        continue
+                    ema = list(profile.vector)
+                    for _, vec in new_records:
+                        ema = update_profile(ema, vec, settings.EMA_ALPHA)
+                    new_count = (profile.record_count or 0) + len(new_records)
+                    new_last_id = new_records[-1][0]
+                else:
+                    # 전체 재계산: 첫 배치 실행 또는 프로필 벡터 없음
+                    all_records = await post_repo.find_done_vectors_after(user_id, None)
+                    if not all_records:
+                        skip += 1
+                        continue
+                    ema = list(all_records[0][1])
+                    for _, vec in all_records[1:]:
+                        ema = update_profile(ema, vec, settings.EMA_ALPHA)
+                    new_count = len(all_records)
+                    new_last_id = all_records[-1][0]
+
                 await profile_repo.upsert(
                     user_id=user_id,
                     vector=ema,
                     record_count=new_count,
                     active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
-                    last_processed_record_id=profile.last_processed_record_id if profile else None,
+                    last_processed_record_id=new_last_id,
                 )
                 success += 1
             except Exception as e:

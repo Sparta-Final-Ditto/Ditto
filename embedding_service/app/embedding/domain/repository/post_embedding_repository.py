@@ -34,3 +34,11 @@ class PostEmbeddingRepository(ABC):
     async def reset_failed_to_done(self) -> int:
         """배치 전처리: FAILED 레코드를 DONE으로 되돌려 EMA 재계산 대상에 포함."""
         ...
+
+    @abstractmethod
+    async def find_done_vectors_after(
+        self, user_id: UUID, after_post_id: UUID | None
+    ) -> list[tuple[UUID, list[float]]]:
+        """배치 증분용: after_post_id 이후에 추가된 DONE (post_id, vector) 목록 반환.
+        after_post_id=None 이면 전체 반환."""
+        ...
