@@ -19,7 +19,7 @@ class KafkaConsumerBase:
             group_id=settings.KAFKA_CONSUMER_GROUP,
             value_deserializer=lambda v: json.loads(v.decode("utf-8")),
             auto_offset_reset="earliest",
-            enable_auto_commit=True,
+            enable_auto_commit=False,
         )
         await self._consumer.start()
         try:
@@ -32,6 +32,7 @@ class KafkaConsumerBase:
                     #              embedding_service 인스턴스를 파티션 수만큼 띄우면
                     #              인스턴스 간 병렬 처리 + 유저별 순서 보장 동시 달성.
                     await self.handle(msg.value)
+                    await self._consumer.commit()
                 except Exception as e:
                     logger.error(f"[{self.__class__.__name__}] 메시지 처리 실패: {e}")
         finally:
