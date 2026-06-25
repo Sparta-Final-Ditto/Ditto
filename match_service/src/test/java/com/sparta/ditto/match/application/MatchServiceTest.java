@@ -92,7 +92,8 @@ class MatchServiceTest {
     void createMatch_userServiceFails_throwsException() {
         UUID userId = UUID.randomUUID();
         float[] vector = {0.1f, 0.2f, 0.3f};
-        UserProfileEmbeddingDto myProfile = new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
 
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
@@ -112,7 +113,8 @@ class MatchServiceTest {
     void createMatch_noCandidates_throwsException() {
         UUID userId = UUID.randomUUID();
         float[] vector = {0.1f, 0.2f, 0.3f};
-        UserProfileEmbeddingDto myProfile = new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
         ActiveUserIdsDto activeIds = new ActiveUserIdsDto(List.of(userId), 1);
 
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
@@ -139,23 +141,34 @@ class MatchServiceTest {
         UUID candidateId = UUID.randomUUID();
         float[] vector = {0.1f, 0.2f, 0.3f};
 
-        UserProfileEmbeddingDto myProfile = new UserProfileEmbeddingDto(userId, vector, null, true, 5);
-        UserProfileEmbeddingDto candidateProfile = new UserProfileEmbeddingDto(candidateId, vector, null, true, 5);
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+        UserProfileEmbeddingDto candidateProfile =
+                new UserProfileEmbeddingDto(candidateId, vector, null, true, 5);
         ActiveUserIdsDto activeIds = new ActiveUserIdsDto(List.of(candidateId), 1);
-        ProfileBatchResponseDto batchResponse = new ProfileBatchResponseDto(List.of(candidateProfile));
+        ProfileBatchResponseDto batchResponse =
+                new ProfileBatchResponseDto(List.of(candidateProfile));
 
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
-        given(embeddingServiceClient.getUserProfile(userId)).willReturn(ApiResponse.success(myProfile));
-        given(userServiceClient.getFollowings(userId)).willReturn(ApiResponse.success(List.of()));
-        given(userServiceClient.getBlockedUsers(userId)).willReturn(ApiResponse.success(List.of()));
-        given(embeddingServiceClient.getActiveUserIds()).willReturn(ApiResponse.success(activeIds));
-        given(embeddingServiceClient.getProfilesBatch(any())).willReturn(ApiResponse.success(batchResponse));
-        given(matchCacheService.getUserTags(any())).willReturn(Set.of("여행", "카페"));
-        given(cosineSimilarityCalculator.calculate(any(), any())).willReturn(0.8f);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(userServiceClient.getFollowings(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(userServiceClient.getBlockedUsers(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(embeddingServiceClient.getActiveUserIds())
+                .willReturn(ApiResponse.success(activeIds));
+        given(embeddingServiceClient.getProfilesBatch(any()))
+                .willReturn(ApiResponse.success(batchResponse));
+        given(matchCacheService.getUserTags(any()))
+                .willReturn(Set.of("여행", "카페"));
+        given(cosineSimilarityCalculator.calculate(any(), any()))
+                .willReturn(0.8f);
         given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
                 .willReturn("잘 맞는 두 분이에요!");
-        given(matchingHistoryRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> inv.getArgument(0));
 
         MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
 
@@ -316,8 +329,9 @@ class MatchServiceTest {
     void getExplanation_success_returnsExplanation() {
         UUID userId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
+        UUID matchedUserId = UUID.randomUUID();
         MatchingHistory history = MatchingHistory.of(
-                userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+                userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
         given(matchCacheService.getUserTags(any())).willReturn(Set.of("여행", "카페"));

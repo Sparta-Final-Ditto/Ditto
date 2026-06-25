@@ -38,21 +38,17 @@ public class MatchService {
     @Transactional
     public MatchResponseDto createMatch(UUID userId, MatchRequestDto request) {
 
-        // 1. Bitmap으로 빠르게 하루 1회 제한 체크
         if (matchingBitmapService.hasMatchedToday(userId)) {
             throw new BusinessException(MatchErrorCode.ALREADY_MATCHED_TODAY);
         }
 
-        // 2. 분산 락 획득
         if (!matchingLockService.acquireLock(userId)) {
             throw new BusinessException(MatchErrorCode.ALREADY_MATCHING);
         }
 
         try {
-            // 3. HyperLogLog 통계 기록
             matchingStatsService.addMatchingUser(userId);
 
-            // 4. 내 벡터 가져오기
             UserProfileEmbeddingDto myProfile;
             try {
                 myProfile = embeddingServiceClient.getUserProfile(userId).getData();
@@ -64,10 +60,8 @@ public class MatchService {
                     ? myProfile.todayVector()
                     : myProfile.profileVector();
 
-            // 5. 팔로잉 + 차단 유저 제외 Set 구성
             Set<UUID> excludeIds = buildExcludeIds(userId);
 
-            // 6. active 유저 후보군 배치로 벡터 가져오기
             // TODO: [고도화] HNSW ANN 검색으로 교체 예정
             ActiveUserIdsDto activeIds;
             try {
@@ -94,10 +88,9 @@ public class MatchService {
                 throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
             }
 
-            // 7. 태그 Redis에서 조회
             Set<String> myTags = matchCacheService.getUserTags(userId);
+            if (myTags == null) myTags = Set.of();
 
-            // 8. 코사인 유사도 + 태그 가중치 스코어링
             UUID bestMatchId = null;
             float bestSimilarityScore = 0f;
             float bestFinalScore = -1f;
@@ -109,7 +102,10 @@ public class MatchService {
                         : candidate.profileVector();
 
                 float cosineScore = cosineSimilarityCalculator.calculate(myVector, candidateVector);
+
                 Set<String> candidateTags = matchCacheService.getUserTags(candidate.userId());
+                if (candidateTags == null) candidateTags = Set.of();
+
                 float tagScore = calculateTagSimilarity(myTags, candidateTags);
                 float finalScore = cosineScore * 0.5f + tagScore * 0.5f;
 
@@ -128,11 +124,9 @@ public class MatchService {
                 throw new BusinessException(MatchErrorCode.NO_MATCHING_CANDIDATE);
             }
 
-            // 9. 공통 태그 추출
             List<String> commonTags = new ArrayList<>(myTags);
             commonTags.retainAll(bestMatchTags);
 
-            // 10. RAG 매칭 설명 생성
             String explanation;
             try {
                 explanation = matchExplanationService.generateExplanation(
@@ -141,7 +135,6 @@ public class MatchService {
                 throw new BusinessException(MatchErrorCode.EXPLANATION_GENERATION_FAILED);
             }
 
-            // 11. 매칭 이력 저장
             MatchingHistory history = MatchingHistory.of(
                     userId,
                     bestMatchId,
@@ -163,10 +156,7 @@ public class MatchService {
                     explanation
             );
 
-            // 12. 매칭 결과 캐싱
             matchCacheService.cacheMatchResult(userId, response);
-
-            // 13. Bitmap에 오늘 매칭 완료 표시
             matchingBitmapService.markAsMatched(userId);
 
             return response;
@@ -223,7 +213,6 @@ public class MatchService {
                 .toList();
     }
 
-    // 매칭 이력 전체 조회
     @Transactional(readOnly = true)
     public List<MatchResponseDto> getMatchHistory(UUID userId) {
         return matchingHistoryRepository.findAllByUserId(userId)
@@ -240,20 +229,20 @@ public class MatchService {
                 .toList();
     }
 
-    // 매칭 설명 조회 (RAG)
     @Transactional(readOnly = true)
     public String getExplanation(UUID userId, UUID matchId) {
         MatchingHistory history = matchingHistoryRepository.findById(matchId)
                 .orElseThrow(() -> new BusinessException(MatchErrorCode.MATCH_NOT_FOUND));
 
-        // 내 매칭인지 검증
         if (!history.getUserId().equals(userId)) {
             throw new BusinessException(MatchErrorCode.MATCH_NOT_FOUND);
         }
 
-        // Redis 캐시에서 공통 태그 조회
         Set<String> myTags = matchCacheService.getUserTags(userId);
         Set<String> matchedTags = matchCacheService.getUserTags(history.getMatchedUserId());
+        if (myTags == null) myTags = Set.of();
+        if (matchedTags == null) matchedTags = Set.of();
+
         List<String> commonTags = new ArrayList<>(myTags);
         commonTags.retainAll(matchedTags);
 
@@ -292,6 +281,7 @@ public class MatchService {
     }
 
     private float calculateTagSimilarity(Set<String> tagsA, Set<String> tagsB) {
+        if (tagsA == null || tagsB == null) return 0f;
         if (tagsA.isEmpty() && tagsB.isEmpty()) return 0f;
         Set<String> intersection = new HashSet<>(tagsA);
         intersection.retainAll(tagsB);
