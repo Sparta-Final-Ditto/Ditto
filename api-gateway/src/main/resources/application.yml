@@ -22,7 +22,7 @@ spring:
             - id: match-service
               uri: ${MATCH_SERVICE_URL}
               predicates:
-                - Path=/api/v1/matches/**
+                - Path=/api/v1/matching/**
             - id: chat-service
               uri: ${CHAT_SERVICE_URL}
               predicates:
