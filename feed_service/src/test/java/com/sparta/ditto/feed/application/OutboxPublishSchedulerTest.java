@@ -5,6 +5,7 @@ import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,7 +32,7 @@ class OutboxPublishSchedulerTest {
     private OutboxPublishScheduler scheduler;
 
     private OutboxEvent pendingEvent() {
-        return new OutboxEvent("post-events", "POST_LIKED", "{}");
+        return new OutboxEvent("post-events", "POST_LIKED", UUID.randomUUID(), "{}");
     }
 
     @Test
@@ -39,7 +40,7 @@ class OutboxPublishSchedulerTest {
     void publishPendingEvents_성공_PUBLISHED() {
         // given
         OutboxEvent event = pendingEvent();
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
+        when(outboxEventRepository.findPendingForUpdate(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
 
         // when
@@ -56,7 +57,7 @@ class OutboxPublishSchedulerTest {
     void publishPendingEvents_실패_retryCount_증가() {
         // given
         OutboxEvent event = pendingEvent();
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
+        when(outboxEventRepository.findPendingForUpdate(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         doThrow(new RuntimeException("Kafka 연결 실패"))
                 .when(outboxEventPublisher).publish(any(OutboxEvent.class));
@@ -75,7 +76,7 @@ class OutboxPublishSchedulerTest {
     void publishPendingEvents_3회실패_FAILED() {
         // given
         OutboxEvent event = pendingEvent();
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
+        when(outboxEventRepository.findPendingForUpdate(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of(event));
         doThrow(new RuntimeException("Kafka 연결 실패"))
                 .when(outboxEventPublisher).publish(any(OutboxEvent.class));
@@ -95,7 +96,7 @@ class OutboxPublishSchedulerTest {
     @DisplayName("PENDING 이벤트 없음 → Kafka 발행 없음, 저장 없음")
     void publishPendingEvents_이벤트없음_발행안함() {
         // given
-        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.PENDING, 100))
+        when(outboxEventRepository.findPendingForUpdate(OutboxStatus.PENDING, 100))
                 .thenReturn(List.of());
 
         // when
@@ -104,5 +105,28 @@ class OutboxPublishSchedulerTest {
         // then
         verify(outboxEventPublisher, never()).publish(any(OutboxEvent.class));
         verify(outboxEventRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("replayFailedEvents - FAILED 이벤트를 PENDING으로 재전환 후 저장")
+    void replayFailedEvents_FAILED_to_PENDING() {
+        // given
+        OutboxEvent failedEvent = pendingEvent();
+        failedEvent.incrementRetryCount();
+        failedEvent.incrementRetryCount();
+        failedEvent.incrementRetryCount();
+        assertThat(failedEvent.getStatus()).isEqualTo(OutboxStatus.FAILED);
+
+        when(outboxEventRepository.findByStatusOrderByCreatedAt(OutboxStatus.FAILED, 100))
+                .thenReturn(List.of(failedEvent));
+
+        // when
+        scheduler.replayFailedEvents();
+
+        // then
+        assertThat(failedEvent.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(failedEvent.getRetryCount()).isZero();
+        assertThat(failedEvent.getFailedAt()).isNull();
+        verify(outboxEventRepository).save(failedEvent);
     }
 }

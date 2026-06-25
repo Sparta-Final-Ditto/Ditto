@@ -44,7 +44,7 @@ class OutboxEventAdapterTest {
     }
 
     @Test
-    @DisplayName("buildPostLiked - topic, eventType, PENDING 상태 검증")
+    @DisplayName("buildPostLiked - topic, eventType, PENDING 상태, aggregateId=작성자ID 검증")
     void buildPostLiked_topic_eventType_상태_검증() {
         // given
         Post post = createPost(ownerId);
@@ -56,6 +56,7 @@ class OutboxEventAdapterTest {
         assertThat(event.getTopic()).isEqualTo("post-events");
         assertThat(event.getEventType()).isEqualTo("POST_LIKED");
         assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(event.getAggregateId()).isEqualTo(ownerId);
     }
 
     @Test
@@ -76,7 +77,7 @@ class OutboxEventAdapterTest {
     }
 
     @Test
-    @DisplayName("buildPostCreated - topic, eventType, PENDING 상태 검증")
+    @DisplayName("buildPostCreated - topic, eventType, PENDING 상태, aggregateId=작성자ID 검증")
     void buildPostCreated_topic_eventType_상태_검증() {
         // given
         Post post = createPost(userId);
@@ -88,6 +89,7 @@ class OutboxEventAdapterTest {
         assertThat(event.getTopic()).isEqualTo("post-events");
         assertThat(event.getEventType()).isEqualTo("POST_CREATED");
         assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(event.getAggregateId()).isEqualTo(userId);
     }
 
     @Test
@@ -111,7 +113,7 @@ class OutboxEventAdapterTest {
     }
 
     @Test
-    @DisplayName("buildPostCommented - topic, eventType, PENDING 상태 검증")
+    @DisplayName("buildPostCommented - topic, eventType, PENDING 상태, aggregateId=작성자ID 검증")
     void buildPostCommented_topic_eventType_상태_검증() {
         // given
         Post post = createPost(ownerId);
@@ -124,6 +126,7 @@ class OutboxEventAdapterTest {
         assertThat(event.getTopic()).isEqualTo("post-events");
         assertThat(event.getEventType()).isEqualTo("POST_COMMENTED");
         assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(event.getAggregateId()).isEqualTo(ownerId);
     }
 
     @Test
@@ -143,5 +146,39 @@ class OutboxEventAdapterTest {
         assertThat(payload.get("userId").asText()).isEqualTo(userId.toString());
         assertThat(payload.get("ownerId").asText()).isEqualTo(ownerId.toString());
         assertThat(payload.get("commentedAt").asText()).isNotBlank();
+    }
+
+    @Test
+    @DisplayName("buildPostDeleted - topic, eventType, PENDING 상태, aggregateId=작성자ID 검증")
+    void buildPostDeleted_topic_eventType_상태_검증() {
+        // given
+        Post post = createPost(ownerId);
+
+        // when
+        OutboxEvent event = adapter.buildPostDeleted(post, userId);
+
+        // then
+        assertThat(event.getTopic()).isEqualTo("post-events");
+        assertThat(event.getEventType()).isEqualTo("POST_DELETED");
+        assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(event.getAggregateId()).isEqualTo(ownerId);
+    }
+
+    @Test
+    @DisplayName("buildPostDeleted - payload 필드(postId, ownerId, deletedBy, deleteType, deletedAt) 검증")
+    void buildPostDeleted_payload_필드_검증() throws Exception {
+        // given
+        Post post = createPost(ownerId);
+
+        // when
+        OutboxEvent event = adapter.buildPostDeleted(post, userId);
+        JsonNode payload = objectMapper.readTree(event.getPayload());
+
+        // then
+        assertThat(payload.get("postId").asText()).isEqualTo(postId.toString());
+        assertThat(payload.get("ownerId").asText()).isEqualTo(ownerId.toString());
+        assertThat(payload.get("deletedBy").asText()).isEqualTo(userId.toString());
+        assertThat(payload.get("deleteType").asText()).isEqualTo("SOFT");
+        assertThat(payload.get("deletedAt").asText()).isNotBlank();
     }
 }

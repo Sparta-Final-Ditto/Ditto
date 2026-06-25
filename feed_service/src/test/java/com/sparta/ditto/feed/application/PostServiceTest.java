@@ -78,7 +78,7 @@ class PostServiceTest {
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(outboxEventPort.buildPostCreated(any(Post.class), any(UUID.class), any()))
-                .thenReturn(new OutboxEvent("post-events", "POST_CREATED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_CREATED", java.util.UUID.randomUUID(), "{}"));
     }
 
     private CreatePostCommand defaultCommand() {
@@ -496,7 +496,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when & then
         assertThatCode(() -> postService.deletePost(postId, requesterId, "USER"))
@@ -568,7 +568,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when & then
         assertThatCode(() -> postService.deletePost(postId, adminId, "ADMIN"))
@@ -589,7 +589,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when
         postService.deletePost(postId, requesterId, "USER");
@@ -609,7 +609,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when
         postService.deletePost(postId, requesterId, "USER");
@@ -626,7 +626,7 @@ class PostServiceTest {
         UUID postId = UUID.randomUUID();
         Post post = createExistingPost(requesterId);
         ReflectionTestUtils.setField(post, "id", postId);
-        OutboxEvent expectedEvent = new OutboxEvent("post-events", "POST_DELETED", "{}");
+        OutboxEvent expectedEvent = new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}");
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), eq(requesterId)))
