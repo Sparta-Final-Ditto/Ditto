@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.application.event;
 
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import java.time.Instant;
@@ -14,6 +15,8 @@ public record ChatMessageCreatedEvent(
         RoomType roomType,
         String messageId,
         UUID senderId,
+        String senderNickname,
+        String senderProfileImageUrl,
         List<UUID> receiverIds,
         MessageType messageType,
         String preview,
@@ -24,18 +27,22 @@ public record ChatMessageCreatedEvent(
     private static final int PREVIEW_MAX_LENGTH = 50;
 
     public static ChatMessageCreatedEvent of(
-            SentMessage message, RoomType roomType, List<UUID> receiverIds) {
+            SentMessage message,
+            RoomType roomType,
+            ChatSenderProfile senderProfile,
+            List<UUID> receiverIds) {
         return new ChatMessageCreatedEvent(
                 EVENT_TYPE,
                 message.roomId(),
                 roomType,
                 message.messageId(),
                 message.senderId(),
+                senderProfile.nickname(),
+                senderProfile.profileImageUrl(),
                 List.copyOf(receiverIds),
                 message.messageType(),
                 preview(message.content()),
-                message.createdAt()
-        );
+                message.createdAt());
     }
 
     private static String preview(String content) {
