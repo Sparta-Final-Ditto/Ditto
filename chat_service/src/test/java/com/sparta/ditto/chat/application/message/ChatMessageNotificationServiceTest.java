@@ -10,6 +10,8 @@ import com.sparta.ditto.chat.application.event.ChatMessageCreatedEvent;
 import com.sparta.ditto.chat.application.event.ChatNotificationEventPublisher;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.room.ChatNotificationCandidateService;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
+import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.application.room.port.ChatPresencePort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.domain.message.MessageType;
@@ -33,6 +35,7 @@ class ChatMessageNotificationServiceTest {
     @Mock private ChatNotificationCandidateService candidateService;
     @Mock private ChatPresencePort chatPresencePort;
     @Mock private ChatRoomPort chatRoomPort;
+    @Mock private ChatUserProfilePort chatUserProfilePort;
     @Mock private ChatNotificationEventPublisher publisher;
 
     @InjectMocks private ChatMessageNotificationService service;
@@ -47,22 +50,22 @@ class ChatMessageNotificationServiceTest {
     }
 
     @Test
-    @DisplayName("성공 - 현재 방을 보고 있지 않은 수신자에게만 발행한다")
-    void dispatch_filtersActiveRoomUsers() {
-        UUID inRoom = UUID.randomUUID();    // 현재 방을 보는 중 → 제외
-        UUID elsewhere = UUID.randomUUID(); // 다른 방 → 대상
+    @DisplayName("성공 - 발신자 프로필을 포함해 현재 방을 안 보는 수신자에게만 발행한다")
+    void dispatch_includesSenderProfile_andFiltersActiveRoom() {
+        UUID inRoom = UUID.randomUUID();    // 현재 방 → 제외
         UUID offline = UUID.randomUUID();   // 오프라인 → 대상
 
         given(candidateService.findNotificationCandidateUserIds(ROOM_ID, SENDER))
-                .willReturn(List.of(inRoom, elsewhere, offline));
+                .willReturn(List.of(inRoom, offline));
         given(chatPresencePort.findActiveRoomId(inRoom)).willReturn(Optional.of(ROOM_ID));
-        given(chatPresencePort.findActiveRoomId(elsewhere))
-                .willReturn(Optional.of(UUID.randomUUID()));
         given(chatPresencePort.findActiveRoomId(offline)).willReturn(Optional.empty());
 
         ChatRoom room = org.mockito.Mockito.mock(ChatRoom.class);
-        given(room.getRoomType()).willReturn(RoomType.GROUP);
+        given(room.getRoomType()).willReturn(RoomType.DIRECT);
         given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(room));
+
+        given(chatUserProfilePort.findProfile(SENDER))
+                .willReturn(new ChatSenderProfile("홍길동", "https://img/p.png"));
 
         service.dispatch(sent("안녕하세요"));
 
@@ -70,13 +73,13 @@ class ChatMessageNotificationServiceTest {
                 ArgumentCaptor.forClass(ChatMessageCreatedEvent.class);
         verify(publisher).publish(captor.capture());
         ChatMessageCreatedEvent event = captor.getValue();
-        assertThat(event.eventType()).isEqualTo("CHAT_MESSAGE_CREATED");
-        assertThat(event.roomType()).isEqualTo(RoomType.GROUP);
-        assertThat(event.receiverIds()).containsExactlyInAnyOrder(elsewhere, offline);
+        assertThat(event.receiverIds()).containsExactly(offline);
+        assertThat(event.senderNickname()).isEqualTo("홍길동");
+        assertThat(event.senderProfileImageUrl()).isEqualTo("https://img/p.png");
     }
 
     @Test
-    @DisplayName("발행 생략 - 모든 후보가 현재 방을 보고 있으면 발행하지 않는다")
+    @DisplayName("발행 생략 - 알림 대상이 없으면 프로필 조회·발행을 하지 않는다")
     void dispatch_skipsWhenNoReceivers() {
         UUID inRoom = UUID.randomUUID();
         given(candidateService.findNotificationCandidateUserIds(ROOM_ID, SENDER))
@@ -86,24 +89,28 @@ class ChatMessageNotificationServiceTest {
         service.dispatch(sent("hi"));
 
         verify(publisher, never()).publish(any());
+        verify(chatUserProfilePort, never()).findProfile(any());
     }
 
     @Test
-    @DisplayName("preview - content가 50자를 넘으면 절단한다")
-    void dispatch_truncatesPreview() {
+    @DisplayName("폴백 - 프로필이 없으면(null) 닉네임·이미지 null로 발행한다")
+    void dispatch_publishesWithNullProfile() {
         UUID offline = UUID.randomUUID();
         given(candidateService.findNotificationCandidateUserIds(ROOM_ID, SENDER))
                 .willReturn(List.of(offline));
         given(chatPresencePort.findActiveRoomId(offline)).willReturn(Optional.empty());
         ChatRoom room = org.mockito.Mockito.mock(ChatRoom.class);
-        given(room.getRoomType()).willReturn(RoomType.DIRECT);
+        given(room.getRoomType()).willReturn(RoomType.GROUP);
         given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(room));
+        given(chatUserProfilePort.findProfile(SENDER))
+                .willReturn(ChatSenderProfile.unknown());
 
-        service.dispatch(sent("a".repeat(80)));
+        service.dispatch(sent("hi"));
 
         ArgumentCaptor<ChatMessageCreatedEvent> captor =
                 ArgumentCaptor.forClass(ChatMessageCreatedEvent.class);
         verify(publisher).publish(captor.capture());
-        assertThat(captor.getValue().preview()).hasSize(50);
+        assertThat(captor.getValue().senderNickname()).isNull();
+        assertThat(captor.getValue().senderProfileImageUrl()).isNull();
     }
 }
