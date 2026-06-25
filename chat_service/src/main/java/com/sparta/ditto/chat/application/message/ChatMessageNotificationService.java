@@ -6,6 +6,8 @@ import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.room.ChatNotificationCandidateService;
 import com.sparta.ditto.chat.application.room.port.ChatPresencePort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
+import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import java.util.List;
@@ -23,6 +25,7 @@ public class ChatMessageNotificationService {
     private final ChatPresencePort chatPresencePort;
     private final ChatRoomPort chatRoomPort;
     private final ChatNotificationEventPublisher chatNotificationEventPublisher;
+    private final ChatUserProfilePort chatUserProfilePort;
 
     // 저장·브로드캐스트 완료 후 호출: 현재 방을 보고 있지 않은 수신자에게만 알림 이벤트 발행
     public void dispatch(SentMessage saved) {
@@ -47,7 +50,9 @@ public class ChatMessageNotificationService {
                 .orElseThrow(ChatRoomNotFoundException::new)
                 .getRoomType();
 
+        ChatSenderProfile senderProfile = chatUserProfilePort.findProfile(senderId);
+
         chatNotificationEventPublisher.publish(
-                ChatMessageCreatedEvent.of(saved, roomType, receiverIds));
+                ChatMessageCreatedEvent.of(saved, roomType, senderProfile, receiverIds));
     }
 }
