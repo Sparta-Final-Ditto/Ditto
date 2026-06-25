@@ -9,6 +9,8 @@ import static org.mockito.Mockito.when;
 import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
 import com.sparta.ditto.chat.infrastructure.client.UserProfileClientResponse.UserProfileData;
 import java.util.UUID;
+
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -23,7 +25,8 @@ class UserServiceChatProfileAdapterTest {
     @BeforeEach
     void setUp() {
         userServiceClient = mock(UserServiceClient.class);
-        adapter = new UserServiceChatProfileAdapter(userServiceClient);
+        adapter = new UserServiceChatProfileAdapter(
+                userServiceClient, CircuitBreaker.ofDefaults("test"));
     }
 
     @Test
