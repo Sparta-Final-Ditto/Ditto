@@ -21,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +45,18 @@ class MatchServiceTest {
 
     @InjectMocks
     private MatchService matchService;
+
+    // DB 없는 환경에서 @GeneratedValue 미동작 → 리플렉션으로 id 주입
+    private MatchingHistory withId(MatchingHistory history) {
+        try {
+            Field f = MatchingHistory.class.getDeclaredField("id");
+            f.setAccessible(true);
+            f.set(history, UUID.randomUUID());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return history;
+    }
 
     // ── createMatch ──────────────────────────────────────
 
@@ -167,9 +180,8 @@ class MatchServiceTest {
                 .willReturn(0.8f);
         given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
                 .willReturn("잘 맞는 두 분이에요!");
-        // toDto() 내부에서 id 사용 안 하므로 NPE 없음
         given(matchingHistoryRepository.save(any()))
-                .willAnswer(inv -> inv.getArgument(0));
+                .willAnswer(inv -> withId(inv.getArgument(0)));
 
         MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
 

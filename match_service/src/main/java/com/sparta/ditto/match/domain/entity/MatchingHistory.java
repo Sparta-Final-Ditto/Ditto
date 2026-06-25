@@ -65,9 +65,17 @@ public class MatchingHistory extends BaseEntity {
         return history;
     }
 
+    public void accept() {
+        this.status = MatchStatus.ACCEPTED;
+    }
+
+    public void reject() {
+        this.status = MatchStatus.REJECTED;
+    }
+
     public MatchResponseDto toDto(String explanation) {
         return new MatchResponseDto(
-                this.id != null ? this.id : UUID.randomUUID(),
+                this.id,
                 this.matchedUserId,
                 this.similarityScore,
                 this.finalScore,
@@ -77,11 +85,5 @@ public class MatchingHistory extends BaseEntity {
         );
     }
 
-    public void accept() {
-        this.status = MatchStatus.ACCEPTED;
-    }
-
-    public void reject() {
-        this.status = MatchStatus.REJECTED;
-    }
 }
+
