@@ -1,6 +1,5 @@
 package com.sparta.ditto.match.application.dto;
 
-// application/dto/MatchResponseDto.java
 import com.sparta.ditto.match.domain.entity.MatchStatus;
 
 import java.time.Instant;
@@ -12,5 +11,6 @@ public record MatchResponseDto(
         Float similarityScore,
         Float finalScore,
         Instant matchedAt,
-        MatchStatus status
+        MatchStatus status,
+        String explanation  // 추가
 ) {}
