@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
-import com.sparta.ditto.feed.application.dto.PostDetailResult;
-import com.sparta.ditto.feed.application.dto.UserPostItemResult;
-import com.sparta.ditto.feed.application.dto.UserPostsResult;
+import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostItemResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
 import com.sparta.ditto.feed.application.dto.result.PostResult;

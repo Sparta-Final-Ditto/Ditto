@@ -5,8 +5,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
-import com.sparta.ditto.feed.application.dto.UserPostsResult;
+import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
+import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.Post;

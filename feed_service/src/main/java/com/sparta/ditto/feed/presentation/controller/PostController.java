@@ -1,9 +1,9 @@
 package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
-import com.sparta.ditto.feed.application.dto.GetUserPostsQuery;
-import com.sparta.ditto.feed.application.dto.PostDetailResult;
-import com.sparta.ditto.feed.application.dto.UserPostsResult;
+import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.dto.command.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
