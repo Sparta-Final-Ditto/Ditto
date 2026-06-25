@@ -21,6 +21,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.lang.reflect.Field;
 import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +45,18 @@ class MatchServiceTest {
 
     @InjectMocks
     private MatchService matchService;
+
+    // id 주입 헬퍼
+    private MatchingHistory withId(MatchingHistory history) {
+        try {
+            Field idField = MatchingHistory.class.getDeclaredField("id");
+            idField.setAccessible(true);
+            idField.set(history, UUID.randomUUID());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        return history;
+    }
 
     // ── createMatch ──────────────────────────────────────
 
@@ -167,8 +180,10 @@ class MatchServiceTest {
                 .willReturn(0.8f);
         given(matchExplanationService.generateExplanation(any(), any(), any(), any()))
                 .willReturn("잘 맞는 두 분이에요!");
+
+        // id가 null이 안 되도록 withId로 감싸서 반환
         given(matchingHistoryRepository.save(any()))
-                .willAnswer(inv -> inv.getArgument(0));
+                .willAnswer(inv -> withId(inv.getArgument(0)));
 
         MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
 
@@ -198,8 +213,8 @@ class MatchServiceTest {
     @DisplayName("오늘 매칭 이력이 있으면 DTO를 반환한다")
     void getTodayMatch_hasHistory_returnsDto() {
         UUID userId = UUID.randomUUID();
-        MatchingHistory history = MatchingHistory.of(
-                userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+        MatchingHistory history = withId(MatchingHistory.of(
+                userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false));
 
         given(matchingHistoryRepository.findTodayMatchByUserId(any(), any()))
                 .willReturn(Optional.of(history));
@@ -231,8 +246,8 @@ class MatchServiceTest {
     @DisplayName("ACCEPTED 상태로 업데이트 시 상태가 ACCEPTED로 변경된다")
     void updateMatchStatus_accepted_changesStatus() {
         UUID matchId = UUID.randomUUID();
-        MatchingHistory history = MatchingHistory.of(
-                UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+        MatchingHistory history = withId(MatchingHistory.of(
+                UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false));
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
         given(matchingHistoryRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -248,8 +263,8 @@ class MatchServiceTest {
     @DisplayName("REJECTED 상태로 업데이트 시 상태가 REJECTED로 변경된다")
     void updateMatchStatus_rejected_changesStatus() {
         UUID matchId = UUID.randomUUID();
-        MatchingHistory history = MatchingHistory.of(
-                UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+        MatchingHistory history = withId(MatchingHistory.of(
+                UUID.randomUUID(), UUID.randomUUID(), 0.8f, 0.75f, "NONE", false));
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
         given(matchingHistoryRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
@@ -299,10 +314,10 @@ class MatchServiceTest {
     @DisplayName("매칭 이력이 있으면 전체 목록을 반환한다")
     void getMatchHistory_hasHistory_returnsList() {
         UUID userId = UUID.randomUUID();
-        MatchingHistory history1 = MatchingHistory.of(
-                userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
-        MatchingHistory history2 = MatchingHistory.of(
-                userId, UUID.randomUUID(), 0.7f, 0.65f, "NONE", false);
+        MatchingHistory history1 = withId(MatchingHistory.of(
+                userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false));
+        MatchingHistory history2 = withId(MatchingHistory.of(
+                userId, UUID.randomUUID(), 0.7f, 0.65f, "NONE", false));
 
         given(matchingHistoryRepository.findAllByUserId(userId))
                 .willReturn(List.of(history1, history2));
@@ -330,8 +345,8 @@ class MatchServiceTest {
         UUID userId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         UUID matchedUserId = UUID.randomUUID();
-        MatchingHistory history = MatchingHistory.of(
-                userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
+        MatchingHistory history = withId(MatchingHistory.of(
+                userId, matchedUserId, 0.8f, 0.75f, "NONE", false));
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
         given(matchCacheService.getUserTags(any())).willReturn(Set.of("여행", "카페"));
@@ -349,8 +364,8 @@ class MatchServiceTest {
         UUID userId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
-        MatchingHistory history = MatchingHistory.of(
-                otherUserId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
+        MatchingHistory history = withId(MatchingHistory.of(
+                otherUserId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false));
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
 
