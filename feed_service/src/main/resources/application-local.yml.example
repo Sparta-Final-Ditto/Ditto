@@ -15,6 +15,13 @@ spring:
       port: 6379
   kafka:
     bootstrap-servers: localhost:9092
+    producer:
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
   cloud:
     openfeign:
       client:
