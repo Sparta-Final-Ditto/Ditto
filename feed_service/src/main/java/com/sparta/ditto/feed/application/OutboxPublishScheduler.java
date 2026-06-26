@@ -24,7 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OutboxPublishScheduler {
 
-    private static final Logger log = LoggerFactory.getLogger(OutboxPublishScheduler.class);
+    private static final Logger LOG = LoggerFactory.getLogger(OutboxPublishScheduler.class);
 
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
@@ -49,7 +49,7 @@ public class OutboxPublishScheduler {
     public void monitorFailedEvents() {
         long failedCount = outboxEventRepository.countByStatus(OutboxStatus.FAILED);
         if (failedCount > 0) {
-            log.warn("[Outbox] FAILED 이벤트 {}건 감지. replay 필요 여부 확인 요망.", failedCount);
+            LOG.warn("[Outbox] FAILED 이벤트 {}건 감지. replay 필요 여부 확인 요망.", failedCount);
         }
     }
 
@@ -61,6 +61,6 @@ public class OutboxPublishScheduler {
             event.resetToPending();
             outboxEventRepository.save(event);
         }
-        log.info("[Outbox] FAILED → PENDING 재전환 {}건 완료.", failed.size());
+        LOG.info("[Outbox] FAILED → PENDING 재전환 {}건 완료.", failed.size());
     }
 }
