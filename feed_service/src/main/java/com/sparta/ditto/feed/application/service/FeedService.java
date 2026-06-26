@@ -66,6 +66,8 @@ public class FeedService {
         return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
     }
 
+    @CircuitBreaker(name = "userServiceClient", fallbackMethod = "fallbackGetFollowFeed")
+    @Retry(name = "userServiceClient")
     @Transactional(readOnly = true)
     public FeedResult getFollowFeed(GetFollowFeedQuery query) {
         FollowingResult following = followServicePort.getFollowingIds(query.userId());

@@ -43,10 +43,24 @@ resilience4j:
         wait-duration-in-open-state: 1s
         permitted-number-of-calls-in-half-open-state: 2
         automatic-transition-from-open-to-half-open-enabled: true
+      userServiceClient:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 4
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 700ms
+        wait-duration-in-open-state: 1s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
   retry:
     retry-aspect-order: 2
     instances:
       matchServiceClient:
+        max-attempts: 2
+        wait-duration: 10ms
+        enable-exponential-backoff: false
+      userServiceClient:
         max-attempts: 2
         wait-duration: 10ms
         enable-exponential-backoff: false
