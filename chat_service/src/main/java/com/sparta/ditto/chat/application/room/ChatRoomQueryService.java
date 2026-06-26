@@ -77,12 +77,21 @@ public class ChatRoomQueryService {
         // 방들의 lastMessageId로 마지막 메시지 본문을 한 번에 조회한다 (N+1 방지).
         Map<String, SentMessage> lastMessageById = findLastMessages(rooms);
 
+        // 방마다 unreadCount를 한 번에 계산한다 (N+1 방지).
+        Map<UUID, String> lastReadByRoom = myParticipants.stream()
+                .collect(Collectors.toMap(
+                        ChatRoomParticipant::getRoomId,
+                        p -> p.getLastReadMessageId() != null ? p.getLastReadMessageId() : ""
+                ));
+        Map<UUID, Long> unreadCounts =
+                chatMessageQueryPort.countUnreadBatch(lastReadByRoom, requesterId);
+
         return rooms.stream()
                 .map(room -> toSummaryResult(
                         room,
                         participantByRoomId.get(room.getId()),
                         lastMessageById,
-                        requesterId
+                        unreadCounts.getOrDefault(room.getId(), 0L)
                 ))
                 .toList();
     }
@@ -103,13 +112,8 @@ public class ChatRoomQueryService {
             ChatRoom chatRoom,
             ChatRoomParticipant participant,
             Map<String, SentMessage> lastMessageById,
-            UUID requesterId
+            long unreadCount
     ) {
-        long unreadCount = chatMessageQueryPort.countUnread(
-                chatRoom.getId(),
-                participant.getLastReadMessageId(),
-                requesterId
-        );
         return ChatRoomSummaryResult.of(
                 chatRoom.getId(),
                 chatRoom.getRoomType(),

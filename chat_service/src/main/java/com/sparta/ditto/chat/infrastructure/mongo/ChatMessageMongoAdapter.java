@@ -5,19 +5,38 @@ import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
 import com.sparta.ditto.chat.application.message.port.ChatMessageQueryPort;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.annotation.Id;
 import org.springframework.data.domain.Limit;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
 public class ChatMessageMongoAdapter implements ChatMessageCommandPort, ChatMessageQueryPort {
 
+    private static final String COLLECTION = "chat_messages";
+    private static final String FIELD_ROOM_ID = "room_id";
+    private static final String FIELD_SENDER_ID = "sender_id";
+    private static final String FIELD_DELETED_AT = "deleted_at";
+    private static final String FIELD_MESSAGE_TYPE = "message_type";
+    private static final String FIELD_CREATED_AT = "created_at";
+
     private final ChatMessageMongoRepository chatMessageMongoRepository;
+    private final MongoTemplate mongoTemplate;
 
     @Override
     public SentMessage saveUserMessage(
@@ -178,15 +197,117 @@ public class ChatMessageMongoAdapter implements ChatMessageCommandPort, ChatMess
     }
 
     @Override
-    public long countUnread(UUID roomId, String lastReadMessageId, UUID myUserId) {
-        // 한 번도 읽지 않았으면 방 전체에서 내 메시지를 제외하고 센다.
-        if (lastReadMessageId == null || lastReadMessageId.isBlank()) {
-            return chatMessageMongoRepository.countUnreadAll(roomId, myUserId);
+    public Map<UUID, Long> countUnreadBatch(
+            Map<UUID, String> lastReadMessageIdByRoomId, UUID myUserId) {
+        if (lastReadMessageIdByRoomId == null || lastReadMessageIdByRoomId.isEmpty()) {
+            return Map.of();
         }
-        // lastRead 메시지를 찾으면 그 위치 이후를, 못 찾으면(정합성 깨짐) 전체로 폴백한다.
-        return chatMessageMongoRepository.findByMessageIdAndRoomId(lastReadMessageId, roomId)
-                .map(cursor -> chatMessageMongoRepository.countUnreadAfter(
-                        roomId, myUserId, cursor.getCreatedAt(), cursor.getMessageId()))
-                .orElseGet(() -> chatMessageMongoRepository.countUnreadAll(roomId, myUserId));
+
+        List<UUID> noReadRooms = new ArrayList<>();
+        Map<UUID, String> hasReadRooms = new HashMap<>();
+
+        for (Map.Entry<UUID, String> entry : lastReadMessageIdByRoomId.entrySet()) {
+            String lastRead = entry.getValue();
+            if (lastRead == null || lastRead.isBlank()) {
+                noReadRooms.add(entry.getKey());
+            } else {
+                hasReadRooms.put(entry.getKey(), lastRead);
+            }
+        }
+
+        Map<UUID, Long> result = new HashMap<>();
+        if (!noReadRooms.isEmpty()) {
+            result.putAll(aggregateUnreadAll(noReadRooms, myUserId));
+        }
+        if (!hasReadRooms.isEmpty()) {
+            result.putAll(aggregateUnreadAfterCursor(hasReadRooms, myUserId));
+        }
+        return result;
+    }
+
+    private Map<UUID, Long> aggregateUnreadAll(List<UUID> roomIds, UUID myUserId) {
+        Criteria criteria = Criteria.where(FIELD_ROOM_ID).in(roomIds)
+                .and(FIELD_SENDER_ID).ne(myUserId)
+                .and(FIELD_DELETED_AT).isNull()
+                .and(FIELD_MESSAGE_TYPE).in(
+                        MessageType.TEXT.name(), MessageType.IMAGE.name());
+
+        Aggregation agg = Aggregation.newAggregation(
+                Aggregation.match(criteria),
+                Aggregation.group(FIELD_ROOM_ID).count().as("count")
+        );
+
+        return mongoTemplate.aggregate(agg, COLLECTION, UnreadCountResult.class)
+                .getMappedResults()
+                .stream()
+                .collect(Collectors.toMap(
+                        UnreadCountResult::getRoomId, UnreadCountResult::getCount));
+    }
+
+    private Map<UUID, Long> aggregateUnreadAfterCursor(
+            Map<UUID, String> hasReadRooms, UUID myUserId) {
+        Map<String, ChatMessageDocument> cursorById =
+                chatMessageMongoRepository.findByMessageIdIn(hasReadRooms.values())
+                        .stream()
+                        .collect(Collectors.toMap(
+                                ChatMessageDocument::getMessageId, Function.identity()));
+
+        List<UUID> fallbackRooms = new ArrayList<>();
+        List<Criteria> roomConditions = new ArrayList<>();
+
+        for (Map.Entry<UUID, String> entry : hasReadRooms.entrySet()) {
+            UUID roomId = entry.getKey();
+            ChatMessageDocument cursor = cursorById.get(entry.getValue());
+            if (cursor == null) {
+                fallbackRooms.add(roomId);
+            } else {
+                Criteria afterCursor = new Criteria().orOperator(
+                        Criteria.where(FIELD_CREATED_AT).gt(cursor.getCreatedAt()),
+                        new Criteria().andOperator(
+                                Criteria.where(FIELD_CREATED_AT).is(cursor.getCreatedAt()),
+                                Criteria.where("_id").gt(cursor.getMessageId())
+                        )
+                );
+                roomConditions.add(new Criteria().andOperator(
+                        Criteria.where(FIELD_ROOM_ID).is(roomId),
+                        afterCursor
+                ));
+            }
+        }
+
+        Map<UUID, Long> result = new HashMap<>();
+
+        if (!fallbackRooms.isEmpty()) {
+            result.putAll(aggregateUnreadAll(fallbackRooms, myUserId));
+        }
+
+        if (!roomConditions.isEmpty()) {
+            Criteria criteria = new Criteria().andOperator(
+                    new Criteria().orOperator(roomConditions.toArray(new Criteria[0])),
+                    Criteria.where(FIELD_SENDER_ID).ne(myUserId),
+                    Criteria.where(FIELD_DELETED_AT).isNull(),
+                    Criteria.where(FIELD_MESSAGE_TYPE).in(
+                            MessageType.TEXT.name(), MessageType.IMAGE.name())
+            );
+
+            Aggregation agg = Aggregation.newAggregation(
+                    Aggregation.match(criteria),
+                    Aggregation.group(FIELD_ROOM_ID).count().as("count")
+            );
+
+            mongoTemplate.aggregate(agg, COLLECTION, UnreadCountResult.class)
+                    .getMappedResults()
+                    .forEach(r -> result.put(r.getRoomId(), r.getCount()));
+        }
+
+        return result;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    private static class UnreadCountResult {
+        @Id
+        private UUID roomId;
+        private long count;
     }
 }
