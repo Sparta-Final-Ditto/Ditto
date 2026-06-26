@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
 import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import feign.FeignException;
@@ -60,6 +61,9 @@ class FeedServiceResilienceTest {
 
     @MockBean
     private MatchServicePort matchServicePort;
+
+    @MockBean
+    private FollowServicePort followServicePort;
 
     @Autowired
     private FeedService feedService;

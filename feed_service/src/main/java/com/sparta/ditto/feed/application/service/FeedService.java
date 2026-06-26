@@ -1,10 +1,13 @@
 package com.sparta.ditto.feed.application.service;
 
+import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
 import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedItemResult;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
+import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
 import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
@@ -29,6 +32,7 @@ public class FeedService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final MatchServicePort matchServicePort;
+    private final FollowServicePort followServicePort;
 
     @Value("${app.cloudfront.domain}")
     private String cloudfrontDomain;
@@ -59,6 +63,28 @@ public class FeedService {
     }
 
     public FeedResult fallbackGetMatchFeed(GetMatchFeedQuery query, Throwable t) {
+        return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
+    }
+
+    @Transactional(readOnly = true)
+    public FeedResult getFollowFeed(GetFollowFeedQuery query) {
+        FollowingResult following = followServicePort.getFollowingIds(query.userId());
+        List<UUID> followingUserIds = following.followingUserIds();
+
+        if (followingUserIds.isEmpty()) {
+            return new FeedResult(List.of(), null, false);
+        }
+
+        CursorContext cursor = resolveCursor(query.cursor());
+        List<Post> posts = postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+                followingUserIds,
+                List.of(LocationScope.PUBLIC, LocationScope.FOLLOWERS_ONLY),
+                cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
+
+        return buildFeedResult(posts, query.userId(), query.size());
+    }
+
+    public FeedResult fallbackGetFollowFeed(GetFollowFeedQuery query, Throwable t) {
         return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
     }
 
