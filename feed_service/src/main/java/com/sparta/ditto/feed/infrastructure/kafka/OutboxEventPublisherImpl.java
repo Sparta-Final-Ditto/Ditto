@@ -39,7 +39,7 @@ public class OutboxEventPublisherImpl implements OutboxEventPublisher {
                     event.getCreatedAt().toString(),
                     payloadNode
             ));
-            kafkaTemplate.send(event.getTopic(), message).get();
+            kafkaTemplate.send(event.getTopic(), event.getAggregateId().toString(), message).get();
         } catch (Exception e) {
             throw new RuntimeException("Kafka 발행 실패: topic=" + event.getTopic(), e);
         }

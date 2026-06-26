@@ -76,7 +76,7 @@ class PostInteractionServiceTest {
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(false);
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
         when(outboxEventPort.buildPostLiked(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_LIKED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_LIKED", java.util.UUID.randomUUID(), "{}"));
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
@@ -217,7 +217,7 @@ class PostInteractionServiceTest {
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
         when(outboxEventPort.buildPostCommented(any(), any(), any()))
-                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", java.util.UUID.randomUUID(), "{}"));
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
@@ -255,7 +255,7 @@ class PostInteractionServiceTest {
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
         when(outboxEventPort.buildPostCommented(any(), any(), any()))
-                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", java.util.UUID.randomUUID(), "{}"));
         when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
@@ -275,7 +275,7 @@ class PostInteractionServiceTest {
         UUID commenterId = UUID.randomUUID();
         Post post = createPost(ownerId, 0);
         Comment savedComment = createSavedComment(postId, commenterId, "댓글");
-        OutboxEvent outboxEvent = new OutboxEvent("post-events", "POST_COMMENTED", "{}");
+        OutboxEvent outboxEvent = new OutboxEvent("post-events", "POST_COMMENTED", java.util.UUID.randomUUID(), "{}");
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);

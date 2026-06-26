@@ -6,8 +6,11 @@ import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Transactional Outbox 패턴의 릴레이 스케줄러.
@@ -21,19 +24,15 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class OutboxPublishScheduler {
 
+    private static final Logger log = LoggerFactory.getLogger(OutboxPublishScheduler.class);
+
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
 
-    /**
-     * PENDING 이벤트를 조회하여 순차 발행한다.
-     *
-     * <p>발행 성공: {@link OutboxEvent#markPublished()} 호출 후 저장.
-     * 발행 실패: {@link OutboxEvent#incrementRetryCount()} 호출 후 저장.
-     * 이전 실행이 끝난 시점으로부터 5초 후 다음 실행이 시작된다({@code fixedDelay}).
-     */
     @Scheduled(fixedDelay = 5000)
+    @Transactional
     public void publishPendingEvents() {
-        List<OutboxEvent> pending = outboxEventRepository.findByStatusOrderByCreatedAt(
+        List<OutboxEvent> pending = outboxEventRepository.findPendingForUpdate(
                 OutboxStatus.PENDING, 100);
         for (OutboxEvent event : pending) {
             try {
@@ -44,5 +43,24 @@ public class OutboxPublishScheduler {
             }
             outboxEventRepository.save(event);
         }
+    }
+
+    @Scheduled(fixedDelay = 60000)
+    public void monitorFailedEvents() {
+        long failedCount = outboxEventRepository.countByStatus(OutboxStatus.FAILED);
+        if (failedCount > 0) {
+            log.warn("[Outbox] FAILED 이벤트 {}건 감지. replay 필요 여부 확인 요망.", failedCount);
+        }
+    }
+
+    @Transactional
+    public void replayFailedEvents() {
+        List<OutboxEvent> failed = outboxEventRepository.findByStatusOrderByCreatedAt(
+                OutboxStatus.FAILED, 100);
+        for (OutboxEvent event : failed) {
+            event.resetToPending();
+            outboxEventRepository.save(event);
+        }
+        log.info("[Outbox] FAILED → PENDING 재전환 {}건 완료.", failed.size());
     }
 }
