@@ -101,4 +101,40 @@ class PostTest {
         assertThat(post.getCommentCount()).isZero();
     }
 
+    // ============================================================
+    // PATCH /posts/{postId}/display 
+    // ============================================================
+
+    @Test
+    @DisplayName("changeVisibility(PRIVATE) + changeShowLocation(false) → 두 필드 모두 전달값으로 변경")
+    void changeDisplay_동시변경_두필드_모두_변경() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
+
+        post.changeVisibility(Visibility.PRIVATE);
+        post.changeShowLocation(false);
+
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PRIVATE);
+        assertThat(post.getShowLocation()).isFalse();
+    }
+
+    @Test
+    @DisplayName("changeVisibility(null) → 기존 visibility 유지 (no-op)")
+    void changeVisibility_null_기존값_유지() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.FOLLOWERS_ONLY, true);
+
+        post.changeVisibility(null);
+
+        assertThat(post.getVisibility()).isEqualTo(Visibility.FOLLOWERS_ONLY);
+    }
+
+    @Test
+    @DisplayName("changeShowLocation(null) → 기존 showLocation 유지 (no-op)")
+    void changeShowLocation_null_기존값_유지() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, false);
+
+        post.changeShowLocation(null);
+
+        assertThat(post.getShowLocation()).isFalse();
+    }
+
 }

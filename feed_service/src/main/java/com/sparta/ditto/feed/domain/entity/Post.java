@@ -4,8 +4,8 @@ import com.sparta.ditto.common.entity.BaseEntity;
 import com.sparta.ditto.feed.domain.exception.DuplicateSortOrderException;
 import com.sparta.ditto.feed.domain.exception.ImageCountExceededException;
 import com.sparta.ditto.feed.domain.exception.VideoCountExceededException;
-import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.domain.type.MediaType;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -146,6 +146,18 @@ public class Post extends BaseEntity {
     public void decrementCommentCount() {
         if (this.commentCount > 0) {
             this.commentCount--;
+        }
+    }
+
+    public void changeVisibility(Visibility visibility) {
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+    }
+
+    public void changeShowLocation(Boolean showLocation) {
+        if (showLocation != null) {
+            this.showLocation = showLocation;
         }
     }
 }

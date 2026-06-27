@@ -3,6 +3,7 @@ package com.sparta.ditto.feed.application;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.command.UpdatePostDisplayCommand;
 import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
@@ -475,7 +476,7 @@ class PostServiceTest {
     }
 
     // ============================================================
-    // DELETE /posts/{postId} (게시글 삭제) — TC-FEED-API-015
+    // DELETE /posts/{postId} (게시글 삭제)
     // ============================================================
 
     private Post createExistingPost(UUID ownerId) {
@@ -638,6 +639,51 @@ class PostServiceTest {
         // then
         verify(outboxEventPort).buildPostDeleted(any(Post.class), eq(requesterId));
         verify(outboxEventRepository).save(expectedEvent);
+    }
+
+    // ============================================================
+    // PATCH /posts/{postId}/display
+    // ============================================================
+
+    @Test
+    @DisplayName("작성자가 아닌 requesterId로 updatePostDisplay 호출 → ForbiddenException")
+    void updatePostDisplay_비작성자_ForbiddenException() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        UUID strangerId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(ownerId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+
+        UpdatePostDisplayCommand command =
+                new UpdatePostDisplayCommand(postId, strangerId, "PRIVATE", null);
+
+        // when & then
+        assertThatThrownBy(() -> postService.updatePostDisplay(command))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName("visibility=INVALID → InvalidVisibilityException, code=VALIDATION_ERROR")
+    void updatePostDisplay_invalidVisibility_InvalidVisibilityException() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(ownerId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+
+        UpdatePostDisplayCommand command =
+                new UpdatePostDisplayCommand(postId, ownerId, "INVALID", null);
+
+        // when & then
+        assertThatThrownBy(() -> postService.updatePostDisplay(command))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                        .isEqualTo("VALIDATION_ERROR"));
     }
 
     @Test
