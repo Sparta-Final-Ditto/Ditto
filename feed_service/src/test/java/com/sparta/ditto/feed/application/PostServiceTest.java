@@ -13,7 +13,7 @@ import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -185,7 +185,7 @@ class PostServiceTest {
 
         // then
         verify(postRepository).save(captor.capture());
-        assertThat(captor.getValue().getLocationScope().name()).isEqualTo("PUBLIC");
+        assertThat(captor.getValue().getVisibility().name()).isEqualTo("PUBLIC");
     }
 
     @Test
@@ -480,7 +480,7 @@ class PostServiceTest {
 
     private Post createExistingPost(UUID ownerId) {
         Post post = new Post(ownerId, "닉네임", "내용", "서울 성동구",
-                37.5563, 127.0374, LocationScope.PUBLIC, true);
+                37.5563, 127.0374, Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", UUID.randomUUID());
         return post;
     }

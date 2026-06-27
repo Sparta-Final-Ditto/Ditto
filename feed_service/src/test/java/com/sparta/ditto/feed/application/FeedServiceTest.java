@@ -8,7 +8,7 @@ import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -55,7 +55,7 @@ class FeedServiceTest {
         lenient().when(likeRepository.findPostIdsByUserIdAndPostIdIn(any(), anyList())).thenReturn(List.of());
     }
 
-    private Post createPost(UUID postId, boolean showLocation, LocationScope scope) {
+    private Post createPost(UUID postId, boolean showLocation, Visibility scope) {
         Post post = new Post(userId, "테스트유저", "테스트 내용", "서울 성동구",
                 37.5563, 127.0374, scope, showLocation);
         ReflectionTestUtils.setField(post, "id", postId);
@@ -67,9 +67,9 @@ class FeedServiceTest {
     @DisplayName("003-1: cursor=null → 첫 페이지 조회, PUBLIC 게시글 반환")
     void tc003_1_첫페이지_조회() {
         // given
-        List<Post> posts = List.of(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
-        when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(null), eq(null), anyInt()))
+        List<Post> posts = List.of(createPost(UUID.randomUUID(), true, Visibility.PUBLIC));
+        when(postRepository.findFeedByVisibilityWithCursor(
+                eq(List.of(Visibility.PUBLIC)), eq(null), eq(null), anyInt()))
                 .thenReturn(posts);
 
         // when
@@ -86,44 +86,44 @@ class FeedServiceTest {
         // given
         UUID cursorPostId = UUID.randomUUID();
         Instant cursorAt = Instant.now().minusSeconds(60);
-        Post cursorPost = createPost(cursorPostId, true, LocationScope.PUBLIC);
+        Post cursorPost = createPost(cursorPostId, true, Visibility.PUBLIC);
         ReflectionTestUtils.setField(cursorPost, "createdAt", cursorAt);
 
         when(postRepository.findById(cursorPostId)).thenReturn(Optional.of(cursorPost));
-        when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt()))
+        when(postRepository.findFeedByVisibilityWithCursor(
+                eq(List.of(Visibility.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt()))
                 .thenReturn(List.of());
 
         // when
         feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursorPostId, 20));
 
         // then
-        verify(postRepository).findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt());
+        verify(postRepository).findFeedByVisibilityWithCursor(
+                eq(List.of(Visibility.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt());
     }
 
     @Test
     @DisplayName("003-3/4/5: PUBLIC만 반환 — FOLLOWERS_ONLY·PRIVATE 제외")
     void tc003_3_PUBLIC만_조회() {
         // given
-        when(postRepository.findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityWithCursor(
+                eq(List.of(Visibility.PUBLIC)), any(), any(), anyInt()))
                 .thenReturn(List.of());
 
         // when
         feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
 
         // then
-        verify(postRepository).findFeedByLocationScopeWithCursor(
-                eq(List.of(LocationScope.PUBLIC)), any(), any(), anyInt());
+        verify(postRepository).findFeedByVisibilityWithCursor(
+                eq(List.of(Visibility.PUBLIC)), any(), any(), anyInt());
     }
 
     @Test
     @DisplayName("003-7: showLocation=false → neighborhood=null")
     void tc003_7_showLocation_false_neighborhood_null() {
         // given
-        Post post = createPost(UUID.randomUUID(), false, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
+        Post post = createPost(UUID.randomUUID(), false, Visibility.PUBLIC);
+        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
@@ -137,8 +137,8 @@ class FeedServiceTest {
     @DisplayName("003-8: showLocation=true → neighborhood 반환")
     void tc003_8_showLocation_true_neighborhood_반환() {
         // given
-        Post post = createPost(UUID.randomUUID(), true, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
+        Post post = createPost(UUID.randomUUID(), true, Visibility.PUBLIC);
+        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
@@ -155,9 +155,9 @@ class FeedServiceTest {
         int size = 3;
         List<Post> posts = new ArrayList<>();
         for (int i = 0; i < size + 1; i++) {
-            posts.add(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
+            posts.add(createPost(UUID.randomUUID(), true, Visibility.PUBLIC));
         }
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
@@ -173,8 +173,8 @@ class FeedServiceTest {
     @DisplayName("003-11: size 이하 존재 → hasNext=false, nextCursor=null")
     void tc003_11_hasNext_false() {
         // given
-        List<Post> posts = List.of(createPost(UUID.randomUUID(), true, LocationScope.PUBLIC));
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
+        List<Post> posts = List.of(createPost(UUID.randomUUID(), true, Visibility.PUBLIC));
+        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
@@ -189,10 +189,10 @@ class FeedServiceTest {
     @DisplayName("003-12: 미디어 포함 → mediaUrl이 CloudFront URL로 반환")
     void tc003_12_미디어_CloudFront_URL() {
         // given
-        Post post = createPost(UUID.randomUUID(), true, LocationScope.PUBLIC);
+        Post post = createPost(UUID.randomUUID(), true, Visibility.PUBLIC);
         PostMedia media = new PostMedia(post, "feeds/test.mp4", MediaType.VIDEO, 1);
         ReflectionTestUtils.setField(post, "mediaList", List.of(media));
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
@@ -222,8 +222,8 @@ class FeedServiceTest {
     void isLiked_true() {
         // given
         UUID postId = UUID.randomUUID();
-        Post post = createPost(postId, true, LocationScope.PUBLIC);
-        when(postRepository.findFeedByLocationScopeWithCursor(any(), any(), any(), anyInt()))
+        Post post = createPost(postId, true, Visibility.PUBLIC);
+        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
         when(likeRepository.findPostIdsByUserIdAndPostIdIn(eq(userId), anyList()))
                 .thenReturn(List.of(postId));

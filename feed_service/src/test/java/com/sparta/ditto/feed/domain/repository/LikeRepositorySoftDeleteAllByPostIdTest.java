@@ -2,7 +2,7 @@ package com.sparta.ditto.feed.domain.repository;
 
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.infrastructure.persistence.LikeRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostRepositoryImpl;
 import java.util.List;
@@ -62,7 +62,7 @@ class LikeRepositorySoftDeleteAllByPostIdTest {
     private Post savePost() {
         return postRepository.save(new Post(
                 UUID.randomUUID(), "닉네임", "내용", "서울 성동구",
-                37.5563, 127.0374, LocationScope.PUBLIC, true));
+                37.5563, 127.0374, Visibility.PUBLIC, true));
     }
 
     @Test

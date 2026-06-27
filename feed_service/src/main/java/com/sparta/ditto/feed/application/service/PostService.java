@@ -19,7 +19,7 @@ import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.service.PostValidator;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -51,9 +51,9 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public UserPostsResult getUserPosts(GetUserPostsQuery query) {
-        List<LocationScope> allowedScopes = query.requesterId().equals(query.targetUserId())
-                ? List.of(LocationScope.PUBLIC, LocationScope.FOLLOWERS_ONLY, LocationScope.PRIVATE)
-                : List.of(LocationScope.PUBLIC);
+        List<Visibility> allowedScopes = query.requesterId().equals(query.targetUserId())
+                ? List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY, Visibility.PRIVATE)
+                : List.of(Visibility.PUBLIC);
 
         Instant cursorAt = null;
         UUID cursorId = null;
@@ -103,7 +103,7 @@ public class PostService {
         List<MediaFileItem> mediaFiles =
                 command.mediaFiles() != null ? command.mediaFiles() : List.of();
 
-        LocationScope locationScope = LocationScope.from(command.locationScope());
+        Visibility visibility = Visibility.from(command.visibility());
 
         PostValidator.validateContentOrMedia(command.content(), !mediaFiles.isEmpty());
 
@@ -112,7 +112,7 @@ public class PostService {
         List<String> distinctTags = command.tags().stream().distinct().toList();
 
         Post post = new Post(command.userId(), nickname, command.content(), neighborhood,
-                command.latitude(), command.longitude(), locationScope, showLocation);
+                command.latitude(), command.longitude(), visibility, showLocation);
 
         distinctTags.forEach(tag -> post.getTags().add(new PostTag(post, tag)));
 

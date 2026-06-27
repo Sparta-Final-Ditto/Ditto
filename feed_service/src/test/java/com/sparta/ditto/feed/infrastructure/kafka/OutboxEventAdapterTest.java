@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
 import java.util.UUID;
@@ -32,7 +32,7 @@ class OutboxEventAdapterTest {
 
     private Post createPost(UUID authorId) {
         Post post = new Post(authorId, "닉네임", "오늘 러닝 완료", "서울 성동구",
-                37.5563, 127.0374, LocationScope.PUBLIC, true);
+                37.5563, 127.0374, Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
     }

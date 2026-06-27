@@ -14,7 +14,7 @@ import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -50,7 +50,7 @@ class FeedServiceFollowFeedTest {
     @InjectMocks
     private FeedService feedService;
 
-    private Post postWithScope(UUID id, UUID authorId, LocationScope scope) {
+    private Post postWithScope(UUID id, UUID authorId, Visibility scope) {
         Post post = new Post(authorId, "팔로잉유저", "게시글 내용", "서울 마포구",
                 37.5563, 127.0374, scope, true);
         ReflectionTestUtils.setField(post, "id", id);
@@ -72,9 +72,9 @@ class FeedServiceFollowFeedTest {
         given(followServicePort.getFollowingIds(eq(userId)))
                 .willReturn(new FollowingResult(List.of(followingA, followingB)));
 
-        Post postA = postWithScope(postIdA, followingA, LocationScope.PUBLIC);
-        Post postB = postWithScope(postIdB, followingB, LocationScope.FOLLOWERS_ONLY);
-        given(postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        Post postA = postWithScope(postIdA, followingA, Visibility.PUBLIC);
+        Post postB = postWithScope(postIdB, followingB, Visibility.FOLLOWERS_ONLY);
+        given(postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postA, postB));
         given(likeRepository.findPostIdsByUserIdAndPostIdIn(eq(userId), any()))

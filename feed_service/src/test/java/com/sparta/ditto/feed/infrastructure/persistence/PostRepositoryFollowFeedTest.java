@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -54,12 +54,12 @@ class PostRepositoryFollowFeedTest {
     private TestEntityManager em;
 
     private static final Instant BASE = Instant.parse("2026-06-16T00:00:00Z");
-    private static final List<LocationScope> FOLLOW_SCOPES =
-            List.of(LocationScope.PUBLIC, LocationScope.FOLLOWERS_ONLY);
+    private static final List<Visibility> FOLLOW_SCOPES =
+            List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY);
 
     // ── Fixture helpers ──────────────────────────────────────────────────────
 
-    private Post savePost(UUID authorId, LocationScope scope, Instant createdAt) {
+    private Post savePost(UUID authorId, Visibility scope, Instant createdAt) {
         Post post = new Post(authorId, "팔로잉유저", "내용", "서울 마포구",
                 37.5563, 127.0374, scope, true);
         ReflectionTestUtils.setField(post, "createdAt", createdAt);
@@ -70,7 +70,7 @@ class PostRepositoryFollowFeedTest {
     /** 팔로잉 1명 + 해당 스코프 게시글 1개를 저장하고 반환한다. */
     private record FollowerPost(UUID followingId, Post post) {}
 
-    private FollowerPost singleFollowerWithPost(LocationScope scope) {
+    private FollowerPost singleFollowerWithPost(Visibility scope) {
         UUID followingId = UUID.randomUUID();
         Post post = savePost(followingId, scope, BASE.plusSeconds(10));
         return new FollowerPost(followingId, post);
@@ -78,7 +78,7 @@ class PostRepositoryFollowFeedTest {
 
     /** FOLLOW_SCOPES 고정, cursor 없음으로 팔로우 피드를 조회한다. */
     private List<Post> findWithFollowScopes(List<UUID> userIds, int limit) {
-        return postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        return postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 userIds, FOLLOW_SCOPES, null, null, limit);
     }
 
@@ -87,7 +87,7 @@ class PostRepositoryFollowFeedTest {
     @Test
     @DisplayName("004-5: 팔로잉 유저의 PUBLIC 게시글이 결과에 포함된다")
     void findFollowFeed_includesPublicPost() {
-        FollowerPost fp = singleFollowerWithPost(LocationScope.PUBLIC);
+        FollowerPost fp = singleFollowerWithPost(Visibility.PUBLIC);
 
         List<Post> result = findWithFollowScopes(List.of(fp.followingId()), 10);
 
@@ -97,7 +97,7 @@ class PostRepositoryFollowFeedTest {
     @Test
     @DisplayName("004-6: 팔로잉 유저의 FOLLOWERS_ONLY 게시글이 결과에 포함된다")
     void findFollowFeed_includesFollowersOnlyPost() {
-        FollowerPost fp = singleFollowerWithPost(LocationScope.FOLLOWERS_ONLY);
+        FollowerPost fp = singleFollowerWithPost(Visibility.FOLLOWERS_ONLY);
 
         List<Post> result = findWithFollowScopes(List.of(fp.followingId()), 10);
 
@@ -107,7 +107,7 @@ class PostRepositoryFollowFeedTest {
     @Test
     @DisplayName("004-7: 팔로잉 유저의 PRIVATE 게시글은 결과에서 제외된다")
     void findFollowFeed_excludesPrivatePost() {
-        FollowerPost fp = singleFollowerWithPost(LocationScope.PRIVATE);
+        FollowerPost fp = singleFollowerWithPost(Visibility.PRIVATE);
 
         List<Post> result = findWithFollowScopes(List.of(fp.followingId()), 10);
 
@@ -118,10 +118,10 @@ class PostRepositoryFollowFeedTest {
     @DisplayName("004-10: cursor/size 페이징 — size+1 조회 후 커서 기준 다음 페이지가 정확히 반환된다")
     void findFollowFeed_paginatesByCursor() {
         UUID author = UUID.randomUUID();
-        Post t1 = savePost(author, LocationScope.PUBLIC, BASE.plus(1, ChronoUnit.HOURS));
-        Post t2 = savePost(author, LocationScope.PUBLIC, BASE.plus(2, ChronoUnit.HOURS));
-        Post t3 = savePost(author, LocationScope.PUBLIC, BASE.plus(3, ChronoUnit.HOURS));
-        Post t4 = savePost(author, LocationScope.PUBLIC, BASE.plus(4, ChronoUnit.HOURS));
+        Post t1 = savePost(author, Visibility.PUBLIC, BASE.plus(1, ChronoUnit.HOURS));
+        Post t2 = savePost(author, Visibility.PUBLIC, BASE.plus(2, ChronoUnit.HOURS));
+        Post t3 = savePost(author, Visibility.PUBLIC, BASE.plus(3, ChronoUnit.HOURS));
+        Post t4 = savePost(author, Visibility.PUBLIC, BASE.plus(4, ChronoUnit.HOURS));
 
         // 첫 페이지: size=2 → size+1=3 조회, 최신순 desc → t4, t3, t2
         List<Post> page1 = findWithFollowScopes(List.of(author), 3);
@@ -132,7 +132,7 @@ class PostRepositoryFollowFeedTest {
 
         // 두 번째 페이지: t3(page1[1])을 커서로 사용 → t2, t1
         Post cursorPost = page1.get(1);
-        List<Post> page2 = postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        List<Post> page2 = postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 List.of(author), FOLLOW_SCOPES,
                 cursorPost.getCreatedAt(), cursorPost.getId(), 3);
 

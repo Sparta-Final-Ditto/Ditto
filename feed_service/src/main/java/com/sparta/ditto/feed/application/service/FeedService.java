@@ -12,7 +12,7 @@ import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.time.Instant;
@@ -55,8 +55,8 @@ public class FeedService {
         }
 
         CursorContext cursor = resolveCursor(query.cursor());
-        List<Post> posts = postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
-                recommendedUserIds, List.of(LocationScope.PUBLIC),
+        List<Post> posts = postRepository.findFeedByUserIdsAndVisibilityWithCursor(
+                recommendedUserIds, List.of(Visibility.PUBLIC),
                 cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
 
         return buildFeedResult(posts, query.userId(), query.size());
@@ -78,9 +78,9 @@ public class FeedService {
         }
 
         CursorContext cursor = resolveCursor(query.cursor());
-        List<Post> posts = postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        List<Post> posts = postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 followingUserIds,
-                List.of(LocationScope.PUBLIC, LocationScope.FOLLOWERS_ONLY),
+                List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY),
                 cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
 
         return buildFeedResult(posts, query.userId(), query.size());
@@ -92,8 +92,8 @@ public class FeedService {
 
     private FeedResult randomFeedCore(GetRandomFeedQuery query) {
         CursorContext cursor = resolveCursor(query.cursorPostId());
-        List<Post> posts = postRepository.findFeedByLocationScopeWithCursor(
-                List.of(LocationScope.PUBLIC),
+        List<Post> posts = postRepository.findFeedByVisibilityWithCursor(
+                List.of(Visibility.PUBLIC),
                 cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
         return buildFeedResult(posts, query.userId(), query.size());
     }
