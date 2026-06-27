@@ -148,4 +148,16 @@ public class Post extends BaseEntity {
             this.commentCount--;
         }
     }
+
+    public void changeVisibility(Visibility visibility) {
+        if (visibility != null) {
+            this.visibility = visibility;
+        }
+    }
+
+    public void changeShowLocation(Boolean showLocation) {
+        if (showLocation != null) {
+            this.showLocation = showLocation;
+        }
+    }
 }

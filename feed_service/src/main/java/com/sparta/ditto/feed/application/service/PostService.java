@@ -2,6 +2,8 @@ package com.sparta.ditto.feed.application.service;
 
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.command.UpdatePostDisplayCommand;
+import com.sparta.ditto.feed.application.dto.result.UpdatePostDisplayResult;
 import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
 import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.result.PostResult;
@@ -77,6 +79,24 @@ public class PostService {
                 .toList();
 
         return new UserPostsResult(items, nextCursor, hasNext);
+    }
+
+    @Transactional
+    public UpdatePostDisplayResult updatePostDisplay(UpdatePostDisplayCommand command) {
+        Post post = postRepository.findByIdAndDeletedAtIsNull(command.postId())
+                .orElseThrow(PostNotFoundException::new);
+
+        if (!command.requesterId().equals(post.getUserId())) {
+            throw new ForbiddenException();
+        }
+
+        if (command.visibility() != null) {
+            post.changeVisibility(Visibility.from(command.visibility()));
+        }
+        post.changeShowLocation(command.showLocation());
+
+        postRepository.save(post);
+        return UpdatePostDisplayResult.from(post);
     }
 
     @Transactional

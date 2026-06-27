@@ -12,14 +12,18 @@ import com.sparta.ditto.feed.application.dto.result.LikeListResult;
 import com.sparta.ditto.feed.application.dto.result.LikeResult;
 import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.result.PostResult;
+import com.sparta.ditto.feed.application.dto.command.UpdatePostDisplayCommand;
+import com.sparta.ditto.feed.application.dto.result.UpdatePostDisplayResult;
 import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
+import com.sparta.ditto.feed.presentation.dto.request.UpdatePostDisplayRequest;
 import com.sparta.ditto.feed.presentation.dto.response.CommentListResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CommentResponse;
+import com.sparta.ditto.feed.presentation.dto.response.UpdatePostDisplayResponse;
 import com.sparta.ditto.feed.presentation.dto.response.CreatePostResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeListResponse;
 import com.sparta.ditto.feed.presentation.dto.response.LikeResponse;
@@ -34,8 +38,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -166,6 +172,25 @@ public class PostController {
         LikeListResult result = postInteractionService.getLikes(
                 new GetLikesQuery(postId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
+    }
+
+    // -------------------------------------------------------
+    // 게시글 표시 설정 / 공개 범위 변경
+    // -------------------------------------------------------
+    @PatchMapping("/{postId}/display")
+    public ResponseEntity<ApiResponse<UpdatePostDisplayResponse>> updatePostDisplay(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @PathVariable UUID postId,
+            @RequestBody UpdatePostDisplayRequest request
+    ) {
+        if (userId == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error(401, "COMMON-002", "인증이 필요합니다."));
+        }
+        UpdatePostDisplayCommand command = new UpdatePostDisplayCommand(
+                postId, userId, request.visibility(), request.showLocation());
+        UpdatePostDisplayResult result = postService.updatePostDisplay(command);
+        return ResponseEntity.ok(ApiResponse.updated(UpdatePostDisplayResponse.from(result)));
     }
 
     // -------------------------------------------------------
