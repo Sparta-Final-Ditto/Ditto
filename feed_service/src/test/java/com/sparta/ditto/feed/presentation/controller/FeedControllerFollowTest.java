@@ -54,10 +54,10 @@ class FeedControllerFollowTest {
     }
 
     @Test
-    @DisplayName("X-User-Id 헤더 누락 → 5xx (GlobalExceptionHandler가 MissingRequestHeaderException을 별도 처리하지 않아 catch-all 500 반환)")
-    void getFollowFeed_헤더누락_5xx() throws Exception {
+    @DisplayName("X-User-Id 헤더 누락 → 401 Unauthorized (FeedExceptionHandler가 MissingRequestHeaderException → COMMON-002 처리)")
+    void getFollowFeed_헤더누락_401() throws Exception {
         mockMvc.perform(get("/api/v1/feeds/follow"))
-                .andExpect(status().is5xxServerError());
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

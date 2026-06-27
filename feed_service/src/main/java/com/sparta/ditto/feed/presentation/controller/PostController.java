@@ -38,7 +38,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -179,14 +178,10 @@ public class PostController {
     // -------------------------------------------------------
     @PatchMapping("/{postId}/display")
     public ResponseEntity<ApiResponse<UpdatePostDisplayResponse>> updatePostDisplay(
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId,
+            @RequestHeader("X-User-Id") UUID userId,
             @PathVariable UUID postId,
             @RequestBody UpdatePostDisplayRequest request
     ) {
-        if (userId == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.error(401, "COMMON-002", "인증이 필요합니다."));
-        }
         UpdatePostDisplayCommand command = new UpdatePostDisplayCommand(
                 postId, userId, request.visibility(), request.showLocation());
         UpdatePostDisplayResult result = postService.updatePostDisplay(command);
