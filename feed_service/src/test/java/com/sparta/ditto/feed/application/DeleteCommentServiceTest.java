@@ -10,7 +10,7 @@ import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -55,7 +55,7 @@ class DeleteCommentServiceTest {
 
     private Post createPost(UUID userId) {
         Post post = new Post(userId, "닉네임", "내용", "서울 성동구",
-                37.5563, 127.0374, LocationScope.PUBLIC, true);
+                37.5563, 127.0374, Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
     }

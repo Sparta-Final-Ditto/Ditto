@@ -4,7 +4,7 @@ import com.sparta.ditto.common.entity.BaseEntity;
 import com.sparta.ditto.feed.domain.exception.DuplicateSortOrderException;
 import com.sparta.ditto.feed.domain.exception.ImageCountExceededException;
 import com.sparta.ditto.feed.domain.exception.VideoCountExceededException;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -36,8 +36,8 @@ import lombok.NoArgsConstructor;
                         columnList = "created_at DESC, id DESC"),
                 @Index(name = "idx_posts_user_id_created_at",
                         columnList = "user_id, created_at DESC"),
-                @Index(name = "idx_posts_location_scope_created_at_id",
-                        columnList = "location_scope, created_at DESC, id DESC")
+                @Index(name = "idx_posts_visibility_created_at_id",
+                        columnList = "visibility, created_at DESC, id DESC")
         }
 )
 /** 게시글 엔티티 */
@@ -69,7 +69,7 @@ public class Post extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private LocationScope locationScope = LocationScope.PUBLIC;
+    private Visibility visibility = Visibility.PUBLIC;
 
     @Column(nullable = false)
     private Boolean showLocation = true;
@@ -99,14 +99,14 @@ public class Post extends BaseEntity {
 
     public Post(UUID userId, String authorNickname, String content, String neighborhood,
             Double latitude, Double longitude,
-            LocationScope locationScope, Boolean showLocation) {
+            Visibility visibility, Boolean showLocation) {
         this.userId = userId;
         this.authorNickname = authorNickname;
         this.content = content;
         this.neighborhood = neighborhood;
         this.latitude = latitude;
         this.longitude = longitude;
-        this.locationScope = locationScope != null ? locationScope : LocationScope.PUBLIC;
+        this.visibility = visibility != null ? visibility : Visibility.PUBLIC;
         this.showLocation = showLocation != null ? showLocation : true;
     }
 

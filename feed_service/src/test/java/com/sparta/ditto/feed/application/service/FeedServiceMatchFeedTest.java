@@ -13,7 +13,7 @@ import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -49,7 +49,7 @@ class FeedServiceMatchFeedTest {
 
     private Post publicPost(UUID id, UUID authorId, boolean showLocation) {
         Post post = new Post(authorId, "추천유저", "추천 사용자의 게시글", "서울 강남구",
-                37.4979, 127.0276, LocationScope.PUBLIC, showLocation);
+                37.4979, 127.0276, Visibility.PUBLIC, showLocation);
         ReflectionTestUtils.setField(post, "id", id);
         return post;
     }
@@ -73,7 +73,7 @@ class FeedServiceMatchFeedTest {
         Post postA = publicPost(postIdA, authorA, true);   // showLocation=true → neighborhood 노출
         Post postB = publicPost(postIdB, authorB, false);  // showLocation=false → 005-7: neighborhood=null
         // size + 1(=21) 조회 (랜덤 피드와 동일한 페이징 규칙)
-        given(postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        given(postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postA, postB));
         // postA만 좋아요한 상태

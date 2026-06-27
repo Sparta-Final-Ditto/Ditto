@@ -104,7 +104,7 @@ public class PostController {
                 request.tags(),
                 request.latitude(),
                 request.longitude(),
-                request.locationScope(),
+                request.visibility(),
                 request.showLocation(),
                 mediaFileItems
         );

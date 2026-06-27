@@ -10,7 +10,7 @@ import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -52,7 +52,7 @@ class GetCommentsServiceTest {
 
     private Post createPost(UUID ownerId) {
         Post post = new Post(ownerId, "게시글작성자", "게시글 내용", "서울 성동구",
-                37.5563, 127.0374, LocationScope.PUBLIC, true);
+                37.5563, 127.0374, Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
     }

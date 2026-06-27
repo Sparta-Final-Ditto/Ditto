@@ -13,7 +13,7 @@ import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,7 +64,7 @@ class FeedServiceFollowLocationTest {
     /** showLocation 값만 다른 게시글을 생성한다. */
     private Post postWithShowLocation(boolean showLocation) {
         Post post = new Post(followingId, "팔로잉유저", "내용", "서울 마포구",
-                37.5563, 127.0374, LocationScope.PUBLIC, showLocation);
+                37.5563, 127.0374, Visibility.PUBLIC, showLocation);
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
     }
@@ -72,7 +72,7 @@ class FeedServiceFollowLocationTest {
     @Test
     @DisplayName("004-9: showLocation=false인 게시글은 neighborhood=null로 반환된다")
     void getFollowFeed_showLocationFalse_neighborhoodNull() {
-        given(postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        given(postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postWithShowLocation(false)));
 
@@ -85,7 +85,7 @@ class FeedServiceFollowLocationTest {
     @Test
     @DisplayName("004-9 보완: showLocation=true인 게시글은 neighborhood가 정상 노출된다")
     void getFollowFeed_showLocationTrue_neighborhoodVisible() {
-        given(postRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        given(postRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postWithShowLocation(true)));
 

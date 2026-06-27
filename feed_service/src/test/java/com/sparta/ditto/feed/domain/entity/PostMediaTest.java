@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.domain.entity;
 
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,7 +14,7 @@ class PostMediaTest {
     @Test
     @DisplayName("PostMedia 생성 - 필드 정상 저장")
     void createPostMedia() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
 
         PostMedia media = new PostMedia(post, "images/test.jpg", MediaType.IMAGE, 0);
 
