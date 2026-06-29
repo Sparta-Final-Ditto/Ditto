@@ -21,7 +21,7 @@ public class OutboxEventRepositoryImpl implements OutboxEventRepository {
 
     @Override
     public List<OutboxEvent> findByStatusOrderByCreatedAt(OutboxStatus status, int limit) {
-        return jpaRepository.findPendingForUpdate(status, PageRequest.of(0, limit));
+        return jpaRepository.findByStatus(status, PageRequest.of(0, limit));
     }
 
     @Override
