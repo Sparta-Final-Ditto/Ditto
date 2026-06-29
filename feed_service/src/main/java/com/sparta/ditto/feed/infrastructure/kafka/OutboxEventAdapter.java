@@ -36,8 +36,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
     @Override
     public OutboxEvent buildPostCreated(Post post, UUID userId, List<String> tags) {
         record Payload(String postId, String userId, String content, List<String> tags,
-                       String neighborhood, Double latitude, Double longitude,
-                       String createdAt) {}
+                       String neighborhood, String createdAt) {}
 
         try {
             String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
@@ -46,8 +45,6 @@ public class OutboxEventAdapter implements OutboxEventPort {
                     post.getContent(),
                     tags,
                     post.getNeighborhood(),
-                    post.getLatitude(),
-                    post.getLongitude(),
                     post.getCreatedAt() != null ? post.getCreatedAt().toString() : null
             ));
             return new OutboxEvent("post-events", "POST_CREATED", post.getUserId(), payload);
