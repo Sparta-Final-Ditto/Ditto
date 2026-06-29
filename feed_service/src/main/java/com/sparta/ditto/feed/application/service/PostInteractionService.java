@@ -7,7 +7,8 @@ import com.sparta.ditto.feed.application.dto.result.CommentListResult;
 import com.sparta.ditto.feed.application.dto.result.CommentResult;
 import com.sparta.ditto.feed.application.dto.result.LikeListResult;
 import com.sparta.ditto.feed.application.dto.result.LikeResult;
-import com.sparta.ditto.feed.application.port.OutboxEventPort;
+import com.sparta.ditto.feed.application.event.PostCommentedEvent;
+import com.sparta.ditto.feed.application.event.PostLikedEvent;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
 import com.sparta.ditto.feed.domain.entity.Post;
@@ -18,12 +19,12 @@ import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
-import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,8 +35,7 @@ public class PostInteractionService {
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
-    private final OutboxEventRepository outboxEventRepository;
-    private final OutboxEventPort outboxEventPort;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // -------------------------------------------------------
     // 좋아요 추가
@@ -53,7 +53,8 @@ public class PostInteractionService {
         postRepository.incrementLikeCount(postId);
 
         if (!userId.equals(post.getUserId())) {
-            outboxEventRepository.save(outboxEventPort.buildPostLiked(post, userId));
+            applicationEventPublisher.publishEvent(
+                    new PostLikedEvent(post.getId(), userId, post.getUserId(), Instant.now()));
         }
 
         return LikeResult.liked(post);
@@ -170,8 +171,8 @@ public class PostInteractionService {
                 new Comment(postId, userId, nickname, command.content()));
         postRepository.incrementCommentCount(postId);
         if (!userId.equals(post.getUserId())) {
-            outboxEventRepository.save(
-                    outboxEventPort.buildPostCommented(post, comment, userId));
+            applicationEventPublisher.publishEvent(
+                    new PostCommentedEvent(post.getId(), comment.getId(), userId, post.getUserId(), Instant.now()));
         }
         return CommentResult.fromCreation(comment, nickname);
     }
