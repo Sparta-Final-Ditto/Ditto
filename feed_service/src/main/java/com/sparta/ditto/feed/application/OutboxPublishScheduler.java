@@ -30,13 +30,13 @@ public class OutboxPublishScheduler {
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
 
-    @Value("${outbox.publish.batch-size}")
+    @Value("${app.outbox.publish.batch-size}")
     private int publishBatchSize;
 
-    @Value("${outbox.replay.batch-size}")
+    @Value("${app.outbox.replay.batch-size}")
     private int replayBatchSize;
 
-    @Scheduled(fixedDelayString = "${outbox.publish.interval-ms}")
+    @Scheduled(fixedDelayString = "${app.outbox.publish.interval-ms}")
     @Transactional
     public void publishPendingEvents() {
         List<OutboxEvent> pending = outboxEventRepository.findPendingForUpdate(
@@ -52,7 +52,7 @@ public class OutboxPublishScheduler {
         }
     }
 
-    @Scheduled(fixedDelayString = "${outbox.monitor.interval-ms}")
+    @Scheduled(fixedDelayString = "${app.outbox.monitor.interval-ms}")
     public void monitorFailedEvents() {
         long failedCount = outboxEventRepository.countByStatus(OutboxStatus.FAILED);
         long deadCount = outboxEventRepository.countByStatus(OutboxStatus.DEAD);
@@ -64,7 +64,7 @@ public class OutboxPublishScheduler {
         }
     }
 
-    @Scheduled(fixedDelayString = "${outbox.replay.interval-ms}")
+    @Scheduled(fixedDelayString = "${app.outbox.replay.interval-ms}")
     @Transactional
     public void replayFailedEvents() {
         List<OutboxEvent> failed = outboxEventRepository.findByStatusOrderByCreatedAt(

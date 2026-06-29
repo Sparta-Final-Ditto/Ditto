@@ -39,13 +39,13 @@ public class PostHardDeleteScheduler {
     private final S3Port s3Port;
     private final PostHardDeleteService postHardDeleteService;
 
-    @Value("${post-hard-delete.retention-days}")
+    @Value("${app.post-hard-delete.retention-days}")
     private int retentionDays;
 
-    @Value("${post-hard-delete.chunk-size}")
+    @Value("${app.post-hard-delete.chunk-size}")
     private int chunkSize;
 
-    @Scheduled(cron = "${post-hard-delete.cron}")
+    @Scheduled(cron = "${app.post-hard-delete.cron}")
     public void scheduledHardDelete() {
         Instant cutoff = Instant.now().minus(retentionDays, ChronoUnit.DAYS);
         processHardDelete(cutoff);
