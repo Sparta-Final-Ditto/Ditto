@@ -102,6 +102,19 @@ public class ChatRoomParticipant {
         this.hidden = false;
     }
 
+    // 그룹방에서 나간 사용자를 재초대할 때 기존 row를 재사용한다.
+    // left_at을 비우고 joined_at을 재참여 시각으로 갱신해 다시 활성 참여자로 만든다.
+    public void reInvite(ParticipantRole role) {
+        if (role == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        this.role = role;
+        this.leftAt = null;
+        this.joinedAt = Instant.now();
+        this.hidden = false;
+        this.notificationEnabled = true;
+    }
+
     public void updateLastRead(String lastReadMessageId, Instant lastReadAt) {
         if (lastReadMessageId == null || lastReadAt == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
