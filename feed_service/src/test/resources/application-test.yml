@@ -41,6 +41,16 @@ app:
   user-service:
     base-url: http://localhost:8084
 
+outbox:
+  publish:
+    interval-ms: 5000
+    batch-size: 100
+  monitor:
+    interval-ms: 60000
+  replay:
+    interval-ms: 3600000
+    batch-size: 100
+
 resilience4j:
   circuitbreaker:
     circuit-breaker-aspect-order: 1
