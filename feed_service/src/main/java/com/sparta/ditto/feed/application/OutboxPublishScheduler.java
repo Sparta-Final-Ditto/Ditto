@@ -8,6 +8,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +30,17 @@ public class OutboxPublishScheduler {
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
 
-    @Scheduled(fixedDelay = 5000)
+    @Value("${outbox.publish.batch-size}")
+    private int publishBatchSize;
+
+    @Value("${outbox.replay.batch-size}")
+    private int replayBatchSize;
+
+    @Scheduled(fixedDelayString = "${outbox.publish.interval-ms}")
     @Transactional
     public void publishPendingEvents() {
         List<OutboxEvent> pending = outboxEventRepository.findPendingForUpdate(
-                OutboxStatus.PENDING, 100);
+                OutboxStatus.PENDING, publishBatchSize);
         for (OutboxEvent event : pending) {
             try {
                 outboxEventPublisher.publish(event);
@@ -45,7 +52,7 @@ public class OutboxPublishScheduler {
         }
     }
 
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelayString = "${outbox.monitor.interval-ms}")
     public void monitorFailedEvents() {
         long failedCount = outboxEventRepository.countByStatus(OutboxStatus.FAILED);
         long deadCount = outboxEventRepository.countByStatus(OutboxStatus.DEAD);
@@ -57,12 +64,11 @@ public class OutboxPublishScheduler {
         }
     }
 
-    // 4단계에서 외부화 예정 (application.yml @Value)
-    @Scheduled(fixedDelay = 3600000)
+    @Scheduled(fixedDelayString = "${outbox.replay.interval-ms}")
     @Transactional
     public void replayFailedEvents() {
         List<OutboxEvent> failed = outboxEventRepository.findByStatusOrderByCreatedAt(
-                OutboxStatus.FAILED, 100);
+                OutboxStatus.FAILED, replayBatchSize);
         for (OutboxEvent event : failed) {
             event.resetToPending();
             outboxEventRepository.save(event);
