@@ -91,4 +91,14 @@ public class PostRepositoryImpl implements PostRepository {
         return jpaRepository.findByUserIdAndScopesWithCursor(
                 userId, allowedScopes, cursorAt, cursorId, PageRequest.of(0, limit));
     }
+
+    @Override
+    public List<Post> findExpiredSoftDeleted(Instant cutoff, int limit) {
+        return jpaRepository.findExpiredSoftDeleted(cutoff, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public void hardDeleteById(UUID postId) {
+        jpaRepository.hardDeleteById(postId);
+    }
 }

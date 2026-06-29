@@ -46,4 +46,8 @@ public interface LikeJpaRepository extends JpaRepository<Like, UUID> {
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Like l WHERE l.postId = :postId")
+    void hardDeleteAllByPostId(@Param("postId") UUID postId);
 }
