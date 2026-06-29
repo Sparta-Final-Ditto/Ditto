@@ -48,11 +48,17 @@ public class OutboxPublishScheduler {
     @Scheduled(fixedDelay = 60000)
     public void monitorFailedEvents() {
         long failedCount = outboxEventRepository.countByStatus(OutboxStatus.FAILED);
+        long deadCount = outboxEventRepository.countByStatus(OutboxStatus.DEAD);
         if (failedCount > 0) {
             LOG.warn("[Outbox] FAILED 이벤트 {}건 감지. replay 필요 여부 확인 요망.", failedCount);
         }
+        if (deadCount > 0) {
+            LOG.warn("[Outbox] DEAD 이벤트 {}건 감지. 수동 확인 및 조치 필요.", deadCount);
+        }
     }
 
+    // 4단계에서 외부화 예정 (application.yml @Value)
+    @Scheduled(fixedDelay = 3600000)
     @Transactional
     public void replayFailedEvents() {
         List<OutboxEvent> failed = outboxEventRepository.findByStatusOrderByCreatedAt(
