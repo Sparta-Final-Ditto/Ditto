@@ -56,7 +56,7 @@ public class ChatRoomParticipant {
     @Column(name = "role", nullable = false, length = 20)
     private ParticipantRole role;
 
-    @Column(name = "joined_at", nullable = false, updatable = false)
+    @Column(name = "joined_at", nullable = false)
     private Instant joinedAt;
 
     @Column(name = "left_at")
