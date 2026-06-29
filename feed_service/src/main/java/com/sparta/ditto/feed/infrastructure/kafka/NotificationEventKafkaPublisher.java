@@ -27,6 +27,7 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
     @Override
     public void publishPostLiked(PostLikedEvent event) {
         record Payload(String postId, String userId, String ownerId, String likedAt) {}
+
         record Envelope(String eventId, String eventType, String occurredAt, Payload payload) {}
 
         try {
@@ -58,6 +59,7 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
         record Payload(
                 String postId, String commentId, String userId, String ownerId, String commentedAt
         ) {}
+
         record Envelope(String eventId, String eventType, String occurredAt, Payload payload) {}
 
         try {

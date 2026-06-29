@@ -172,7 +172,9 @@ public class PostInteractionService {
         postRepository.incrementCommentCount(postId);
         if (!userId.equals(post.getUserId())) {
             applicationEventPublisher.publishEvent(
-                    new PostCommentedEvent(post.getId(), comment.getId(), userId, post.getUserId(), Instant.now()));
+                    new PostCommentedEvent(
+                            post.getId(), comment.getId(),
+                            userId, post.getUserId(), Instant.now()));
         }
         return CommentResult.fromCreation(comment, nickname);
     }
