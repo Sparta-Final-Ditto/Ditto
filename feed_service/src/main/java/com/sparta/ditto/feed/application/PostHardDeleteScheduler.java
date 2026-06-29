@@ -74,4 +74,16 @@ public class PostHardDeleteScheduler {
             }
         }
     }
+
+    /** dry-run 미리보기: 실제 삭제 없이 현재 cutoff 기준 삭제 대상 ID 목록만 반환한다. */
+    public List<UUID> findHardDeleteTargets(Instant cutoff) {
+        return postRepository.findExpiredSoftDeleted(cutoff, chunkSize).stream()
+                .map(Post::getId)
+                .collect(Collectors.toList());
+    }
+
+    /** 외부 트리거(테스트/관리)용 retentionDays 노출. */
+    public int getRetentionDays() {
+        return retentionDays;
+    }
 }
