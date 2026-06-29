@@ -11,7 +11,6 @@ from app.embedding.application.port.embedding_model_port import EmbeddingModelPo
 from app.embedding.application.service.embedding_service import EmbeddingService
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
 from app.embedding.domain.algorithm.profile_builder import build_initial_text
-from app.embedding.infrastructure.batch.batch_embedding import run_batch, run_monthly_batch
 
 router = APIRouter(tags=["Test"])
 
@@ -24,8 +23,10 @@ router = APIRouter(tags=["Test"])
     description="EMA 일배치를 즉시 실행한다. 프로덕션에서는 매일 KST 03:00 자동 실행.",
     response_model=ApiResponse[str],
 )
-async def trigger_daily_batch() -> ApiResponse[str]:
-    asyncio.create_task(run_batch())
+async def trigger_daily_batch(
+    svc: EmbeddingService = Depends(get_embedding_service),
+) -> ApiResponse[str]:
+    asyncio.create_task(svc.trigger_daily_batch())
     return ApiResponse.success("일배치 실행 시작")
 
 
@@ -35,8 +36,10 @@ async def trigger_daily_batch() -> ApiResponse[str]:
     description="시간 감쇠 가중 평균 월배치를 즉시 실행한다. 프로덕션에서는 매월 1일 KST 04:00 자동 실행.",
     response_model=ApiResponse[str],
 )
-async def trigger_monthly_batch() -> ApiResponse[str]:
-    asyncio.create_task(run_monthly_batch())
+async def trigger_monthly_batch(
+    svc: EmbeddingService = Depends(get_embedding_service),
+) -> ApiResponse[str]:
+    asyncio.create_task(svc.trigger_monthly_batch())
     return ApiResponse.success("월배치 실행 시작")
 
 
