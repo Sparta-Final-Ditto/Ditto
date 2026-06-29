@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import datetime
 from uuid import UUID
 from app.embedding.domain.model.post_embedding import PostEmbedding
 
@@ -41,4 +42,11 @@ class PostEmbeddingRepository(ABC):
     ) -> list[tuple[UUID, list[float]]]:
         """배치 증분용: after_post_id 이후에 추가된 DONE (post_id, vector) 목록 반환.
         after_post_id=None 이면 전체 반환."""
+        ...
+
+    @abstractmethod
+    async def find_all_done_for_monthly_batch(
+        self, user_id: UUID
+    ) -> list[tuple[UUID, list[float], datetime]]:
+        """월배치용: DONE 상태의 (post_id, vector, embedded_at) 목록을 embedded_at ASC 순서로 반환."""
         ...

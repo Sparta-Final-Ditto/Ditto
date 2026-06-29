@@ -117,6 +117,20 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         result = await self.db.execute(stmt)
         return [(row[0], row[1]) for row in result.all()]
 
+    async def find_all_done_for_monthly_batch(
+        self, user_id: UUID
+    ) -> list[tuple[UUID, list[float], datetime]]:
+        result = await self.db.execute(
+            select(UserPostEmbedding.post_id, UserPostEmbedding.vector, UserPostEmbedding.embedded_at)
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                UserPostEmbedding.embedding_status == "DONE",
+                UserPostEmbedding.vector.is_not(None),
+            )
+            .order_by(UserPostEmbedding.embedded_at.asc())
+        )
+        return [(row[0], row[1], row[2]) for row in result.all()]
+
     async def count_done_by_user_id(self, user_id: UUID) -> int:
         result = await self.db.execute(
             select(func.count())

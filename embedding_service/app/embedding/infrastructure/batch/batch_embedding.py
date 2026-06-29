@@ -123,3 +123,55 @@ async def run_batch() -> None:
                 fail += 1
 
     logger.info(f"[Batch] 완료 — 성공: {success}, 스킵: {skip}, 실패: {fail}")
+
+
+async def run_monthly_batch() -> None:
+    """월배치: 전체 유저 대상 시간 감쇠 가중 평균으로 프로필 벡터 전체 재계산.
+
+    weight = exp(-age_days / 7). DONE 게시글만 포함, DELETED 제외.
+    게시글이 없는 유저는 기존 임베딩 유지.
+    실행 후 last_processed_record_id를 최신 post_id로 갱신하여 일배치 증분이 이어지도록 한다.
+    """
+    from app.embedding.domain.algorithm.ema_calculator import time_decay_weighted_average
+
+    logger.info("[MonthlyBatch] 월간 전체 재계산 시작")
+
+    async with AsyncSessionLocal() as db:
+        post_repo = PgPostEmbeddingRepository(db)
+        profile_repo = PgUserProfileRepository(db)
+
+        user_ids: list[UUID] = await post_repo.find_all_user_ids_with_done_embeddings()
+        logger.info(f"[MonthlyBatch] 재계산 대상 유저: {len(user_ids)}명")
+
+        success, skip, fail = 0, 0, 0
+        for user_id in user_ids:
+            try:
+                records = await post_repo.find_all_done_for_monthly_batch(user_id)
+
+                if not records:
+                    skip += 1
+                    continue
+
+                vectors_with_time = [(vec, embedded_at) for _, vec, embedded_at in records]
+                new_vector = time_decay_weighted_average(vectors_with_time)
+
+                if new_vector is None:
+                    skip += 1
+                    continue
+
+                last_post_id = records[-1][0]
+                new_count = len(records)
+
+                await profile_repo.upsert(
+                    user_id=user_id,
+                    vector=new_vector,
+                    record_count=new_count,
+                    active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
+                    last_processed_record_id=last_post_id,
+                )
+                success += 1
+            except Exception as e:
+                logger.error(f"[MonthlyBatch] 유저 {user_id} 재계산 실패: {e}")
+                fail += 1
+
+    logger.info(f"[MonthlyBatch] 완료 — 성공: {success}, 스킵: {skip}, 실패: {fail}")
