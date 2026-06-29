@@ -8,6 +8,7 @@ from aiokafka import AIOKafkaConsumer
 from app.config.settings import settings
 from app.common.db.database import AsyncSessionLocal
 from app.embedding.domain.algorithm.ema_calculator import update_profile
+from app.embedding.domain.algorithm.post_text_builder import build_post_text
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.infrastructure.repository.pg_post_embedding_repository import PgPostEmbeddingRepository
 from app.embedding.infrastructure.repository.pg_user_profile_repository import PgUserProfileRepository
@@ -48,7 +49,7 @@ async def _reprocess_dlq() -> int:
                             content: str = payload["content"]
                             hashtags: list[str] = payload.get("tags", [])
 
-                            text = f"{content} {' '.join(hashtags)}"
+                            text = build_post_text(content, hashtags)
                             vector = await asyncio.to_thread(model.encode, text)
                             await post_repo.save(post_id, user_id, vector)
                             count += 1
