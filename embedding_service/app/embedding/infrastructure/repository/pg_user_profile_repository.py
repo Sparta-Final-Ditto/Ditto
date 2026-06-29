@@ -70,6 +70,14 @@ class PgUserProfileRepository(UserProfileRepository):
         row.vector = vector
         await self.db.commit()
 
+    async def sync_count_and_active(self, user_id: UUID, done_count: int) -> None:
+        row = await self.db.get(UserProfileEmbedding, user_id)
+        if row is None:
+            return
+        row.record_count = done_count
+        row.active = done_count >= 3
+        await self.db.commit()
+
     async def find_all_user_ids(self) -> list[UUID]:
         result = await self.db.execute(select(UserProfileEmbedding.user_id))
         return [row[0] for row in result.all()]

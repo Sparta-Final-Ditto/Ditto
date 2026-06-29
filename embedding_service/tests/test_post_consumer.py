@@ -8,8 +8,10 @@ payload는 consumer_base의 json.loads()를 거쳐 이미 dict로 전달된다.
 """
 import uuid
 import unittest
+from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.embedding.domain.model.post_embedding import PostEmbedding
 from app.embedding.infrastructure.kafka.post_consumer import PostConsumer
 
 _CONSUMER_MODULE = "app.embedding.infrastructure.kafka.post_consumer"
@@ -36,11 +38,40 @@ def _make_message(
     }
 
 
+def _make_deleted_message(
+    post_id: str | None = None,
+    owner_id: str | None = None,
+) -> dict:
+    return {
+        "eventId": str(uuid.uuid4()),
+        "eventType": "POST_DELETED",
+        "occurredAt": "2026-06-25T00:00:00Z",
+        "payload": {
+            "postId": post_id or str(uuid.uuid4()),
+            "ownerId": owner_id or str(uuid.uuid4()),
+            "deletedBy": str(uuid.uuid4()),
+            "deleteType": "SOFT",
+            "deletedAt": "2026-06-25T00:00:00Z",
+        },
+    }
+
+
+def _make_post_embedding(embedded_at: datetime) -> PostEmbedding:
+    return PostEmbedding(
+        post_id=uuid.uuid4(),
+        user_id=uuid.uuid4(),
+        vector=[0.0] * 768,
+        embedding_status="DONE",
+        embedded_at=embedded_at,
+    )
+
+
 class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.mock_svc = AsyncMock()
         self.mock_post_repo = AsyncMock()
+        self.mock_profile_repo = AsyncMock()
 
         mock_db = MagicMock()
         mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
@@ -48,7 +79,7 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
 
         p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
         p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
-        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=AsyncMock())
+        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
         p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
         p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=self.mock_svc)
 
@@ -65,8 +96,8 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
         self.mock_svc.embed_and_store.assert_called_once()
 
     async def test_non_post_created_event_ignored(self):
-        """POST_CREATED 외 이벤트 — embed_and_store 미호출."""
-        for event_type in ["POST_UPDATED", "POST_DELETED", "USER_CREATED"]:
+        """POST_CREATED·POST_DELETED 외 이벤트 — embed_and_store 미호출."""
+        for event_type in ["POST_UPDATED", "USER_CREATED"]:
             self.mock_svc.embed_and_store.reset_mock()
             await self.consumer.handle({"eventType": event_type, "payload": {}})
             self.mock_svc.embed_and_store.assert_not_called()
@@ -142,6 +173,73 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.update_status.assert_called_once()
         args = self.mock_post_repo.update_status.call_args.args
         self.assertEqual(args[1], "FAILED")
+
+
+class TestPostConsumerPostDeleted(unittest.IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        self.mock_post_repo = AsyncMock()
+        self.mock_profile_repo = AsyncMock()
+
+        mock_db = MagicMock()
+        mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_db.__aexit__ = AsyncMock(return_value=False)
+
+        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
+        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
+        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
+        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
+        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=AsyncMock())
+
+        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+            p.start()
+            self.addCleanup(p.stop)
+
+        self.consumer = PostConsumer()
+
+    async def test_today_post_marked_deleted(self):
+        """KST 당일 게시글 삭제 — status=DELETED 및 프로필 갱신."""
+        KST = timezone(timedelta(hours=9))
+        today_kst = datetime.now(KST)
+        self.mock_post_repo.find_by_post_id.return_value = _make_post_embedding(embedded_at=today_kst)
+        self.mock_post_repo.count_done_by_user_id.return_value = 2
+
+        msg = _make_deleted_message()
+        await self.consumer.handle(msg)
+
+        self.mock_post_repo.update_status.assert_called_once()
+        args = self.mock_post_repo.update_status.call_args.args
+        self.assertEqual(args[1], "DELETED")
+
+        self.mock_profile_repo.sync_count_and_active.assert_called_once_with(unittest.mock.ANY, 2)
+
+    async def test_old_post_ignored(self):
+        """KST 날짜가 다른 게시글 삭제 — update_status 미호출 (어제 게시글 오늘 삭제 포함)."""
+        KST = timezone(timedelta(hours=9))
+        yesterday_kst = datetime.now(KST) - timedelta(days=1)
+        self.mock_post_repo.find_by_post_id.return_value = _make_post_embedding(embedded_at=yesterday_kst)
+
+        await self.consumer.handle(_make_deleted_message())
+
+        self.mock_post_repo.update_status.assert_not_called()
+
+    async def test_no_embedding_ignored(self):
+        """임베딩 레코드 없는 게시글 삭제 — update_status 미호출."""
+        self.mock_post_repo.find_by_post_id.return_value = None
+
+        await self.consumer.handle(_make_deleted_message())
+
+        self.mock_post_repo.update_status.assert_not_called()
+
+    async def test_invalid_payload_ignored(self):
+        """필수 필드 누락(ownerId) — 예외 전파 없음, update_status 미호출."""
+        msg = {
+            "eventType": "POST_DELETED",
+            "payload": {"postId": str(uuid.uuid4())},
+        }
+        await self.consumer.handle(msg)
+
+        self.mock_post_repo.update_status.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -117,6 +117,16 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
         result = await self.db.execute(stmt)
         return [(row[0], row[1]) for row in result.all()]
 
+    async def count_done_by_user_id(self, user_id: UUID) -> int:
+        result = await self.db.execute(
+            select(func.count())
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                UserPostEmbedding.embedding_status == "DONE",
+            )
+        )
+        return result.scalar_one()
+
     async def reset_failed_to_done(self) -> int:
         result = await self.db.execute(
             update(UserPostEmbedding)
