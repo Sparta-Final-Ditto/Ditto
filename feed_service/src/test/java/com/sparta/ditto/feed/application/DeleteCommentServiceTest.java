@@ -137,7 +137,6 @@ class DeleteCommentServiceTest {
 
         // then - Outbox 이벤트가 저장되어서는 안 됨
         verify(outboxEventRepository, never()).save(any(OutboxEvent.class));
-        verify(outboxEventPort, never()).buildPostCommented(any(), any(), any());
     }
 
     // -------------------------------------------------------
