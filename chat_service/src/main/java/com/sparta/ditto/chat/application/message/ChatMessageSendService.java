@@ -31,22 +31,29 @@ public class ChatMessageSendService {
     private final ChatRoomMetadataService chatRoomMetadataService;
     private final ChatMessagePublisher chatMessagePublisher;
     private final ChatMessageDedupStore chatMessageDedupStore;
-    private final ChatMessageNotificationService chatMessageNotificationService;
+    private final ChatMessageCommitService chatMessageCommitService;
 
     // 사용자 메시지 전송: 검증 → 중복 확인 → 저장 → last message 갱신 → ACK → 브로드캐스트
     public SentMessage sendUserMessage(ChatMessageSendCommand command) {
+        long totalStartNanos = System.nanoTime();
         if (command == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         chatParticipantValidator.ensureActiveParticipant(command.roomId(), command.senderId());
         chatParticipantValidator.ensureRoomActive(command.roomId());
         validateUserContent(command);
+        long validationEndNanos = System.nanoTime();
 
         DedupBeginResult dedup = chatMessageDedupStore.begin(
                 command.roomId(), command.senderId(), command.clientMessageId());
+        long dedupBeginEndNanos = System.nanoTime();
 
         return switch (dedup.status()) {
-            case NEW -> saveAndPublish(command);
+            case NEW -> saveAndPublish(
+                    command,
+                    totalStartNanos,
+                    validationEndNanos,
+                    dedupBeginEndNanos);
             case DUPLICATE_COMPLETED -> ackDuplicate(command, dedup.messageId());
             case DUPLICATE_PROCESSING ->
                     throw new ChatDuplicateProcessingException();
@@ -70,8 +77,14 @@ public class ChatMessageSendService {
         return saved;
     }
 
-    private SentMessage saveAndPublish(ChatMessageSendCommand command) {
+    private SentMessage saveAndPublish(
+            ChatMessageSendCommand command,
+            long totalStartNanos,
+            long validationEndNanos,
+            long dedupBeginEndNanos
+    ) {
         SentMessage saved;
+        long saveStartNanos = System.nanoTime();
         try {
             String messageId = messageIdGenerator.generate();
             saved = chatMessageCommandPort.saveUserMessage(
@@ -88,26 +101,49 @@ public class ChatMessageSendService {
                     command.roomId(), command.senderId(), command.clientMessageId());
             throw ex;
         }
+        long mongoSaveEndNanos = System.nanoTime();
 
         // 저장 성공 시점에 dedup을 확정한다.
         // 이후 단계가 실패해도 재시도는 기존 messageId ACK로 멱등 처리된다.
         chatMessageDedupStore.complete(
                 command.roomId(), command.senderId(),
                 command.clientMessageId(), saved.messageId());
+        long dedupCompleteEndNanos = System.nanoTime();
 
-        chatRoomMetadataService.updateLastMessage(
-                command.roomId(), saved.messageId(), saved.createdAt());
+        // 메타갱신(PostgreSQL) + 알림 이벤트 발행(예약)을 하나의 트랜잭션으로 처리한다.
+        // 실제 알림 dispatch는 커밋 성공 후 AFTER_COMMIT 리스너가 별도 스레드로 수행한다.
+        try {
+            chatMessageCommitService.commitMetadataAndRegisterNotification(
+                    command.roomId(), saved);
+        } catch (RuntimeException ex) {
+            // MongoDB 저장은 성공했으나 PostgreSQL lastMessage 갱신이 실패한 갭.
+            // 메시지 본문은 MongoDB에 남아 데이터 유실은 아니고, 방 목록 lastMessage 미리보기만 어긋난다.
+            // 보정 잡(현재 미구현) 대상이므로 관측 가능하도록 명시적으로 남긴다. (튜터 피드백 ①)
+            log.error("메시지 저장 후 메타갱신/알림 예약 실패 — lastMessage 갭 발생(보정 대상). "
+                            + "roomId={}, senderId={}, messageId={}",
+                    command.roomId(), command.senderId(), saved.messageId(), ex);
+            throw ex;
+        }
+        long commitEndNanos = System.nanoTime();
 
         chatMessagePublisher.ackToSender(command.senderId(), saved);
-        chatMessagePublisher.broadcast(command.roomId(), saved);
+        long ackEndNanos = System.nanoTime();
 
-        // 알림 발행 실패는 메시지 전송 성공을 막지 않는다
-        try {
-            chatMessageNotificationService.dispatch(saved);
-        } catch (RuntimeException ex) {
-            log.error("알림 이벤트 발행 실패. roomId={}, messageId={}",
-                    command.roomId(), saved.messageId(), ex);
-        }
+        chatMessagePublisher.broadcast(command.roomId(), saved);
+        long broadcastEndNanos = System.nanoTime();
+
+        logSendPerformance(
+                command,
+                saved.messageId(),
+                totalStartNanos,
+                validationEndNanos,
+                dedupBeginEndNanos,
+                saveStartNanos,
+                mongoSaveEndNanos,
+                dedupCompleteEndNanos,
+                commitEndNanos,
+                ackEndNanos,
+                broadcastEndNanos);
 
         log.debug("User chat message saved and published. "
                         + "roomId={}, senderId={}, clientMessageId={}, "
@@ -149,5 +185,43 @@ public class ChatMessageSendService {
         if (command.messageType().isSystem()) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+    }
+
+    // 성능 관측(observability)용 구간 로그. log.debug라 평소(INFO 레벨)엔 미출력되어 운영에 무해하고,
+    // 성능 분석/장애 시 logging.level.com...ChatMessageSendService=DEBUG로 켜서 구간별 소요를 본다.
+    private void logSendPerformance(
+            ChatMessageSendCommand command,
+            String messageId,
+            long totalStartNanos,
+            long validationEndNanos,
+            long dedupBeginEndNanos,
+            long saveStartNanos,
+            long mongoSaveEndNanos,
+            long dedupCompleteEndNanos,
+            long commitEndNanos,
+            long ackEndNanos,
+            long broadcastEndNanos
+    ) {
+        // commitMs = lastMessage 갱신 + 알림 이벤트 발행(예약)을 묶은 트랜잭션 구간.
+        // 실제 알림 dispatch는 커밋 후 별도 스레드라 이 측정에 포함되지 않는다.
+        log.debug("Chat message send perf. roomId={}, senderId={}, messageId={}, "
+                        + "validationMs={}, dedupBeginMs={}, mongoSaveMs={}, "
+                        + "dedupCompleteMs={}, commitMs={}, ackMs={}, "
+                        + "broadcastCallMs={}, totalMs={}",
+                command.roomId(),
+                command.senderId(),
+                messageId,
+                elapsedMs(totalStartNanos, validationEndNanos),
+                elapsedMs(validationEndNanos, dedupBeginEndNanos),
+                elapsedMs(saveStartNanos, mongoSaveEndNanos),
+                elapsedMs(mongoSaveEndNanos, dedupCompleteEndNanos),
+                elapsedMs(dedupCompleteEndNanos, commitEndNanos),
+                elapsedMs(commitEndNanos, ackEndNanos),
+                elapsedMs(ackEndNanos, broadcastEndNanos),
+                elapsedMs(totalStartNanos, broadcastEndNanos));
+    }
+
+    private long elapsedMs(long startNanos, long endNanos) {
+        return (endNanos - startNanos) / 1_000_000;
     }
 }
