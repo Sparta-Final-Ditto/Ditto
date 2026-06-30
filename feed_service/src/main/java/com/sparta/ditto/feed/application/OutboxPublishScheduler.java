@@ -8,6 +8,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,11 +30,17 @@ public class OutboxPublishScheduler {
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
 
-    @Scheduled(fixedDelay = 5000)
+    @Value("${app.outbox.publish.batch-size}")
+    private int publishBatchSize;
+
+    @Value("${app.outbox.replay.batch-size}")
+    private int replayBatchSize;
+
+    @Scheduled(fixedDelayString = "${app.outbox.publish.interval-ms}")
     @Transactional
     public void publishPendingEvents() {
         List<OutboxEvent> pending = outboxEventRepository.findPendingForUpdate(
-                OutboxStatus.PENDING, 100);
+                OutboxStatus.PENDING, publishBatchSize);
         for (OutboxEvent event : pending) {
             try {
                 outboxEventPublisher.publish(event);
@@ -45,18 +52,23 @@ public class OutboxPublishScheduler {
         }
     }
 
-    @Scheduled(fixedDelay = 60000)
+    @Scheduled(fixedDelayString = "${app.outbox.monitor.interval-ms}")
     public void monitorFailedEvents() {
         long failedCount = outboxEventRepository.countByStatus(OutboxStatus.FAILED);
+        long deadCount = outboxEventRepository.countByStatus(OutboxStatus.DEAD);
         if (failedCount > 0) {
             LOG.warn("[Outbox] FAILED 이벤트 {}건 감지. replay 필요 여부 확인 요망.", failedCount);
         }
+        if (deadCount > 0) {
+            LOG.warn("[Outbox] DEAD 이벤트 {}건 감지. 수동 확인 및 조치 필요.", deadCount);
+        }
     }
 
+    @Scheduled(fixedDelayString = "${app.outbox.replay.interval-ms}")
     @Transactional
     public void replayFailedEvents() {
         List<OutboxEvent> failed = outboxEventRepository.findByStatusOrderByCreatedAt(
-                OutboxStatus.FAILED, 100);
+                OutboxStatus.FAILED, replayBatchSize);
         for (OutboxEvent event : failed) {
             event.resetToPending();
             outboxEventRepository.save(event);

@@ -39,4 +39,8 @@ public interface PostRepository {
     List<Post> findByUserIdAndScopesWithCursor(
             UUID userId, List<Visibility> allowedScopes,
             Instant cursorAt, UUID cursorId, int limit);
+
+    List<Post> findExpiredSoftDeleted(Instant cutoff, int limit);
+
+    void hardDeleteById(UUID postId);
 }

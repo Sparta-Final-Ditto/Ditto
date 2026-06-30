@@ -126,4 +126,15 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
+
+    @Query("SELECT p FROM Post p WHERE p.deletedAt IS NOT NULL AND p.deletedAt < :cutoff"
+            + " ORDER BY p.deletedAt ASC")
+    List<Post> findExpiredSoftDeleted(
+            @Param("cutoff") Instant cutoff,
+            Pageable pageable
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Post p WHERE p.id = :postId")
+    void hardDeleteById(@Param("postId") UUID postId);
 }

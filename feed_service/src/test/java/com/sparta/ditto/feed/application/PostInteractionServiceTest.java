@@ -4,15 +4,14 @@ import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.feed.application.dto.result.CommentResult;
 import com.sparta.ditto.feed.application.dto.command.CreateCommentCommand;
 import com.sparta.ditto.feed.application.dto.result.LikeResult;
+import com.sparta.ditto.feed.application.event.PostCommentedEvent;
+import com.sparta.ditto.feed.application.event.PostLikedEvent;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
-import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
-import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.type.Visibility;
 import org.junit.jupiter.api.DisplayName;
@@ -21,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
@@ -47,10 +47,7 @@ class PostInteractionServiceTest {
     private CommentRepository commentRepository;
 
     @Mock
-    private OutboxEventRepository outboxEventRepository;
-
-    @Mock
-    private OutboxEventPort outboxEventPort;
+    private ApplicationEventPublisher applicationEventPublisher;
 
     @InjectMocks
     private PostInteractionService postInteractionService;
@@ -75,9 +72,6 @@ class PostInteractionServiceTest {
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(likeRepository.existsByPostIdAndUserId(postId, likerId)).thenReturn(false);
         when(likeRepository.save(any(Like.class))).thenAnswer(i -> i.getArgument(0));
-        when(outboxEventPort.buildPostLiked(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_LIKED", java.util.UUID.randomUUID(), "{}"));
-        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
         LikeResult result = postInteractionService.addLike(likerId, postId, "테스트닉네임");
@@ -87,7 +81,7 @@ class PostInteractionServiceTest {
         assertThat(result.likeCount()).isEqualTo(6);
         verify(likeRepository).save(any(Like.class));
         verify(postRepository).incrementLikeCount(postId);
-        verify(outboxEventRepository).save(any(OutboxEvent.class));
+        verify(applicationEventPublisher).publishEvent(any(PostLikedEvent.class));
     }
 
     @Test
@@ -108,7 +102,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("본인 게시글 좋아요 → 좋아요 적용, Outbox 이벤트 저장 없음")
+    @DisplayName("본인 게시글 좋아요 → 좋아요 적용, 이벤트 발행 없음")
     void addLike_본인게시글_좋아요적용_outbox저장안함() {
         // given - likerId == ownerId (본인 게시글)
         Post post = createPost(likerId, 3);
@@ -123,7 +117,7 @@ class PostInteractionServiceTest {
         assertThat(result.isLiked()).isTrue();
         assertThat(result.likeCount()).isEqualTo(4);
         verify(postRepository).incrementLikeCount(postId);
-        verify(outboxEventRepository, never()).save(any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     @Test
@@ -180,7 +174,7 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("좋아요 취소 시 Outbox 이벤트 저장 없음")
+    @DisplayName("좋아요 취소 시 이벤트 발행 없음")
     void removeLike_Outbox_저장_없음() {
         // given
         Post post = createPost(ownerId, 3);
@@ -192,7 +186,7 @@ class PostInteractionServiceTest {
         postInteractionService.removeLike(likerId, postId);
 
         // then
-        verify(outboxEventRepository, never()).save(any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 
     // ============================================================
@@ -216,9 +210,6 @@ class PostInteractionServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
-        when(outboxEventPort.buildPostCommented(any(), any(), any()))
-                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", java.util.UUID.randomUUID(), "{}"));
-        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
         CommentResult result = postInteractionService.createComment(
@@ -254,9 +245,6 @@ class PostInteractionServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
-        when(outboxEventPort.buildPostCommented(any(), any(), any()))
-                .thenReturn(new OutboxEvent("post-events", "POST_COMMENTED", java.util.UUID.randomUUID(), "{}"));
-        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
         CommentResult result = postInteractionService.createComment(
@@ -269,29 +257,25 @@ class PostInteractionServiceTest {
     }
 
     @Test
-    @DisplayName("타인 게시글 댓글 → POST_COMMENTED Outbox 이벤트 저장")
-    void createComment_타인게시글_outbox_저장() {
+    @DisplayName("타인 게시글 댓글 → POST_COMMENTED 이벤트 발행")
+    void createComment_타인게시글_이벤트발행() {
         // given
         UUID commenterId = UUID.randomUUID();
         Post post = createPost(ownerId, 0);
         Comment savedComment = createSavedComment(postId, commenterId, "댓글");
-        OutboxEvent outboxEvent = new OutboxEvent("post-events", "POST_COMMENTED", java.util.UUID.randomUUID(), "{}");
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(commentRepository.save(any(Comment.class))).thenReturn(savedComment);
-        when(outboxEventPort.buildPostCommented(any(), any(), any())).thenReturn(outboxEvent);
-        when(outboxEventRepository.save(any(OutboxEvent.class))).thenAnswer(i -> i.getArgument(0));
 
         // when
         postInteractionService.createComment(commenterId, "닉네임", postId, new CreateCommentCommand("댓글"));
 
         // then
-        verify(outboxEventPort).buildPostCommented(any(Post.class), any(Comment.class), any(UUID.class));
-        verify(outboxEventRepository).save(outboxEvent);
+        verify(applicationEventPublisher).publishEvent(any(PostCommentedEvent.class));
     }
 
     @Test
-    @DisplayName("본인 게시글 댓글 → Outbox 이벤트 생성 없음")
+    @DisplayName("본인 게시글 댓글 → 이벤트 발행 없음")
     void createComment_본인게시글_outbox_미생성() {
         // given
         Post post = createPost(ownerId, 0);
@@ -304,7 +288,6 @@ class PostInteractionServiceTest {
         postInteractionService.createComment(ownerId, "닉네임", postId, new CreateCommentCommand("댓글"));
 
         // then
-        verify(outboxEventPort, never()).buildPostCommented(any(), any(), any());
-        verify(outboxEventRepository, never()).save(any());
+        verify(applicationEventPublisher, never()).publishEvent(any());
     }
 }
