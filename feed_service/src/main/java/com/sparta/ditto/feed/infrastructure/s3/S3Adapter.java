@@ -2,12 +2,18 @@ package com.sparta.ditto.feed.infrastructure.s3;
 
 import com.sparta.ditto.feed.application.port.S3Port;
 import java.time.Duration;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.Delete;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -54,6 +60,28 @@ public class S3Adapter implements S3Port {
             return true;
         } catch (NoSuchKeyException e) {
             return false;
+        }
+    }
+
+    @Override
+    public void deleteObjects(List<String> keys) {
+        if (keys == null || keys.isEmpty()) {
+            return;
+        }
+        List<ObjectIdentifier> identifiers = keys.stream()
+                .map(key -> ObjectIdentifier.builder().key(key).build())
+                .collect(Collectors.toList());
+
+        DeleteObjectsResponse response = s3Client.deleteObjects(
+                DeleteObjectsRequest.builder()
+                        .bucket(bucket)
+                        .delete(Delete.builder().objects(identifiers).build())
+                        .build()
+        );
+
+        if (!response.errors().isEmpty()) {
+            throw new RuntimeException(
+                    "S3 객체 삭제 중 일부 실패: " + response.errors());
         }
     }
 }

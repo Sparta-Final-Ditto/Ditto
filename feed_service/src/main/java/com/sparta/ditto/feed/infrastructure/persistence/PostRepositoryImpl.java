@@ -2,7 +2,7 @@ package com.sparta.ditto.feed.infrastructure.persistence;
 
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -63,9 +63,9 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
-    public List<Post> findFeedByLocationScopeWithCursor(
-            List<LocationScope> scopes, Instant cursorAt, UUID cursorId, int limit) {
-        return jpaRepository.findFeedByLocationScopeWithCursor(
+    public List<Post> findFeedByVisibilityWithCursor(
+            List<Visibility> scopes, Instant cursorAt, UUID cursorId, int limit) {
+        return jpaRepository.findFeedByVisibilityWithCursor(
                 scopes, cursorAt, cursorId, PageRequest.of(0, limit));
     }
 
@@ -77,18 +77,28 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
-    public List<Post> findFeedByUserIdsAndLocationScopeWithCursor(
-            List<UUID> userIds, List<LocationScope> scopes,
+    public List<Post> findFeedByUserIdsAndVisibilityWithCursor(
+            List<UUID> userIds, List<Visibility> scopes,
             Instant cursorAt, UUID cursorId, int limit) {
-        return jpaRepository.findFeedByUserIdsAndLocationScopeWithCursor(
+        return jpaRepository.findFeedByUserIdsAndVisibilityWithCursor(
                 userIds, scopes, cursorAt, cursorId, PageRequest.of(0, limit));
     }
 
     @Override
     public List<Post> findByUserIdAndScopesWithCursor(
-            UUID userId, List<LocationScope> allowedScopes,
+            UUID userId, List<Visibility> allowedScopes,
             Instant cursorAt, UUID cursorId, int limit) {
         return jpaRepository.findByUserIdAndScopesWithCursor(
                 userId, allowedScopes, cursorAt, cursorId, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public List<Post> findExpiredSoftDeleted(Instant cutoff, int limit) {
+        return jpaRepository.findExpiredSoftDeleted(cutoff, PageRequest.of(0, limit));
+    }
+
+    @Override
+    public void hardDeleteById(UUID postId) {
+        jpaRepository.hardDeleteById(postId);
     }
 }

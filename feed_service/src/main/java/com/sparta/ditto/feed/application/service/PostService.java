@@ -1,12 +1,14 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
-import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
-import com.sparta.ditto.feed.application.dto.result.UserPostItemResult;
-import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.command.UpdatePostDisplayCommand;
+import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
+import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.result.PostResult;
+import com.sparta.ditto.feed.application.dto.result.UpdatePostDisplayResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostItemResult;
+import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.port.OutboxEventPort;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Post;
@@ -19,7 +21,7 @@ import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.service.PostValidator;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -51,9 +53,9 @@ public class PostService {
 
     @Transactional(readOnly = true)
     public UserPostsResult getUserPosts(GetUserPostsQuery query) {
-        List<LocationScope> allowedScopes = query.requesterId().equals(query.targetUserId())
-                ? List.of(LocationScope.PUBLIC, LocationScope.FOLLOWERS_ONLY, LocationScope.PRIVATE)
-                : List.of(LocationScope.PUBLIC);
+        List<Visibility> allowedScopes = query.requesterId().equals(query.targetUserId())
+                ? List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY, Visibility.PRIVATE)
+                : List.of(Visibility.PUBLIC);
 
         Instant cursorAt = null;
         UUID cursorId = null;
@@ -80,6 +82,24 @@ public class PostService {
     }
 
     @Transactional
+    public UpdatePostDisplayResult updatePostDisplay(UpdatePostDisplayCommand command) {
+        Post post = postRepository.findByIdAndDeletedAtIsNull(command.postId())
+                .orElseThrow(PostNotFoundException::new);
+
+        if (!command.requesterId().equals(post.getUserId())) {
+            throw new ForbiddenException();
+        }
+
+        if (command.visibility() != null) {
+            post.changeVisibility(Visibility.from(command.visibility()));
+        }
+        post.changeShowLocation(command.showLocation());
+
+        postRepository.save(post);
+        return UpdatePostDisplayResult.from(post);
+    }
+
+    @Transactional
     public void deletePost(UUID postId, UUID requesterId, String requesterRole) {
         Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(PostNotFoundException::new);
@@ -103,7 +123,7 @@ public class PostService {
         List<MediaFileItem> mediaFiles =
                 command.mediaFiles() != null ? command.mediaFiles() : List.of();
 
-        LocationScope locationScope = LocationScope.from(command.locationScope());
+        Visibility visibility = Visibility.from(command.visibility());
 
         PostValidator.validateContentOrMedia(command.content(), !mediaFiles.isEmpty());
 
@@ -112,7 +132,7 @@ public class PostService {
         List<String> distinctTags = command.tags().stream().distinct().toList();
 
         Post post = new Post(command.userId(), nickname, command.content(), neighborhood,
-                command.latitude(), command.longitude(), locationScope, showLocation);
+                command.latitude(), command.longitude(), visibility, showLocation);
 
         distinctTags.forEach(tag -> post.getTags().add(new PostTag(post, tag)));
 

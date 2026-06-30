@@ -10,7 +10,7 @@ public record CreatePostCommand(
         List<String> tags,
         Double latitude,
         Double longitude,
-        String locationScope,
+        String visibility,
         Boolean showLocation,
         List<MediaFileItem> mediaFiles
 ) {

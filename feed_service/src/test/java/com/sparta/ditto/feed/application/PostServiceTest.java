@@ -3,6 +3,7 @@ package com.sparta.ditto.feed.application;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand;
 import com.sparta.ditto.feed.application.dto.command.CreatePostCommand.MediaFileItem;
+import com.sparta.ditto.feed.application.dto.command.UpdatePostDisplayCommand;
 import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
@@ -13,7 +14,7 @@ import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -78,7 +79,7 @@ class PostServiceTest {
         lenient().when(outboxEventRepository.save(any(OutboxEvent.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         lenient().when(outboxEventPort.buildPostCreated(any(Post.class), any(UUID.class), any()))
-                .thenReturn(new OutboxEvent("post-events", "POST_CREATED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_CREATED", java.util.UUID.randomUUID(), "{}"));
     }
 
     private CreatePostCommand defaultCommand() {
@@ -185,7 +186,7 @@ class PostServiceTest {
 
         // then
         verify(postRepository).save(captor.capture());
-        assertThat(captor.getValue().getLocationScope().name()).isEqualTo("PUBLIC");
+        assertThat(captor.getValue().getVisibility().name()).isEqualTo("PUBLIC");
     }
 
     @Test
@@ -475,12 +476,12 @@ class PostServiceTest {
     }
 
     // ============================================================
-    // DELETE /posts/{postId} (게시글 삭제) — TC-FEED-API-015
+    // DELETE /posts/{postId} (게시글 삭제)
     // ============================================================
 
     private Post createExistingPost(UUID ownerId) {
         Post post = new Post(ownerId, "닉네임", "내용", "서울 성동구",
-                37.5563, 127.0374, LocationScope.PUBLIC, true);
+                37.5563, 127.0374, Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", UUID.randomUUID());
         return post;
     }
@@ -496,7 +497,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when & then
         assertThatCode(() -> postService.deletePost(postId, requesterId, "USER"))
@@ -568,7 +569,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when & then
         assertThatCode(() -> postService.deletePost(postId, adminId, "ADMIN"))
@@ -589,7 +590,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when
         postService.deletePost(postId, requesterId, "USER");
@@ -609,7 +610,7 @@ class PostServiceTest {
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), any(UUID.class)))
-                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", "{}"));
+                .thenReturn(new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}"));
 
         // when
         postService.deletePost(postId, requesterId, "USER");
@@ -626,7 +627,7 @@ class PostServiceTest {
         UUID postId = UUID.randomUUID();
         Post post = createExistingPost(requesterId);
         ReflectionTestUtils.setField(post, "id", postId);
-        OutboxEvent expectedEvent = new OutboxEvent("post-events", "POST_DELETED", "{}");
+        OutboxEvent expectedEvent = new OutboxEvent("post-events", "POST_DELETED", java.util.UUID.randomUUID(), "{}");
 
         when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
         when(outboxEventPort.buildPostDeleted(any(Post.class), eq(requesterId)))
@@ -638,6 +639,51 @@ class PostServiceTest {
         // then
         verify(outboxEventPort).buildPostDeleted(any(Post.class), eq(requesterId));
         verify(outboxEventRepository).save(expectedEvent);
+    }
+
+    // ============================================================
+    // PATCH /posts/{postId}/display
+    // ============================================================
+
+    @Test
+    @DisplayName("작성자가 아닌 requesterId로 updatePostDisplay 호출 → ForbiddenException")
+    void updatePostDisplay_비작성자_ForbiddenException() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        UUID strangerId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(ownerId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+
+        UpdatePostDisplayCommand command =
+                new UpdatePostDisplayCommand(postId, strangerId, "PRIVATE", null);
+
+        // when & then
+        assertThatThrownBy(() -> postService.updatePostDisplay(command))
+                .isInstanceOf(ForbiddenException.class);
+    }
+
+    @Test
+    @DisplayName("visibility=INVALID → InvalidVisibilityException, code=VALIDATION_ERROR")
+    void updatePostDisplay_invalidVisibility_InvalidVisibilityException() {
+        // given
+        UUID ownerId = UUID.randomUUID();
+        UUID postId = UUID.randomUUID();
+        Post post = createExistingPost(ownerId);
+        ReflectionTestUtils.setField(post, "id", postId);
+
+        when(postRepository.findByIdAndDeletedAtIsNull(postId)).thenReturn(Optional.of(post));
+
+        UpdatePostDisplayCommand command =
+                new UpdatePostDisplayCommand(postId, ownerId, "INVALID", null);
+
+        // when & then
+        assertThatThrownBy(() -> postService.updatePostDisplay(command))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode().getCode())
+                        .isEqualTo("VALIDATION_ERROR"));
     }
 
     @Test

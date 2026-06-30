@@ -10,6 +10,7 @@ import java.util.UUID;
 
 // notification-service로 전달되는 알림 이벤트
 public record ChatMessageCreatedEvent(
+        String eventId,
         String eventType,
         UUID roomId,
         RoomType roomType,
@@ -32,6 +33,7 @@ public record ChatMessageCreatedEvent(
             ChatSenderProfile senderProfile,
             List<UUID> receiverIds) {
         return new ChatMessageCreatedEvent(
+                UUID.randomUUID().toString(),
                 EVENT_TYPE,
                 message.roomId(),
                 roomType,
@@ -41,11 +43,15 @@ public record ChatMessageCreatedEvent(
                 senderProfile.profileImageUrl(),
                 List.copyOf(receiverIds),
                 message.messageType(),
-                preview(message.content()),
+                preview(message.messageType(), message.content()),
                 message.createdAt());
     }
 
-    private static String preview(String content) {
+    private static String preview(MessageType messageType, String content) {
+        // IMAGE는 본문이 URL/메타데이터라 그대로 노출하지 않고 대체 문구로 전달한다.
+        if (messageType == MessageType.IMAGE) {
+            return "사진을 보냈습니다";
+        }
         if (content == null) {
             return null;
         }

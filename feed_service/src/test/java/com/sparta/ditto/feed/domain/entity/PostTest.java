@@ -1,6 +1,6 @@
 package com.sparta.ditto.feed.domain.entity;
 
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -15,14 +15,14 @@ class PostTest {
     void createPost_withAllFields() {
         UUID userId = UUID.randomUUID();
 
-        Post post = new Post(userId, "테스트닉네임", "내용", "강남구", 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(userId, "테스트닉네임", "내용", "강남구", 37.5, 127.0, Visibility.PUBLIC, true);
 
         assertThat(post.getUserId()).isEqualTo(userId);
         assertThat(post.getContent()).isEqualTo("내용");
         assertThat(post.getNeighborhood()).isEqualTo("강남구");
         assertThat(post.getLatitude()).isEqualTo(37.5);
         assertThat(post.getLongitude()).isEqualTo(127.0);
-        assertThat(post.getLocationScope()).isEqualTo(LocationScope.PUBLIC);
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PUBLIC);
         assertThat(post.getShowLocation()).isTrue();
         assertThat(post.getLikeCount()).isZero();
         assertThat(post.getCommentCount()).isZero();
@@ -33,14 +33,14 @@ class PostTest {
     void createPost_nullLocationScope_defaultsToPublic() {
         Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, null, null);
 
-        assertThat(post.getLocationScope()).isEqualTo(LocationScope.PUBLIC);
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PUBLIC);
         assertThat(post.getShowLocation()).isTrue();
     }
 
     @Test
     @DisplayName("좋아요 수 증가")
     void incrementLikeCount() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
 
         post.incrementLikeCount();
         post.incrementLikeCount();
@@ -51,7 +51,7 @@ class PostTest {
     @Test
     @DisplayName("좋아요 수 감소 - 0 이상일 때 감소")
     void decrementLikeCount_whenPositive() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
         post.incrementLikeCount();
 
         post.decrementLikeCount();
@@ -62,7 +62,7 @@ class PostTest {
     @Test
     @DisplayName("좋아요 수 감소 - 0이면 감소하지 않음")
     void decrementLikeCount_whenZero_doesNotGoNegative() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
 
         post.decrementLikeCount();
 
@@ -72,7 +72,7 @@ class PostTest {
     @Test
     @DisplayName("댓글 수 증가")
     void incrementCommentCount() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
 
         post.incrementCommentCount();
         post.incrementCommentCount();
@@ -83,7 +83,7 @@ class PostTest {
     @Test
     @DisplayName("댓글 수 감소 - 0 이상일 때 감소")
     void decrementCommentCount_whenPositive() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
         post.incrementCommentCount();
 
         post.decrementCommentCount();
@@ -94,11 +94,47 @@ class PostTest {
     @Test
     @DisplayName("댓글 수 감소 - 0이면 감소하지 않음")
     void decrementCommentCount_whenZero_doesNotGoNegative() {
-        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, LocationScope.PUBLIC, true);
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
 
         post.decrementCommentCount();
 
         assertThat(post.getCommentCount()).isZero();
+    }
+
+    // ============================================================
+    // PATCH /posts/{postId}/display 
+    // ============================================================
+
+    @Test
+    @DisplayName("changeVisibility(PRIVATE) + changeShowLocation(false) → 두 필드 모두 전달값으로 변경")
+    void changeDisplay_동시변경_두필드_모두_변경() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, true);
+
+        post.changeVisibility(Visibility.PRIVATE);
+        post.changeShowLocation(false);
+
+        assertThat(post.getVisibility()).isEqualTo(Visibility.PRIVATE);
+        assertThat(post.getShowLocation()).isFalse();
+    }
+
+    @Test
+    @DisplayName("changeVisibility(null) → 기존 visibility 유지 (no-op)")
+    void changeVisibility_null_기존값_유지() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.FOLLOWERS_ONLY, true);
+
+        post.changeVisibility(null);
+
+        assertThat(post.getVisibility()).isEqualTo(Visibility.FOLLOWERS_ONLY);
+    }
+
+    @Test
+    @DisplayName("changeShowLocation(null) → 기존 showLocation 유지 (no-op)")
+    void changeShowLocation_null_기존값_유지() {
+        Post post = new Post(UUID.randomUUID(), null, null, null, 37.5, 127.0, Visibility.PUBLIC, false);
+
+        post.changeShowLocation(null);
+
+        assertThat(post.getShowLocation()).isFalse();
     }
 
 }

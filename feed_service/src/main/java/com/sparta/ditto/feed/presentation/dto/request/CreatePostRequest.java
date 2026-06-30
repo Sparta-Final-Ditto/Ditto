@@ -26,7 +26,7 @@ public record CreatePostRequest(
         @DecimalMax(value = "180.0", message = "경도 값이 유효한 범위를 벗어났습니다.")
         Double longitude,
 
-        String locationScope,
+        String visibility,
         Boolean showLocation,
         List<MediaFileRequest> mediaFiles
 ) {
