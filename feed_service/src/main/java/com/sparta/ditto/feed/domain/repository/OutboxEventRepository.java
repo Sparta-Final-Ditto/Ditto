@@ -9,4 +9,8 @@ public interface OutboxEventRepository {
     OutboxEvent save(OutboxEvent event);
 
     List<OutboxEvent> findByStatusOrderByCreatedAt(OutboxStatus status, int limit);
+
+    List<OutboxEvent> findPendingForUpdate(OutboxStatus status, int limit);
+
+    long countByStatus(OutboxStatus status);
 }

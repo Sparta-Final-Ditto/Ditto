@@ -14,7 +14,7 @@ import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import java.time.Instant;
 import java.util.List;
@@ -71,7 +71,7 @@ class PostGridServiceTest {
 
     private Post buildPost(String content) {
         Post post = new Post(targetUserId, "닉네임", content, "서울", 37.5, 127.0,
-                LocationScope.PUBLIC, true);
+                Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", UUID.randomUUID());
         ReflectionTestUtils.setField(post, "createdAt", Instant.now());
         return post;

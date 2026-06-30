@@ -27,7 +27,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
                     post.getUserId().toString(),
                     Instant.now().toString()
             ));
-            return new OutboxEvent("post-events", "POST_LIKED", payload);
+            return new OutboxEvent("post-events", "POST_LIKED", post.getUserId(), payload);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("POST_LIKED outbox payload 직렬화 실패", e);
         }
@@ -36,8 +36,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
     @Override
     public OutboxEvent buildPostCreated(Post post, UUID userId, List<String> tags) {
         record Payload(String postId, String userId, String content, List<String> tags,
-                       String neighborhood, Double latitude, Double longitude,
-                       String createdAt) {}
+                       String neighborhood, String createdAt) {}
 
         try {
             String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
@@ -46,11 +45,9 @@ public class OutboxEventAdapter implements OutboxEventPort {
                     post.getContent(),
                     tags,
                     post.getNeighborhood(),
-                    post.getLatitude(),
-                    post.getLongitude(),
                     post.getCreatedAt() != null ? post.getCreatedAt().toString() : null
             ));
-            return new OutboxEvent("post-events", "POST_CREATED", payload);
+            return new OutboxEvent("post-events", "POST_CREATED", post.getUserId(), payload);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("POST_CREATED outbox payload 직렬화 실패", e);
         }
@@ -69,7 +66,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
                     post.getUserId().toString(),
                     Instant.now().toString()
             ));
-            return new OutboxEvent("post-events", "POST_COMMENTED", payload);
+            return new OutboxEvent("post-events", "POST_COMMENTED", post.getUserId(), payload);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("POST_COMMENTED outbox payload 직렬화 실패", e);
         }
@@ -77,15 +74,18 @@ public class OutboxEventAdapter implements OutboxEventPort {
 
     @Override
     public OutboxEvent buildPostDeleted(Post post, UUID deletedBy) {
-        record Payload(String postId, String userId, String deletedAt) {}
+        record Payload(String postId, String ownerId, String deletedBy,
+                       String deleteType, String deletedAt) {}
 
         try {
             String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
                     post.getId().toString(),
                     post.getUserId().toString(),
+                    deletedBy.toString(),
+                    "SOFT",
                     Instant.now().toString()
             ));
-            return new OutboxEvent("post-events", "POST_DELETED", payload);
+            return new OutboxEvent("post-events", "POST_DELETED", post.getUserId(), payload);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("POST_DELETED outbox payload 직렬화 실패", e);
         }

@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.infrastructure.persistence;
 
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -53,7 +53,7 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
 
     @Query(value = """
             SELECT * FROM posts
-            WHERE location_scope IN (:#{#scopes.![name()]})
+            WHERE visibility IN (:#{#scopes.![name()]})
               AND deleted_at IS NULL
               AND (
                 CAST(:cursorAt AS timestamptz) IS NULL
@@ -62,8 +62,8 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
               )
             ORDER BY created_at DESC, id DESC
             """, nativeQuery = true)
-    List<Post> findFeedByLocationScopeWithCursor(
-            @Param("scopes") List<LocationScope> scopes,
+    List<Post> findFeedByVisibilityWithCursor(
+            @Param("scopes") List<Visibility> scopes,
             @Param("cursorAt") Instant cursorAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
@@ -90,7 +90,7 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
     @Query(value = """
             SELECT * FROM posts
             WHERE CAST(user_id AS text) IN (:#{#userIds.![toString()]})
-              AND location_scope IN (:#{#scopes.![name()]})
+              AND visibility IN (:#{#scopes.![name()]})
               AND deleted_at IS NULL
               AND (
                 CAST(:cursorAt AS timestamptz) IS NULL
@@ -99,9 +99,9 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
               )
             ORDER BY created_at DESC, id DESC
             """, nativeQuery = true)
-    List<Post> findFeedByUserIdsAndLocationScopeWithCursor(
+    List<Post> findFeedByUserIdsAndVisibilityWithCursor(
             @Param("userIds") List<UUID> userIds,
-            @Param("scopes") List<LocationScope> scopes,
+            @Param("scopes") List<Visibility> scopes,
             @Param("cursorAt") Instant cursorAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
@@ -110,7 +110,7 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
     @Query(value = """
             SELECT * FROM posts
             WHERE user_id = CAST(:userId AS uuid)
-              AND location_scope IN (:#{#scopes.![name()]})
+              AND visibility IN (:#{#scopes.![name()]})
               AND deleted_at IS NULL
               AND (
                 CAST(:cursorAt AS timestamptz) IS NULL
@@ -121,9 +121,20 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
             """, nativeQuery = true)
     List<Post> findByUserIdAndScopesWithCursor(
             @Param("userId") UUID userId,
-            @Param("scopes") List<LocationScope> scopes,
+            @Param("scopes") List<Visibility> scopes,
             @Param("cursorAt") Instant cursorAt,
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
+
+    @Query("SELECT p FROM Post p WHERE p.deletedAt IS NOT NULL AND p.deletedAt < :cutoff"
+            + " ORDER BY p.deletedAt ASC")
+    List<Post> findExpiredSoftDeleted(
+            @Param("cutoff") Instant cutoff,
+            Pageable pageable
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Post p WHERE p.id = :postId")
+    void hardDeleteById(@Param("postId") UUID postId);
 }

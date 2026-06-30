@@ -49,4 +49,9 @@ public class CommentRepositoryImpl implements CommentRepository {
     public int softDeleteAllByPostId(UUID postId, UUID deletedBy) {
         return jpaRepository.softDeleteAllByPostId(postId, deletedBy, Instant.now());
     }
+
+    @Override
+    public void hardDeleteAllByPostId(UUID postId) {
+        jpaRepository.hardDeleteAllByPostId(postId);
+    }
 }

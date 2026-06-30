@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.domain.repository;
 
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -27,16 +27,20 @@ public interface PostRepository {
 
     List<Post> findFeedWithCursor(Instant cursorAt, UUID cursorId, int limit);
 
-    List<Post> findFeedByLocationScopeWithCursor(
-            List<LocationScope> scopes, Instant cursorAt, UUID cursorId, int limit);
+    List<Post> findFeedByVisibilityWithCursor(
+            List<Visibility> scopes, Instant cursorAt, UUID cursorId, int limit);
 
     List<Post> findByUserIdWithCursor(UUID userId, Instant cursorAt, UUID cursorId, int limit);
 
-    List<Post> findFeedByUserIdsAndLocationScopeWithCursor(
-            List<UUID> userIds, List<LocationScope> scopes,
+    List<Post> findFeedByUserIdsAndVisibilityWithCursor(
+            List<UUID> userIds, List<Visibility> scopes,
             Instant cursorAt, UUID cursorId, int limit);
 
     List<Post> findByUserIdAndScopesWithCursor(
-            UUID userId, List<LocationScope> allowedScopes,
+            UUID userId, List<Visibility> allowedScopes,
             Instant cursorAt, UUID cursorId, int limit);
+
+    List<Post> findExpiredSoftDeleted(Instant cutoff, int limit);
+
+    void hardDeleteById(UUID postId);
 }

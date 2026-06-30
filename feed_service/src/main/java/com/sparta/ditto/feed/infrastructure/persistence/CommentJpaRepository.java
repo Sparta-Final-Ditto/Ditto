@@ -43,4 +43,8 @@ public interface CommentJpaRepository extends JpaRepository<Comment, UUID> {
             @Param("cursorId") UUID cursorId,
             Pageable pageable
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM Comment c WHERE c.postId = :postId")
+    void hardDeleteAllByPostId(@Param("postId") UUID postId);
 }

@@ -2,6 +2,7 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand;
+import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
 import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
@@ -59,6 +60,16 @@ public class FeedController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
         FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursor, size));
+        return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
+    }
+
+    @GetMapping("/follow")
+    public ResponseEntity<ApiResponse<RandomFeedResponse>> getFollowFeed(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(required = false) UUID cursor,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
+    ) {
+        FeedResult result = feedService.getFollowFeed(new GetFollowFeedQuery(userId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
     }
 

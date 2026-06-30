@@ -2,7 +2,7 @@ package com.sparta.ditto.feed.application;
 
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -65,7 +65,7 @@ class PostDetailIntegrationTest {
     private Post savedPost() {
         return postRepository.save(new Post(
                 userId, "닉네임", "내용", "강남구",
-                37.5, 127.0, LocationScope.PUBLIC, true));
+                37.5, 127.0, Visibility.PUBLIC, true));
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.sparta.ditto.feed.domain.repository;
 
 import com.sparta.ditto.feed.domain.entity.Post;
-import com.sparta.ditto.feed.domain.type.LocationScope;
+import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.infrastructure.persistence.PostRepositoryImpl;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,7 +56,7 @@ class PostRepositoryTest {
     private Post savePost() {
         return postRepository.save(new Post(
                 UUID.randomUUID(), "닉네임", "내용", "서울 강남구",
-                37.5, 127.0, LocationScope.PUBLIC, true));
+                37.5, 127.0, Visibility.PUBLIC, true));
     }
 
 }
