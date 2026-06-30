@@ -22,7 +22,8 @@ public interface LikeJpaRepository extends JpaRepository<Like, UUID> {
             @Param("userId") UUID userId, @Param("postIds") List<UUID> postIds);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Like l SET l.deletedAt = :now, l.deletedBy = :deletedBy"
+    @Query("UPDATE Like l SET l.deletedAt = :now, l.deletedBy = :deletedBy,"
+            + " l.deletedByPostDeletion = true"
             + " WHERE l.postId = :postId AND l.deletedAt IS NULL")
     int softDeleteAllByPostId(
             @Param("postId") UUID postId,

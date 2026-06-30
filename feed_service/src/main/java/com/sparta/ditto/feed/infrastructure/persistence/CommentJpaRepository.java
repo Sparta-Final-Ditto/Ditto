@@ -16,7 +16,8 @@ public interface CommentJpaRepository extends JpaRepository<Comment, UUID> {
     Optional<Comment> findByIdAndDeletedAtIsNull(UUID id);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("UPDATE Comment c SET c.deletedAt = :now, c.deletedBy = :deletedBy"
+    @Query("UPDATE Comment c SET c.deletedAt = :now, c.deletedBy = :deletedBy,"
+            + " c.deletedByPostDeletion = true"
             + " WHERE c.postId = :postId AND c.deletedAt IS NULL")
     int softDeleteAllByPostId(
             @Param("postId") UUID postId,
