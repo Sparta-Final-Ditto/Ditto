@@ -189,6 +189,19 @@ public class PostController {
     }
 
     // -------------------------------------------------------
+    // 게시글 복구
+    // -------------------------------------------------------
+    @PostMapping("/{postId}/restore")
+    public ResponseEntity<ApiResponse<Void>> restorePost(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestHeader("X-User-Role") String userRole,
+            @PathVariable UUID postId
+    ) {
+        postService.restorePost(postId, userId, userRole);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    // -------------------------------------------------------
     // 게시글 삭제
     // -------------------------------------------------------
     @DeleteMapping("/{postId}")
