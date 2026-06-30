@@ -5,11 +5,11 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+
 import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
 import com.sparta.ditto.chat.infrastructure.client.UserProfileClientResponse.UserProfileData;
-import java.util.UUID;
-
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
