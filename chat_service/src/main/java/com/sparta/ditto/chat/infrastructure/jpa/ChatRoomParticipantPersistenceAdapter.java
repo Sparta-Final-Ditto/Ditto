@@ -46,6 +46,11 @@ public class ChatRoomParticipantPersistenceAdapter implements ChatRoomParticipan
     }
 
     @Override
+    public ChatRoomParticipant save(ChatRoomParticipant participant) {
+        return chatRoomParticipantRepository.save(participant);
+    }
+
+    @Override
     public void saveAll(Collection<ChatRoomParticipant> participants) {
         chatRoomParticipantRepository.saveAll(participants);
     }
