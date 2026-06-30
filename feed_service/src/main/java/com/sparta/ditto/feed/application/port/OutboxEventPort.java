@@ -17,4 +17,6 @@ public interface OutboxEventPort {
     OutboxEvent buildPostDeleted(Post post, UUID deletedBy);
 
     OutboxEvent buildPostHardDeleted(Post post, UUID deletedBy);
+
+    OutboxEvent buildPostRestored(Post post, UUID restoredBy);
 }

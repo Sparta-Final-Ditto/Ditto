@@ -100,6 +100,12 @@ public class PostService {
     }
 
     @Transactional
+    public void restorePost(UUID postId, UUID requesterId, String requesterRole) {
+        // TODO STEP 4: 구현
+        throw new UnsupportedOperationException("not implemented");
+    }
+
+    @Transactional
     public void deletePost(UUID postId, UUID requesterId, String requesterRole) {
         Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(PostNotFoundException::new);

@@ -51,4 +51,9 @@ public interface LikeJpaRepository extends JpaRepository<Like, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Like l WHERE l.postId = :postId")
     void hardDeleteAllByPostId(@Param("postId") UUID postId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Like l SET l.deletedAt = null, l.deletedBy = null, l.deletedByPostDeletion = false"
+            + " WHERE l.postId = :postId AND l.deletedByPostDeletion = true")
+    int restoreAllByPostId(@Param("postId") UUID postId);
 }

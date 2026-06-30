@@ -48,4 +48,9 @@ public interface CommentJpaRepository extends JpaRepository<Comment, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Comment c WHERE c.postId = :postId")
     void hardDeleteAllByPostId(@Param("postId") UUID postId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Comment c SET c.deletedAt = null, c.deletedBy = null, c.deletedByPostDeletion = false"
+            + " WHERE c.postId = :postId AND c.deletedByPostDeletion = true")
+    int restoreAllByPostId(@Param("postId") UUID postId);
 }

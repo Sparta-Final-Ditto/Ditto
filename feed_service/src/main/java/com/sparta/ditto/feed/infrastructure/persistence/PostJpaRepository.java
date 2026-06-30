@@ -137,4 +137,8 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM Post p WHERE p.id = :postId")
     void hardDeleteById(@Param("postId") UUID postId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE Post p SET p.deletedAt = null, p.deletedBy = null WHERE p.id = :postId")
+    int restoreById(@Param("postId") UUID postId);
 }
