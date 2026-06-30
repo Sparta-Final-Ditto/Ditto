@@ -5,7 +5,6 @@ import com.sparta.ditto.chat.application.room.dto.result.ChatRoomInviteResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
-import com.sparta.ditto.chat.domain.exception.ChatAlreadyParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatInviteForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatNotGroupRoomException;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
@@ -20,13 +19,11 @@ import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
@@ -36,8 +33,8 @@ public class ChatRoomInviteService {
     private final ChatRoomPort chatRoomPort;
     private final ChatRoomParticipantPort chatRoomParticipantPort;
     private final ChatUserValidationPort chatUserValidationPort;
+    private final ChatRoomParticipantInviteRegistrar inviteRegistrar;
 
-    @Transactional
     public ChatRoomInviteResult invite(ChatRoomInviteCommand command) {
         if (command == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
@@ -63,38 +60,14 @@ public class ChatRoomInviteService {
         }
 
         List<UUID> targetUserIds = resolveTargetUserIds(requesterId, command.targetUserIds());
-        // 초대 대상 사용자 존재 여부와 요청자-대상 차단 관계를 user-service에서 검증한다.
+        // 초대 대상 존재/차단 관계 검증은 트랜잭션 밖에서 먼저 끝낸다.
         chatUserValidationPort.validateGroupChatParticipants(requesterId, targetUserIds);
 
-        for (UUID targetUserId : targetUserIds) {
-            inviteParticipant(roomId, targetUserId);
-        }
+        inviteRegistrar.register(roomId, targetUserIds);
 
         log.info("Chat room invited. requesterId={}, roomId={}, invitedCount={}",
                 requesterId, roomId, targetUserIds.size());
-
         return ChatRoomInviteResult.of(roomId, targetUserIds);
-    }
-
-    private void inviteParticipant(UUID roomId, UUID targetUserId) {
-        Optional<ChatRoomParticipant> existing =
-                chatRoomParticipantPort.findByRoomIdAndUserId(roomId, targetUserId);
-
-        if (existing.isEmpty()) {
-            chatRoomParticipantPort.save(
-                    ChatRoomParticipant.join(roomId, targetUserId, ParticipantRole.MEMBER)
-            );
-            return;
-        }
-
-        ChatRoomParticipant participant = existing.get();
-        if (participant.getLeftAt() == null) {
-            // 이미 활성 참여자인 사용자는 재초대할 수 없다.
-            throw new ChatAlreadyParticipantException();
-        }
-        // 나간 사용자는 기존 row를 재사용해 재참여시킨다.
-        participant.reInvite(ParticipantRole.MEMBER);
-        chatRoomParticipantPort.save(participant);
     }
 
     private List<UUID> resolveTargetUserIds(UUID requesterId, List<UUID> targetUserIds) {

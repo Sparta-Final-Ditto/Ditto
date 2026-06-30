@@ -1,10 +1,10 @@
 package com.sparta.ditto.chat.application.room;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -14,7 +14,6 @@ import com.sparta.ditto.chat.application.room.dto.result.ChatRoomInviteResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
-import com.sparta.ditto.chat.domain.exception.ChatAlreadyParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatInviteForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatNotGroupRoomException;
@@ -31,15 +30,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 @DisplayName("ChatRoomInviteService 테스트")
 class ChatRoomInviteServiceTest {
 
     private static final UUID OWNER_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000001");
-    private static final UUID MEMBER_ID =
-            UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID TARGET_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID ROOM_ID =
@@ -48,6 +45,7 @@ class ChatRoomInviteServiceTest {
     private ChatRoomPort chatRoomPort;
     private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatUserValidationPort chatUserValidationPort;
+    private ChatRoomParticipantInviteRegistrar inviteRegistrar;
     private ChatRoomInviteService chatRoomInviteService;
 
     @BeforeEach
@@ -55,78 +53,39 @@ class ChatRoomInviteServiceTest {
         chatRoomPort = mock(ChatRoomPort.class);
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatUserValidationPort = mock(ChatUserValidationPort.class);
+        inviteRegistrar = mock(ChatRoomParticipantInviteRegistrar.class);
         chatRoomInviteService = new ChatRoomInviteService(
                 chatRoomPort,
                 chatRoomParticipantPort,
-                chatUserValidationPort
+                chatUserValidationPort,
+                inviteRegistrar
         );
     }
 
     @Test
-    @DisplayName("OWNER가 신규 사용자를 초대하면 MEMBER로 등록한다")
-    void invite_should_register_new_member() {
+    @DisplayName("OWNER 초대 시 외부 검증을 먼저 끝낸 뒤 registrar에 등록을 위임한다")
+    void invite_should_validate_then_delegate_registration() {
         // given
         givenActiveGroupRoom();
         givenOwnerRequester();
-        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, TARGET_ID))
-                .willReturn(Optional.empty());
 
         // when
         ChatRoomInviteResult result = chatRoomInviteService.invite(command(TARGET_ID));
 
         // then
-        assertThat(result.roomId()).isEqualTo(ROOM_ID);
-        assertThat(result.invitedUserIds()).containsExactly(TARGET_ID);
-        verify(chatUserValidationPort).validateGroupChatParticipants(OWNER_ID, List.of(TARGET_ID));
+        org.assertj.core.api.Assertions.assertThat(result.roomId()).isEqualTo(ROOM_ID);
+        org.assertj.core.api.Assertions.assertThat(result.invitedUserIds())
+                .containsExactly(TARGET_ID);
 
-        ArgumentCaptor<ChatRoomParticipant> captor = ArgumentCaptor.captor();
-        verify(chatRoomParticipantPort).save(captor.capture());
-        ChatRoomParticipant saved = captor.getValue();
-        assertThat(saved.getUserId()).isEqualTo(TARGET_ID);
-        assertThat(saved.getRole()).isEqualTo(ParticipantRole.MEMBER);
-        assertThat(saved.getLeftAt()).isNull();
+        // 외부 검증이 row 변경(registrar)보다 먼저 실행되어야 한다.
+        InOrder order = inOrder(chatUserValidationPort, inviteRegistrar);
+        order.verify(chatUserValidationPort)
+                .validateGroupChatParticipants(OWNER_ID, List.of(TARGET_ID));
+        order.verify(inviteRegistrar).register(ROOM_ID, List.of(TARGET_ID));
     }
 
     @Test
-    @DisplayName("나간 사용자를 재초대하면 기존 row를 재참여시킨다")
-    void invite_should_reinvite_left_participant() {
-        // given
-        givenActiveGroupRoom();
-        givenOwnerRequester();
-        ChatRoomParticipant leftParticipant =
-                ChatRoomParticipant.join(ROOM_ID, TARGET_ID, ParticipantRole.MEMBER);
-        leftParticipant.leave("msg-1");
-        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, TARGET_ID))
-                .willReturn(Optional.of(leftParticipant));
-
-        // when
-        chatRoomInviteService.invite(command(TARGET_ID));
-
-        // then
-        verify(chatRoomParticipantPort).save(leftParticipant);
-        assertThat(leftParticipant.getLeftAt()).isNull();
-        assertThat(leftParticipant.getRole()).isEqualTo(ParticipantRole.MEMBER);
-    }
-
-    @Test
-    @DisplayName("이미 활성 참여자인 사용자를 초대하면 예외가 발생한다")
-    void invite_should_reject_active_participant() {
-        // given
-        givenActiveGroupRoom();
-        givenOwnerRequester();
-        ChatRoomParticipant activeParticipant =
-                ChatRoomParticipant.join(ROOM_ID, TARGET_ID, ParticipantRole.MEMBER);
-        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, TARGET_ID))
-                .willReturn(Optional.of(activeParticipant));
-
-        // when & then
-        assertThatThrownBy(() -> chatRoomInviteService.invite(command(TARGET_ID)))
-                .isInstanceOf(ChatAlreadyParticipantException.class);
-        verify(chatRoomParticipantPort, never()).save(any());
-    }
-
-    @Test
-    @DisplayName("OWNER가 아닌 참여자는 초대할 수 없다")
+    @DisplayName("OWNER가 아닌 참여자는 초대할 수 없고 등록도 시도하지 않는다")
     void invite_should_reject_non_owner() {
         // given
         givenActiveGroupRoom();
@@ -139,6 +98,7 @@ class ChatRoomInviteServiceTest {
         assertThatThrownBy(() -> chatRoomInviteService.invite(command(TARGET_ID)))
                 .isInstanceOf(ChatInviteForbiddenException.class);
         verify(chatUserValidationPort, never()).validateGroupChatParticipants(any(), any());
+        verify(inviteRegistrar, never()).register(any(), any());
     }
 
     @Test
@@ -152,6 +112,7 @@ class ChatRoomInviteServiceTest {
         // when & then
         assertThatThrownBy(() -> chatRoomInviteService.invite(command(TARGET_ID)))
                 .isInstanceOf(ChatNotParticipantException.class);
+        verify(inviteRegistrar, never()).register(any(), any());
     }
 
     @Test
@@ -165,6 +126,7 @@ class ChatRoomInviteServiceTest {
         // when & then
         assertThatThrownBy(() -> chatRoomInviteService.invite(command(TARGET_ID)))
                 .isInstanceOf(ChatNotGroupRoomException.class);
+        verify(inviteRegistrar, never()).register(any(), any());
     }
 
     @Test
@@ -179,10 +141,11 @@ class ChatRoomInviteServiceTest {
         // when & then
         assertThatThrownBy(() -> chatRoomInviteService.invite(command(TARGET_ID)))
                 .isInstanceOf(ChatRoomInactiveException.class);
+        verify(inviteRegistrar, never()).register(any(), any());
     }
 
     @Test
-    @DisplayName("차단 관계인 사용자는 초대할 수 없다")
+    @DisplayName("차단 관계인 사용자는 초대할 수 없고 등록도 시도하지 않는다")
     void invite_should_reject_blocked_user() {
         // given
         givenActiveGroupRoom();
@@ -194,7 +157,7 @@ class ChatRoomInviteServiceTest {
         // when & then
         assertThatThrownBy(() -> chatRoomInviteService.invite(command(TARGET_ID)))
                 .isInstanceOf(ChatBlockedUserException.class);
-        verify(chatRoomParticipantPort, never()).save(any());
+        verify(inviteRegistrar, never()).register(any(), any());
     }
 
     private void givenActiveGroupRoom() {
