@@ -1,23 +1,30 @@
 package com.sparta.ditto.feed.application;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.feed.application.service.PostHardDeleteService;
 import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.Like;
+import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.entity.PostMedia;
 import com.sparta.ditto.feed.domain.entity.PostTag;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import com.sparta.ditto.feed.domain.type.Visibility;
+import com.sparta.ditto.feed.infrastructure.kafka.OutboxEventAdapter;
 import com.sparta.ditto.feed.infrastructure.persistence.CommentJpaRepository;
 import com.sparta.ditto.feed.infrastructure.persistence.CommentRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.LikeJpaRepository;
 import com.sparta.ditto.feed.infrastructure.persistence.LikeRepositoryImpl;
+import com.sparta.ditto.feed.infrastructure.persistence.OutboxEventJpaRepository;
+import com.sparta.ditto.feed.infrastructure.persistence.OutboxEventRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostJpaRepository;
 import com.sparta.ditto.feed.infrastructure.persistence.PostMediaJpaRepository;
 import com.sparta.ditto.feed.infrastructure.persistence.PostMediaRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostTagJpaRepository;
 import com.sparta.ditto.feed.infrastructure.persistence.PostTagRepositoryImpl;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,7 +66,9 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
     CommentRepositoryImpl.class,
     LikeRepositoryImpl.class,
     PostMediaRepositoryImpl.class,
-    PostTagRepositoryImpl.class
+    PostTagRepositoryImpl.class,
+    OutboxEventRepositoryImpl.class,
+    OutboxEventAdapter.class
 })
 class PostHardDeleteServiceTest {
 
@@ -96,11 +105,15 @@ class PostHardDeleteServiceTest {
     private PostMediaJpaRepository postMediaJpaRepository;
     @Autowired
     private PostTagJpaRepository postTagJpaRepository;
+    @Autowired
+    private OutboxEventJpaRepository outboxEventJpaRepository;
 
     private UUID savedPostId;
 
     @BeforeEach
     void setUp() {
+        outboxEventJpaRepository.deleteAll();
+
         Post post = new Post(
                 UUID.randomUUID(), "닉네임", "내용", "서울 강남구",
                 37.5, 127.0, Visibility.PUBLIC, true);
@@ -141,5 +154,31 @@ class PostHardDeleteServiceTest {
         // when & then — DataIntegrityViolationException 발생 없이 완료
         assertDoesNotThrow(() -> postHardDeleteService.purgePost(savedPostId));
         assertThat(postJpaRepository.existsById(savedPostId)).isFalse();
+    }
+
+    @Test
+    @DisplayName("purgePost 호출 시 POST_HARD_DELETED 이벤트가 1건 저장되며 payload에 postId·authorId가 포함됨")
+    void purgePost_POST_HARD_DELETED_이벤트_저장() throws Exception {
+        // given — soft delete된 상태 재현 (스케줄러는 soft-deleted post만 처리)
+        Post post = postJpaRepository.findById(savedPostId).orElseThrow();
+        UUID softDeletedBy = UUID.randomUUID();
+        post.delete(softDeletedBy);
+        postJpaRepository.save(post);
+
+        // when
+        postHardDeleteService.purgePost(savedPostId);
+
+        // then
+        List<OutboxEvent> events = outboxEventJpaRepository.findAll();
+        assertThat(events).hasSize(1);
+
+        OutboxEvent event = events.get(0);
+        assertThat(event.getEventType()).isEqualTo("POST_HARD_DELETED");
+        assertThat(event.getTopic()).isEqualTo("post-events");
+
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode payload = mapper.readTree(event.getPayload());
+        assertThat(payload.get("postId").asText()).isEqualTo(savedPostId.toString());
+        assertThat(payload.get("authorId").asText()).isEqualTo(post.getUserId().toString());
     }
 }
