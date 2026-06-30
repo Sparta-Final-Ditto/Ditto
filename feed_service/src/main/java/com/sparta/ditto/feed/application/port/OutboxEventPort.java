@@ -15,4 +15,6 @@ public interface OutboxEventPort {
     OutboxEvent buildPostCommented(Post post, Comment comment, UUID commenterId);
 
     OutboxEvent buildPostDeleted(Post post, UUID deletedBy);
+
+    OutboxEvent buildPostHardDeleted(Post post, UUID deletedBy);
 }

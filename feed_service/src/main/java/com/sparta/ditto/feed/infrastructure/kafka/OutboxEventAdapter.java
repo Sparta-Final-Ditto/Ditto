@@ -90,4 +90,23 @@ public class OutboxEventAdapter implements OutboxEventPort {
             throw new RuntimeException("POST_DELETED outbox payload 직렬화 실패", e);
         }
     }
+
+    @Override
+    public OutboxEvent buildPostHardDeleted(Post post, UUID deletedBy) {
+        record Payload(String postId, String authorId, String deletedBy, String occurredAt) {}
+
+        try {
+            String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
+                    post.getId().toString(),
+                    post.getUserId().toString(),
+                    // hard delete는 시스템(스케줄러)이 수행. 별도 시스템 UUID 상수 미정의이므로
+                    // soft delete 요청자(post.getDeletedBy())를 재사용한다.
+                    deletedBy != null ? deletedBy.toString() : null,
+                    Instant.now().toString()
+            ));
+            return new OutboxEvent("post-events", "POST_HARD_DELETED", post.getUserId(), payload);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("POST_HARD_DELETED outbox payload 직렬화 실패", e);
+        }
+    }
 }
