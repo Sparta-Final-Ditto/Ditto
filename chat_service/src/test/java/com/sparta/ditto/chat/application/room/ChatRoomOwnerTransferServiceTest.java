@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomOwnerTransferResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.domain.exception.ChatCannotTransferSelfException;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoleChangeForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatUnsupportedRoleChangeException;
@@ -109,6 +110,22 @@ class ChatRoomOwnerTransferServiceTest {
         assertThatThrownBy(() -> chatRoomOwnerTransferService.transferOwner(
                 OWNER_ID, ROOM_ID, TARGET_ID, ParticipantRole.MEMBER))
                 .isInstanceOf(ChatUnsupportedRoleChangeException.class);
+    }
+
+    @Test
+    @DisplayName("자기 자신에게는 권한을 위임할 수 없다")
+    void transfer_should_reject_self() {
+        // given
+        givenActiveGroupRoom();
+        ChatRoomParticipant owner =
+                ChatRoomParticipant.join(ROOM_ID, OWNER_ID, ParticipantRole.OWNER);
+        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, OWNER_ID))
+                .willReturn(Optional.of(owner));
+
+        // when & then
+        assertThatThrownBy(() -> chatRoomOwnerTransferService.transferOwner(
+                OWNER_ID, ROOM_ID, OWNER_ID, ParticipantRole.OWNER))
+                .isInstanceOf(ChatCannotTransferSelfException.class);
     }
 
     private void givenActiveGroupRoom() {

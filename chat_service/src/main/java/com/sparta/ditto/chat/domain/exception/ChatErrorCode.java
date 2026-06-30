@@ -27,7 +27,8 @@ public enum ChatErrorCode implements ErrorCode {
     CHAT_KICK_FORBIDDEN("CHAT-017", "참여자를 강퇴할 권한이 없습니다.", 403),
     CHAT_CANNOT_KICK_SELF("CHAT-018", "자기 자신은 강퇴할 수 없습니다.", 400),
     CHAT_ROLE_CHANGE_FORBIDDEN("CHAT-019", "참여자 권한을 변경할 권한이 없습니다.", 403),
-    CHAT_UNSUPPORTED_ROLE_CHANGE("CHAT-020", "지원하지 않는 권한 변경입니다.", 400);
+    CHAT_UNSUPPORTED_ROLE_CHANGE("CHAT-020", "지원하지 않는 권한 변경입니다.", 400),
+    CHAT_CANNOT_TRANSFER_SELF("CHAT-021", "자기 자신에게 권한을 위임할 수 없습니다.", 400);
 
     private final String code;
     private final String message;

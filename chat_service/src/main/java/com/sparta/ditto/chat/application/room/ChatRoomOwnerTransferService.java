@@ -3,6 +3,7 @@ package com.sparta.ditto.chat.application.room;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomOwnerTransferResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.domain.exception.ChatCannotTransferSelfException;
 import com.sparta.ditto.chat.domain.exception.ChatNotGroupRoomException;
 import com.sparta.ditto.chat.domain.exception.ChatNotParticipantException;
 import com.sparta.ditto.chat.domain.exception.ChatRoleChangeForbiddenException;
@@ -41,7 +42,7 @@ public class ChatRoomOwnerTransferService {
             throw new ChatUnsupportedRoleChangeException();
         }
         if (requesterId.equals(targetUserId)) {
-            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+            throw new ChatCannotTransferSelfException();
         }
 
         ChatRoom chatRoom = chatRoomPort.findById(roomId)
