@@ -116,9 +116,8 @@ public class ChatMessageSendService {
             chatMessageCommitService.commitMetadataAndRegisterNotification(
                     command.roomId(), saved);
         } catch (RuntimeException ex) {
-            // MongoDB 저장은 성공했으나 PostgreSQL lastMessage 갱신이 실패한 갭.
-            // 메시지 본문은 MongoDB에 남아 데이터 유실은 아니고, 방 목록 lastMessage 미리보기만 어긋난다.
-            // 보정 잡(현재 미구현) 대상이므로 관측 가능하도록 명시적으로 남긴다. (튜터 피드백 ①)
+            // MongoDB 저장 성공 후 PostgreSQL lastMessage 갱신이 실패한 갭.
+            // 본문은 MongoDB에 남아 유실은 아니고 미리보기만 어긋남 — 보정 대상이라 관측용으로 남긴다.
             log.error("메시지 저장 후 메타갱신/알림 예약 실패 — lastMessage 갭 발생(보정 대상). "
                             + "roomId={}, senderId={}, messageId={}",
                     command.roomId(), command.senderId(), saved.messageId(), ex);
@@ -187,8 +186,7 @@ public class ChatMessageSendService {
         }
     }
 
-    // 성능 관측(observability)용 구간 로그. log.debug라 평소(INFO 레벨)엔 미출력되어 운영에 무해하고,
-    // 성능 분석/장애 시 logging.level.com...ChatMessageSendService=DEBUG로 켜서 구간별 소요를 본다.
+    // 성능 관측용 구간 로그(debug). 평소엔 미출력되고, 분석/장애 시 logging.level=DEBUG로 활성화한다.
     private void logSendPerformance(
             ChatMessageSendCommand command,
             String messageId,

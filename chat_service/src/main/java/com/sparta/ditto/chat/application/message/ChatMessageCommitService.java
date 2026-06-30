@@ -30,10 +30,9 @@ public class ChatMessageCommitService {
     private final ChatRoomMetadataService chatRoomMetadataService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
-    // 알림 발행 토글. false면 알림 이벤트 발행을 생략한다. 기본값 true(평소 정상 발행).
-    // 용도: ① 알림 경로 장애 시 일시 차단(메시지 전송은 계속 동작) ② 성능 측정 시 알림 비용 제외.
+    // 알림 발행 토글(기본 on). 알림 경로 장애 시 차단 / 성능 측정 시 알림 제외용.
     @Value("${chat.notification.dispatch-enabled:true}")
-    private boolean notificationDispatchEnabled = true;
+    private boolean notificationDispatchEnabled;
 
     @Transactional
     public void commitMetadataAndRegisterNotification(UUID roomId, SentMessage saved) {

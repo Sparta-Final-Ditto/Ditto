@@ -13,13 +13,10 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
-    // STOMP 채널 처리 스레드풀/큐 설정.
-    // 기본값은 CPU 코어 기반이라 로컬 Docker에서 작게 잡혀 동시 부하 시 메시지 처리가 밀린다.
-    // 측정 근거(2026-06-30, ack-only saturation): inbound/outbound를 16/64 → 32/128로 올리니
-    //   VU200 ACK p95가 약 4.1s → 1.8s대로 개선됐다(약 2배). 고부하 병목은 DB 커넥션 풀 슬롯이
-    //   아니라(풀 20→40은 무효) 메시지 처리 스레드 수였다. 그래서 32/128로 확정.
-    // outbound 큐가 더 큰 이유: 메시지 1건이 방 인원수만큼 broadcast되어 나가는 양이 더 많다.
-    // TODO: 배포 시 application.yml로 분리하고 AWS 등 실제 환경에서 재측정해 환경별로 튜닝한다.
+    // STOMP 채널 처리 스레드풀. 기본값(CPU 코어 기반)은 동시 부하 시 처리가 밀려 명시 지정.
+    // 고부하 병목이 처리 스레드 수여서 부하 측정 결과 상향했다.
+    // outbound 큐가 더 큰 건 1건이 방 인원수만큼 broadcast되기 때문.
+    // TODO: 배포 시 application.yml로 분리해 환경별 튜닝.
     private static final int INBOUND_CORE_POOL_SIZE = 32;
     private static final int INBOUND_MAX_POOL_SIZE = 128;
     private static final int INBOUND_QUEUE_CAPACITY = 1000;
