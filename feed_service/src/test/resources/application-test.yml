@@ -40,21 +40,19 @@ app:
     timeout-ms: 1000
   user-service:
     base-url: http://localhost:8084
-
-outbox:
-  publish:
-    interval-ms: 5000
-    batch-size: 100
-  monitor:
-    interval-ms: 60000
-  replay:
-    interval-ms: 3600000
-    batch-size: 100
-
-post-hard-delete:
-  retention-days: 30
-  chunk-size: 100
-  cron: "-"
+  outbox:
+    publish:
+      interval-ms: 5000
+      batch-size: 100
+    monitor:
+      interval-ms: 60000
+    replay:
+      interval-ms: 3600000
+      batch-size: 100
+  post-hard-delete:
+    retention-days: 30
+    chunk-size: 100
+    cron: "-"
 
 resilience4j:
   circuitbreaker:
