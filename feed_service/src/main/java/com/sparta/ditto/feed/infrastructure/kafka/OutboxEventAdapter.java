@@ -56,7 +56,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
 
     @Override
     public OutboxEvent buildPostHardDeleted(Post post, UUID deletedBy) {
-        record Payload(String postId, String authorId, String deletedBy, String occurredAt) {}
+        record Payload(String postId, String authorId, String deletedBy) {}
 
         try {
             String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
@@ -64,8 +64,7 @@ public class OutboxEventAdapter implements OutboxEventPort {
                     post.getUserId().toString(),
                     // hard delete는 시스템(스케줄러)이 수행. 별도 시스템 UUID 상수 미정의이므로
                     // soft delete 요청자(post.getDeletedBy())를 재사용한다.
-                    deletedBy != null ? deletedBy.toString() : null,
-                    Instant.now().toString()
+                    deletedBy != null ? deletedBy.toString() : null
             ));
             return new OutboxEvent("post-events", "POST_HARD_DELETED", post.getUserId(), payload);
         } catch (JsonProcessingException e) {
@@ -75,14 +74,13 @@ public class OutboxEventAdapter implements OutboxEventPort {
 
     @Override
     public OutboxEvent buildPostRestored(Post post, UUID restoredBy) {
-        record Payload(String postId, String authorId, String restoredBy, String occurredAt) {}
+        record Payload(String postId, String authorId, String restoredBy) {}
 
         try {
             String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
                     post.getId().toString(),
                     post.getUserId().toString(),
-                    restoredBy.toString(),
-                    Instant.now().toString()
+                    restoredBy.toString()
             ));
             return new OutboxEvent("post-events", "POST_RESTORED", post.getUserId(), payload);
         } catch (JsonProcessingException e) {
