@@ -5,7 +5,8 @@ public enum MessageType {
     IMAGE(false),
     SYSTEM_JOIN(true),
     SYSTEM_LEAVE(true),
-    SYSTEM_INVITE(true);
+    SYSTEM_INVITE(true),
+    SYSTEM_KICK(true);
 
     private final boolean system;
 

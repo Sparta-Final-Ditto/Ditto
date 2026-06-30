@@ -23,7 +23,11 @@ public enum ChatErrorCode implements ErrorCode {
     CHAT_USER_VALIDATION_FAILED("CHAT-013", "채팅 사용자 검증에 실패했습니다.", 500),
     CHAT_NOT_GROUP_ROOM("CHAT-014", "그룹 채팅방이 아닙니다.", 400),
     CHAT_INVITE_FORBIDDEN("CHAT-015", "채팅방 초대 권한이 없습니다.", 403),
-    CHAT_ALREADY_PARTICIPANT("CHAT-016", "이미 채팅방에 참여 중인 사용자입니다.", 409);
+    CHAT_ALREADY_PARTICIPANT("CHAT-016", "이미 채팅방에 참여 중인 사용자입니다.", 409),
+    CHAT_KICK_FORBIDDEN("CHAT-017", "참여자를 강퇴할 권한이 없습니다.", 403),
+    CHAT_CANNOT_KICK_SELF("CHAT-018", "자기 자신은 강퇴할 수 없습니다.", 400),
+    CHAT_ROLE_CHANGE_FORBIDDEN("CHAT-019", "참여자 권한을 변경할 권한이 없습니다.", 403),
+    CHAT_UNSUPPORTED_ROLE_CHANGE("CHAT-020", "지원하지 않는 권한 변경입니다.", 400);
 
     private final String code;
     private final String message;
