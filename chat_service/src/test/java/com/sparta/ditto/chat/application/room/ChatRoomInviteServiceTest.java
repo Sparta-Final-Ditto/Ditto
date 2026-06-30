@@ -47,6 +47,7 @@ class ChatRoomInviteServiceTest {
     private ChatUserValidationPort chatUserValidationPort;
     private ChatRoomParticipantInviteRegistrar inviteRegistrar;
     private ChatRoomInviteService chatRoomInviteService;
+    private ChatRoom activeRoom;
 
     @BeforeEach
     void setUp() {
@@ -81,7 +82,7 @@ class ChatRoomInviteServiceTest {
         InOrder order = inOrder(chatUserValidationPort, inviteRegistrar);
         order.verify(chatUserValidationPort)
                 .validateGroupChatParticipants(OWNER_ID, List.of(TARGET_ID));
-        order.verify(inviteRegistrar).register(ROOM_ID, List.of(TARGET_ID));
+        order.verify(inviteRegistrar).register(activeRoom, List.of(TARGET_ID));
     }
 
     @Test
@@ -161,10 +162,10 @@ class ChatRoomInviteServiceTest {
     }
 
     private void givenActiveGroupRoom() {
-        ChatRoom chatRoom = mock(ChatRoom.class);
-        given(chatRoom.getRoomType()).willReturn(RoomType.GROUP);
-        given(chatRoom.getStatus()).willReturn(RoomStatus.ACTIVE);
-        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        activeRoom = mock(ChatRoom.class);
+        given(activeRoom.getRoomType()).willReturn(RoomType.GROUP);
+        given(activeRoom.getStatus()).willReturn(RoomStatus.ACTIVE);
+        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(activeRoom));
     }
 
     private void givenOwnerRequester() {

@@ -113,6 +113,9 @@ public class ChatRoomParticipant {
         this.joinedAt = Instant.now();
         this.hidden = false;
         this.notificationEnabled = true;
+        this.lastReadMessageId = null;
+        this.lastReadAt = null;
+        this.lastVisibleMessageId = null;
     }
 
     public void updateLastRead(String lastReadMessageId, Instant lastReadAt) {

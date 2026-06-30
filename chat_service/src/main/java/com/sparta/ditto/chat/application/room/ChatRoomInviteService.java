@@ -63,7 +63,7 @@ public class ChatRoomInviteService {
         // 초대 대상 존재/차단 관계 검증은 트랜잭션 밖에서 먼저 끝낸다.
         chatUserValidationPort.validateGroupChatParticipants(requesterId, targetUserIds);
 
-        inviteRegistrar.register(roomId, targetUserIds);
+        inviteRegistrar.register(chatRoom, targetUserIds);
 
         log.info("Chat room invited. requesterId={}, roomId={}, invitedCount={}",
                 requesterId, roomId, targetUserIds.size());
