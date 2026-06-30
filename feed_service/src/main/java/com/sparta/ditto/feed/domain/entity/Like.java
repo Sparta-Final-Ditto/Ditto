@@ -46,6 +46,9 @@ public class Like extends BaseEntity {
     @Column(name = "user_nickname", nullable = false, updatable = false, length = 100)
     private String userNickname;
 
+    @Column(nullable = false)
+    private boolean deletedByPostDeletion = false;
+
     public Like(UUID postId, UUID userId, String userNickname) {
         this.postId = postId;
         this.userId = userId;

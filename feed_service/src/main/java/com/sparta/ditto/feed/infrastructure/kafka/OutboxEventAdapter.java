@@ -109,4 +109,21 @@ public class OutboxEventAdapter implements OutboxEventPort {
             throw new RuntimeException("POST_HARD_DELETED outbox payload 직렬화 실패", e);
         }
     }
+
+    @Override
+    public OutboxEvent buildPostRestored(Post post, UUID restoredBy) {
+        record Payload(String postId, String authorId, String restoredBy, String occurredAt) {}
+
+        try {
+            String payload = OBJECT_MAPPER.writeValueAsString(new Payload(
+                    post.getId().toString(),
+                    post.getUserId().toString(),
+                    restoredBy.toString(),
+                    Instant.now().toString()
+            ));
+            return new OutboxEvent("post-events", "POST_RESTORED", post.getUserId(), payload);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("POST_RESTORED outbox payload 직렬화 실패", e);
+        }
+    }
 }
