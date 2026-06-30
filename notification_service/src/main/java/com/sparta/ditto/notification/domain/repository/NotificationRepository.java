@@ -3,9 +3,7 @@ package com.sparta.ditto.notification.domain.repository;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 public interface NotificationRepository {
@@ -13,5 +11,5 @@ public interface NotificationRepository {
     Optional<Notification> findByIdAndReceiverId(UUID id, UUID receiverId);
     List<Notification> findNotificationsWithCursor(UUID receiverId, Instant cursorCreatedAt, UUID cursorId, int limit);
     long countUnreadByReceiverId(UUID receiverId);
-    Map<String, Long> countUnreadChatByRoomIds(UUID receiverId, Set<String> roomIds);
+    List<Notification> findUnreadChatByReceiverId(UUID receiverId);
 }

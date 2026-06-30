@@ -21,9 +21,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -166,26 +164,24 @@ class NotificationRepositoryTest {
     }
 
     @Test
-    @DisplayName("roomId별 미읽음 채팅 알림 수를 반환한다")
-    void countUnreadChatByRoomIds_방별미읽음수집계() {
+    @DisplayName("본인의 미읽음 채팅 알림만 반환한다 (읽음·타인·비채팅 제외)")
+    void findUnreadChatByReceiverId_미읽음채팅알림반환() {
         // given
         UUID receiverId = UUID.randomUUID();
-        String room1 = "{\"roomId\":\"room1\",\"senderNickname\":\"A\",\"senderProfileImageUrl\":null}";
-        String room2 = "{\"roomId\":\"room2\",\"senderNickname\":\"B\",\"senderProfileImageUrl\":null}";
+        String chatMeta = "{\"roomId\":\"room1\",\"senderNickname\":\"A\",\"senderProfileImageUrl\":null}";
 
-        createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, room1);
-        createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, room1);
-        createAndSave(receiverId, NotificationType.CHAT_MESSAGE, true, room1);
-        createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, room2);
-        createAndSave(UUID.randomUUID(), NotificationType.CHAT_MESSAGE, false, room1);
+        Notification unread1 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification unread2 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        createAndSave(receiverId, NotificationType.CHAT_MESSAGE, true, chatMeta);       // 읽음 제외
+        createAndSave(receiverId, NotificationType.LIKE, false, null);                  // 비채팅 제외
+        createAndSave(UUID.randomUUID(), NotificationType.CHAT_MESSAGE, false, chatMeta); // 타인 제외
 
         // when
-        Map<String, Long> result = notificationRepository.countUnreadChatByRoomIds(
-                receiverId, Set.of("room1", "room2", "room3"));
+        List<Notification> result = notificationRepository.findUnreadChatByReceiverId(receiverId);
 
         // then
-        assertThat(result.getOrDefault("room1", 0L)).isEqualTo(2L);
-        assertThat(result.getOrDefault("room2", 0L)).isEqualTo(1L);
-        assertThat(result.getOrDefault("room3", 0L)).isEqualTo(0L);
+        assertThat(result).hasSize(2);
+        assertThat(result).extracting(Notification::getId)
+                .containsExactlyInAnyOrder(unread1.getId(), unread2.getId());
     }
 }
