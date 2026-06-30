@@ -18,5 +18,7 @@ public interface ChatRoomParticipantPort {
 
     List<ChatRoomParticipant> findVisibleActiveParticipantsByUserId(UUID userId);
 
+    ChatRoomParticipant save(ChatRoomParticipant participant);
+
     void saveAll(Collection<ChatRoomParticipant> participants);
 }
