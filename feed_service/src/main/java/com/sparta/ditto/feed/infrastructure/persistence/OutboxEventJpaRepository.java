@@ -20,5 +20,8 @@ public interface OutboxEventJpaRepository extends JpaRepository<OutboxEvent, UUI
     @Query("SELECT e FROM OutboxEvent e WHERE e.status = :status ORDER BY e.createdAt")
     List<OutboxEvent> findPendingForUpdate(@Param("status") OutboxStatus status, Pageable pageable);
 
+    @Query("SELECT e FROM OutboxEvent e WHERE e.status = :status ORDER BY e.createdAt")
+    List<OutboxEvent> findByStatus(@Param("status") OutboxStatus status, Pageable pageable);
+
     long countByStatus(OutboxStatus status);
 }

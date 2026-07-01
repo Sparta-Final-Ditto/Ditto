@@ -59,4 +59,52 @@ class OutboxEventTest {
         assertThat(event.getStatus()).isEqualTo(OutboxStatus.FAILED);
         assertThat(event.getFailedAt()).isNotNull();
     }
+
+    @Test
+    @DisplayName("incrementRetryCount - replayCount가 MAX(3) 이상이면 3회 실패 시 DEAD로 전환")
+    void incrementRetryCount_replayCountMax_3회실패_DEAD() {
+        // given - 3회 replay 사이클 소진: FAILED→PENDING을 3번 반복
+        OutboxEvent event = new OutboxEvent("topic", "eventType", AGGREGATE_ID, "{}");
+        for (int i = 0; i < 3; i++) {
+            event.incrementRetryCount();
+            event.incrementRetryCount();
+            event.incrementRetryCount();
+            event.resetToPending();
+        }
+        // replayCount=3, status=PENDING, retryCount=0
+
+        // when - 4번째 실패 사이클
+        event.incrementRetryCount();
+        event.incrementRetryCount();
+        event.incrementRetryCount();
+
+        // then
+        assertThat(event.getStatus()).isEqualTo(OutboxStatus.DEAD);
+        assertThat(event.getReplayCount()).isEqualTo(3);
+        assertThat(event.getFailedAt()).isNotNull();
+    }
+
+    @Test
+    @DisplayName("resetToPending - DEAD 상태에서는 상태·replayCount 변화 없음")
+    void resetToPending_DEAD_상태에서_변화없음() {
+        // given - DEAD 상태 생성
+        OutboxEvent event = new OutboxEvent("topic", "eventType", AGGREGATE_ID, "{}");
+        for (int i = 0; i < 3; i++) {
+            event.incrementRetryCount();
+            event.incrementRetryCount();
+            event.incrementRetryCount();
+            event.resetToPending();
+        }
+        event.incrementRetryCount();
+        event.incrementRetryCount();
+        event.incrementRetryCount();
+        assertThat(event.getStatus()).isEqualTo(OutboxStatus.DEAD);
+
+        // when
+        event.resetToPending();
+
+        // then - no-op
+        assertThat(event.getStatus()).isEqualTo(OutboxStatus.DEAD);
+        assertThat(event.getReplayCount()).isEqualTo(3);
+    }
 }

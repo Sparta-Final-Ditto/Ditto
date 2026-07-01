@@ -2,7 +2,6 @@ package com.sparta.ditto.feed.infrastructure.kafka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.ditto.feed.domain.entity.Comment;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.type.Visibility;
@@ -23,7 +22,6 @@ class OutboxEventAdapterTest {
     private final UUID postId = UUID.randomUUID();
     private final UUID userId = UUID.randomUUID();
     private final UUID ownerId = UUID.randomUUID();
-    private final UUID commentId = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
@@ -35,45 +33,6 @@ class OutboxEventAdapterTest {
                 37.5563, 127.0374, Visibility.PUBLIC, true);
         ReflectionTestUtils.setField(post, "id", postId);
         return post;
-    }
-
-    private Comment createComment(UUID authorId) {
-        Comment comment = new Comment(postId, authorId, "댓글 내용");
-        ReflectionTestUtils.setField(comment, "id", commentId);
-        return comment;
-    }
-
-    @Test
-    @DisplayName("buildPostLiked - topic, eventType, PENDING 상태, aggregateId=작성자ID 검증")
-    void buildPostLiked_topic_eventType_상태_검증() {
-        // given
-        Post post = createPost(ownerId);
-
-        // when
-        OutboxEvent event = adapter.buildPostLiked(post, userId);
-
-        // then
-        assertThat(event.getTopic()).isEqualTo("post-events");
-        assertThat(event.getEventType()).isEqualTo("POST_LIKED");
-        assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
-        assertThat(event.getAggregateId()).isEqualTo(ownerId);
-    }
-
-    @Test
-    @DisplayName("buildPostLiked - payload 필드(postId, userId, ownerId, likedAt) 검증")
-    void buildPostLiked_payload_필드_검증() throws Exception {
-        // given
-        Post post = createPost(ownerId);
-
-        // when
-        OutboxEvent event = adapter.buildPostLiked(post, userId);
-        JsonNode payload = objectMapper.readTree(event.getPayload());
-
-        // then
-        assertThat(payload.get("postId").asText()).isEqualTo(postId.toString());
-        assertThat(payload.get("userId").asText()).isEqualTo(userId.toString());
-        assertThat(payload.get("ownerId").asText()).isEqualTo(ownerId.toString());
-        assertThat(payload.get("likedAt").asText()).isNotBlank();
     }
 
     @Test
@@ -110,42 +69,6 @@ class OutboxEventAdapterTest {
         assertThat(payload.get("neighborhood").asText()).isEqualTo("서울 성동구");
         assertThat(payload.get("tags").get(0).asText()).isEqualTo("#러닝");
         assertThat(payload.get("tags").get(1).asText()).isEqualTo("#새벽");
-    }
-
-    @Test
-    @DisplayName("buildPostCommented - topic, eventType, PENDING 상태, aggregateId=작성자ID 검증")
-    void buildPostCommented_topic_eventType_상태_검증() {
-        // given
-        Post post = createPost(ownerId);
-        Comment comment = createComment(userId);
-
-        // when
-        OutboxEvent event = adapter.buildPostCommented(post, comment, userId);
-
-        // then
-        assertThat(event.getTopic()).isEqualTo("post-events");
-        assertThat(event.getEventType()).isEqualTo("POST_COMMENTED");
-        assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
-        assertThat(event.getAggregateId()).isEqualTo(ownerId);
-    }
-
-    @Test
-    @DisplayName("buildPostCommented - payload 필드(postId, commentId, userId, ownerId, commentedAt) 검증")
-    void buildPostCommented_payload_필드_검증() throws Exception {
-        // given
-        Post post = createPost(ownerId);
-        Comment comment = createComment(userId);
-
-        // when
-        OutboxEvent event = adapter.buildPostCommented(post, comment, userId);
-        JsonNode payload = objectMapper.readTree(event.getPayload());
-
-        // then
-        assertThat(payload.get("postId").asText()).isEqualTo(postId.toString());
-        assertThat(payload.get("commentId").asText()).isEqualTo(commentId.toString());
-        assertThat(payload.get("userId").asText()).isEqualTo(userId.toString());
-        assertThat(payload.get("ownerId").asText()).isEqualTo(ownerId.toString());
-        assertThat(payload.get("commentedAt").asText()).isNotBlank();
     }
 
     @Test

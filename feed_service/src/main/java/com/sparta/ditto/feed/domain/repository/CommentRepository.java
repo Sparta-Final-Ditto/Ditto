@@ -19,4 +19,8 @@ public interface CommentRepository {
     List<Comment> findByPostIdWithCursor(UUID postId, Instant cursorAt, UUID cursorId, int limit);
 
     List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId);
+
+    void hardDeleteAllByPostId(UUID postId);
+
+    void restoreAllByPostId(UUID postId);
 }
