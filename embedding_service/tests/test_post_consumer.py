@@ -68,7 +68,6 @@ def _make_restored_message(
             "postId": post_id or str(uuid.uuid4()),
             "authorId": author_id or str(uuid.uuid4()),
             "restoredBy": str(uuid.uuid4()),
-            "occurredAt": "2026-06-25T00:00:00Z",
         },
     }
 
@@ -85,7 +84,6 @@ def _make_hard_deleted_message(
             "postId": post_id or str(uuid.uuid4()),
             "authorId": author_id or str(uuid.uuid4()),
             "deletedBy": str(uuid.uuid4()),
-            "occurredAt": "2026-06-25T00:00:00Z",
         },
     }
 
