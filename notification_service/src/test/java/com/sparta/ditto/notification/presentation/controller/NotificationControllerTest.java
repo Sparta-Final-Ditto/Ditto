@@ -80,7 +80,7 @@ class NotificationControllerTest {
         Instant now = Instant.now();
 
         NotificationItemResult likeItem = new NotificationItemResult(
-                likeNotifId, NotificationType.LIKE, actorId, TargetType.POST,
+                likeNotifId, NotificationType.LIKE, actorId, TargetType.LIKE,
                 "post-123", "A님이 좋아요를 눌렀습니다.", false,
                 "{\"postId\":\"post-123\"}", now, null
         );

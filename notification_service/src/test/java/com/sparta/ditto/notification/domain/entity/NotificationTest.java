@@ -25,7 +25,7 @@ class NotificationTest {
                 RECEIVER_ID,
                 ACTOR_ID,
                 NotificationType.LIKE,
-                TargetType.POST,
+                TargetType.LIKE,
                 TARGET_ID,
                 MESSAGE,
                 META_DATA
@@ -35,7 +35,7 @@ class NotificationTest {
         assertThat(notification.getReceiverId()).isEqualTo(RECEIVER_ID);
         assertThat(notification.getActorId()).isEqualTo(ACTOR_ID);
         assertThat(notification.getType()).isEqualTo(NotificationType.LIKE);
-        assertThat(notification.getTargetType()).isEqualTo(TargetType.POST);
+        assertThat(notification.getTargetType()).isEqualTo(TargetType.LIKE);
         assertThat(notification.getTargetId()).isEqualTo(TARGET_ID);
         assertThat(notification.getMessage()).isEqualTo(MESSAGE);
         assertThat(notification.getMetaData()).isEqualTo(META_DATA);
@@ -49,7 +49,7 @@ class NotificationTest {
                 RECEIVER_ID,
                 ACTOR_ID,
                 NotificationType.LIKE,
-                TargetType.POST,
+                TargetType.LIKE,
                 TARGET_ID,
                 MESSAGE,
                 META_DATA
@@ -67,7 +67,7 @@ class NotificationTest {
                 RECEIVER_ID,
                 ACTOR_ID,
                 NotificationType.LIKE,
-                TargetType.POST,
+                TargetType.LIKE,
                 TARGET_ID,
                 MESSAGE,
                 META_DATA
@@ -88,7 +88,7 @@ class NotificationTest {
                 RECEIVER_ID,
                 ACTOR_ID,
                 NotificationType.COMMENT,
-                TargetType.POST,
+                TargetType.LIKE,
                 TARGET_ID,
                 MESSAGE,
                 META_DATA

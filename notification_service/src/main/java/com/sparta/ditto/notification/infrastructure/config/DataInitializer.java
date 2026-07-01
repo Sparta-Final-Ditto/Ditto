@@ -31,7 +31,7 @@ public class DataInitializer implements CommandLineRunner {
         // LIKE 알림 (미읽음) — roomUnreadCount 없음
         notificationRepository.save(Notification.create(
                 RECEIVER_ID, ACTOR_A,
-                NotificationType.LIKE, TargetType.POST,
+                NotificationType.LIKE, TargetType.LIKE,
                 "post-001",
                 "러너님이 좋아요를 눌렀습니다.",
                 "{\"postId\":\"post-001\"}"
@@ -40,7 +40,7 @@ public class DataInitializer implements CommandLineRunner {
         // COMMENT 알림 (미읽음) — roomUnreadCount 없음
         Notification comment = Notification.create(
                 RECEIVER_ID, ACTOR_B,
-                NotificationType.COMMENT, TargetType.POST,
+                NotificationType.COMMENT, TargetType.LIKE,
                 "post-001",
                 "주원님이 댓글을 남겼습니다.",
                 "{\"postId\":\"post-001\"}"
@@ -61,7 +61,7 @@ public class DataInitializer implements CommandLineRunner {
         // 이미 읽은 알림 — unreadCount에 미포함
         Notification read = Notification.create(
                 RECEIVER_ID, ACTOR_B,
-                NotificationType.LIKE, TargetType.POST,
+                NotificationType.LIKE, TargetType.LIKE,
                 "post-002",
                 "주원님이 좋아요를 눌렀습니다.",
                 "{\"postId\":\"post-002\"}"

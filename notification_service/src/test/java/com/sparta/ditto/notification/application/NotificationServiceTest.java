@@ -51,7 +51,7 @@ class NotificationServiceTest {
         when(n.getType()).thenReturn(type);
         when(n.getActorId()).thenReturn(UUID.randomUUID());
         when(n.getTargetType()).thenReturn(
-                type == NotificationType.CHAT_MESSAGE ? TargetType.CHAT_MESSAGE : TargetType.POST);
+                type == NotificationType.CHAT_MESSAGE ? TargetType.CHAT_MESSAGE : TargetType.LIKE);
         when(n.getTargetId()).thenReturn("target");
         when(n.getMessage()).thenReturn("message");
         when(n.isRead()).thenReturn(false);
@@ -250,11 +250,11 @@ class NotificationServiceTest {
 
     static Stream<Arguments> readStates() {
         Notification unread = Notification.create(
-                USER_ID, UUID.randomUUID(), NotificationType.LIKE, TargetType.POST,
+                USER_ID, UUID.randomUUID(), NotificationType.LIKE, TargetType.LIKE,
                 "target-1", "message", null);
 
         Notification alreadyRead = Notification.create(
-                USER_ID, UUID.randomUUID(), NotificationType.LIKE, TargetType.POST,
+                USER_ID, UUID.randomUUID(), NotificationType.LIKE, TargetType.LIKE,
                 "target-2", "message", null);
         alreadyRead.read();
 
