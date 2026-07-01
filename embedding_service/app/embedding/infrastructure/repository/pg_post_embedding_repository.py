@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, date
 from uuid import UUID
-from sqlalchemy import select, func, update, distinct
+from sqlalchemy import select, func, update, delete, distinct
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserPostEmbedding
@@ -116,6 +116,36 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
             )
         result = await self.db.execute(stmt)
         return [(row[0], row[1]) for row in result.all()]
+
+    async def find_all_done_for_monthly_batch(
+        self, user_id: UUID
+    ) -> list[tuple[UUID, list[float], datetime]]:
+        result = await self.db.execute(
+            select(UserPostEmbedding.post_id, UserPostEmbedding.vector, UserPostEmbedding.embedded_at)
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                UserPostEmbedding.embedding_status == "DONE",
+                UserPostEmbedding.vector.is_not(None),
+            )
+            .order_by(UserPostEmbedding.embedded_at.asc())
+        )
+        return [(row[0], row[1], row[2]) for row in result.all()]
+
+    async def count_done_by_user_id(self, user_id: UUID) -> int:
+        result = await self.db.execute(
+            select(func.count())
+            .where(
+                UserPostEmbedding.user_id == user_id,
+                UserPostEmbedding.embedding_status == "DONE",
+            )
+        )
+        return result.scalar_one()
+
+    async def delete_by_post_id(self, post_id: UUID) -> None:
+        await self.db.execute(
+            delete(UserPostEmbedding).where(UserPostEmbedding.post_id == post_id)
+        )
+        await self.db.commit()
 
     async def reset_failed_to_done(self) -> int:
         result = await self.db.execute(
