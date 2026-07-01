@@ -77,6 +77,9 @@ public class ChatRoomParticipant {
     @Column(name = "notification_enabled", nullable = false)
     private boolean notificationEnabled;
 
+    @Column(name = "unread_count", nullable = false)
+    private long unreadCount;
+
     private ChatRoomParticipant(UUID roomId, UUID userId, ParticipantRole role) {
         if (roomId == null || userId == null || role == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
@@ -86,6 +89,7 @@ public class ChatRoomParticipant {
         this.role = role;
         this.hidden = false;
         this.notificationEnabled = true;
+        this.unreadCount = 0L;
     }
 
     public static ChatRoomParticipant join(UUID roomId, UUID userId, ParticipantRole role) {
@@ -95,11 +99,13 @@ public class ChatRoomParticipant {
     public void leave(String lastVisibleMessageId) {
         this.leftAt = Instant.now();
         this.lastVisibleMessageId = lastVisibleMessageId;
+        this.unreadCount = 0L;
     }
 
     public void rejoin() {
         this.leftAt = null;
         this.hidden = false;
+        this.unreadCount = 0L;
     }
 
     // 그룹방에서 나간 사용자를 재초대할 때 기존 row를 재사용한다.
@@ -116,6 +122,7 @@ public class ChatRoomParticipant {
         this.lastReadMessageId = null;
         this.lastReadAt = null;
         this.lastVisibleMessageId = null;
+        this.unreadCount = 0L;
     }
 
     public void updateLastRead(String lastReadMessageId, Instant lastReadAt) {
@@ -124,6 +131,7 @@ public class ChatRoomParticipant {
         }
         this.lastReadMessageId = lastReadMessageId;
         this.lastReadAt = lastReadAt;
+        this.unreadCount = 0L;
     }
 
     public void hide() {
@@ -142,6 +150,9 @@ public class ChatRoomParticipant {
     void prePersist() {
         if (this.joinedAt == null) {
             this.joinedAt = Instant.now();
+        }
+        if (this.unreadCount < 0) {
+            this.unreadCount = 0L;
         }
     }
 }

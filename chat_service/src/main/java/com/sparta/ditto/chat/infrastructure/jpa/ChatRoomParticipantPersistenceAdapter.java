@@ -2,6 +2,7 @@ package com.sparta.ditto.chat.infrastructure.jpa;
 
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -53,5 +54,25 @@ public class ChatRoomParticipantPersistenceAdapter implements ChatRoomParticipan
     @Override
     public void saveAll(Collection<ChatRoomParticipant> participants) {
         chatRoomParticipantRepository.saveAll(participants);
+    }
+
+    @Override
+    public int incrementUnreadCountForActiveParticipantsExceptSender(
+            UUID roomId,
+            UUID senderId
+    ) {
+        return chatRoomParticipantRepository
+                .incrementUnreadCountForActiveParticipantsExceptSender(roomId, senderId);
+    }
+
+    @Override
+    public int markReadAndResetUnread(
+            UUID roomId,
+            UUID userId,
+            String lastReadMessageId,
+            Instant lastReadAt
+    ) {
+        return chatRoomParticipantRepository.markReadAndResetUnread(
+                roomId, userId, lastReadMessageId, lastReadAt);
     }
 }

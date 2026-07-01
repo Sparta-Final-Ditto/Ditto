@@ -22,7 +22,6 @@ import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -250,7 +249,7 @@ class ChatRoomQueryServiceTest {
         // given
         ChatRoomParticipant participant = mockParticipant(
                 ROOM_ID, REQUESTER_ID, ParticipantRole.MEMBER, true);
-        given(participant.getLastReadMessageId()).willReturn("read-msg-id");
+        given(participant.getUnreadCount()).willReturn(3L);
 
         ChatRoom room = mockChatRoom(ROOM_ID, RoomType.GROUP, "스터디방");
         given(room.getLastMessageId()).willReturn("last-msg-id");
@@ -262,9 +261,6 @@ class ChatRoomQueryServiceTest {
                 .willReturn(List.of(room));
         given(chatMessageQueryPort.findByMessageIds(List.of("last-msg-id")))
                 .willReturn(List.of(sentMessage("last-msg-id", "오늘 같이 공부해요")));
-        given(chatMessageQueryPort.countUnreadBatch(
-                Map.of(ROOM_ID, "read-msg-id"), REQUESTER_ID))
-                .willReturn(Map.of(ROOM_ID, 3L));
 
         // when
         List<ChatRoomSummaryResult> results = chatRoomQueryService.getMyRooms(REQUESTER_ID);
@@ -274,8 +270,6 @@ class ChatRoomQueryServiceTest {
         assertThat(results.get(0).lastMessage()).isEqualTo("오늘 같이 공부해요");
         assertThat(results.get(0).unreadCount()).isEqualTo(3L);
         verify(chatMessageQueryPort).findByMessageIds(List.of("last-msg-id"));
-        verify(chatMessageQueryPort).countUnreadBatch(
-                Map.of(ROOM_ID, "read-msg-id"), REQUESTER_ID);
     }
 
     @Test

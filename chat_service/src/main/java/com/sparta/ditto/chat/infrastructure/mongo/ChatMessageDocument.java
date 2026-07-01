@@ -28,12 +28,6 @@ import org.springframework.data.mongodb.core.mapping.Field;
         @CompoundIndex(
                 name = "idx_chat_messages_room_id_created_at_message_id",
                 def = "{'room_id': 1, 'created_at': 1, '_id': 1}"
-        ),
-        // unread count aggregation용. match(room_id + deleted_at + message_type) 프리픽스 커버 +
-        // 읽은 방 경로의 created_at range까지 커버해, N+1 제거 후 aggregation이 풀스캔되지 않게 한다.
-        @CompoundIndex(
-                name = "idx_chat_messages_unread",
-                def = "{'room_id': 1, 'deleted_at': 1, 'message_type': 1, 'created_at': 1}"
         )
 })
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

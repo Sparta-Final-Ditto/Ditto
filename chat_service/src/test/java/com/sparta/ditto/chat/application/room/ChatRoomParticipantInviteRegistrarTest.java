@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.exception.ChatAlreadyParticipantException;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;

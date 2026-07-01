@@ -3,6 +3,7 @@ package com.sparta.ditto.chat.application.message;
 import com.sparta.ditto.chat.application.event.ChatMessageNotificationRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class ChatMessageCommitService {
 
     private final ChatRoomMetadataService chatRoomMetadataService;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     // 알림 발행 토글(기본 on). 알림 경로 장애 시 차단 / 성능 측정 시 알림 제외용.
@@ -39,6 +41,11 @@ public class ChatMessageCommitService {
         // PostgreSQL lastMessage 갱신 (updateLastMessage도 @Transactional이라 이 트랜잭션에 참여)
         chatRoomMetadataService.updateLastMessage(
                 roomId, saved.messageId(), saved.createdAt());
+        int incrementedParticipants =
+                chatRoomParticipantPort.incrementUnreadCountForActiveParticipantsExceptSender(
+                        roomId, saved.senderId());
+        log.debug("Chat unread count incremented. roomId={}, messageId={}, senderId={}, count={}",
+                roomId, saved.messageId(), saved.senderId(), incrementedParticipants);
 
         if (!notificationDispatchEnabled) {
             log.debug("Chat notification request skipped by config. roomId={}, messageId={}",

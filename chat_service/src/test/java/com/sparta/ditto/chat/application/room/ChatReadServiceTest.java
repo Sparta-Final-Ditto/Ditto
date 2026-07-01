@@ -2,8 +2,11 @@ package com.sparta.ditto.chat.application.room;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
@@ -23,6 +26,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("ChatReadService 테스트")
 class ChatReadServiceTest {
@@ -62,7 +66,7 @@ class ChatReadServiceTest {
     }
 
     @Test
-    @DisplayName("처음 읽음 처리하면 마지막 읽은 메시지와 읽은 시각을 갱신한다")
+    @DisplayName("처음 읽음 처리하면 읽은 위치와 unread를 atomic update로 갱신한다")
     void updateReadState_success_first_read() {
         // given
         ChatRoomParticipant participant = participant();
@@ -74,19 +78,20 @@ class ChatReadServiceTest {
 
         // then
         verify(chatParticipantValidator).ensureRoomActive(ROOM_ID);
-        assertThat(participant.getLastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
-        assertThat(participant.getLastReadAt()).isNotNull();
+        verify(chatRoomParticipantPort).markReadAndResetUnread(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
         assertThat(result.roomId()).isEqualTo(ROOM_ID);
         assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
-        assertThat(result.lastReadAt()).isEqualTo(participant.getLastReadAt());
+        assertThat(result.lastReadAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("기존 읽음 위치보다 최신 메시지이면 읽음 위치를 갱신한다")
+    @DisplayName("기존 읽음 위치보다 최신 메시지이면 읽은 위치와 unread를 atomic update로 갱신한다")
     void updateReadState_success_update_to_newer_message() {
         // given
         ChatRoomParticipant participant = participant();
         participant.updateLastRead(CURRENT_MESSAGE_ID, Instant.now());
+        ReflectionTestUtils.setField(participant, "unreadCount", 5L);
         givenParticipant(participant);
         givenMessage(CURRENT_MESSAGE_ID, CURRENT_MESSAGE_CREATED_AT);
         givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
@@ -95,16 +100,18 @@ class ChatReadServiceTest {
         ChatReadResult result = chatReadService.updateReadState(command(NEXT_MESSAGE_ID));
 
         // then
-        assertThat(participant.getLastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
+        verify(chatRoomParticipantPort).markReadAndResetUnread(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
         assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
     }
 
     @Test
-    @DisplayName("기존 읽음 위치보다 오래된 메시지이면 읽음 위치를 되돌리지 않는다")
+    @DisplayName("기존 읽음 위치보다 오래된 메시지이면 읽음 위치도 unread도 건드리지 않는다")
     void updateReadState_ignore_older_message() {
         // given
         ChatRoomParticipant participant = participant();
         participant.updateLastRead(CURRENT_MESSAGE_ID, Instant.now());
+        ReflectionTestUtils.setField(participant, "unreadCount", 5L);
         givenParticipant(participant);
         givenMessage(CURRENT_MESSAGE_ID, CURRENT_MESSAGE_CREATED_AT);
         givenMessage(PREVIOUS_MESSAGE_ID, PREVIOUS_MESSAGE_CREATED_AT);
@@ -112,8 +119,10 @@ class ChatReadServiceTest {
         // when
         ChatReadResult result = chatReadService.updateReadState(command(PREVIOUS_MESSAGE_ID));
 
-        // then
-        assertThat(participant.getLastReadMessageId()).isEqualTo(CURRENT_MESSAGE_ID);
+        // then: 오래된 요청은 안 읽은 메시지를 유실시키지 않도록 unread를 그대로 둔다
+        verify(chatRoomParticipantPort, never())
+                .markReadAndResetUnread(any(), any(), any(), any());
+        assertThat(participant.getUnreadCount()).isEqualTo(5L);
         assertThat(result.lastReadMessageId()).isEqualTo(CURRENT_MESSAGE_ID);
     }
 
