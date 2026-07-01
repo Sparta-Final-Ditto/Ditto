@@ -54,7 +54,7 @@ public class PostInteractionService {
 
         if (!userId.equals(post.getUserId())) {
             applicationEventPublisher.publishEvent(
-                    new PostLikedEvent(like.getId(), post.getId(), userId, post.getUserId(), Instant.now()));
+                    new PostLikedEvent(like.getId(), post.getId(), userId, userNickname, post.getUserId(), Instant.now()));
         }
 
         return LikeResult.liked(post);
@@ -174,7 +174,7 @@ public class PostInteractionService {
             applicationEventPublisher.publishEvent(
                     new PostCommentedEvent(
                             post.getId(), comment.getId(),
-                            userId, post.getUserId(), Instant.now()));
+                            userId, nickname, post.getUserId(), Instant.now()));
         }
         return CommentResult.fromCreation(comment, nickname);
     }
