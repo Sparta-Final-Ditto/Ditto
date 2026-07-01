@@ -46,7 +46,7 @@ public class Notification extends BaseEntity {
     @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID receiverId;
 
-    @Column(columnDefinition = "uuid")
+    @Column(columnDefinition = "uuid", nullable = false, updatable = false)
     private UUID actorId;
 
     @Enumerated(EnumType.STRING)

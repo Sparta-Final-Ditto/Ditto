@@ -58,7 +58,7 @@ class NotificationRepositoryTest {
     private Notification createAndSave(UUID receiverId, NotificationType type,
                                        boolean isRead, String metaData) {
         TargetType targetType = switch (type) {
-            case LIKE -> TargetType.POST;
+            case LIKE -> TargetType.LIKE;
             case COMMENT -> TargetType.COMMENT;
             case CHAT_MESSAGE -> TargetType.CHAT_MESSAGE;
         };

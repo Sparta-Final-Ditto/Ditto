@@ -3,7 +3,9 @@ package com.sparta.ditto.notification.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.dto.NotificationItemResult;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
+import com.sparta.ditto.notification.application.dto.ReadNotificationResult;
 import com.sparta.ditto.notification.domain.entity.Notification;
+import com.sparta.ditto.notification.domain.exception.NotificationNotFoundException;
 import com.sparta.ditto.notification.domain.repository.NotificationRepository;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import java.time.Instant;
@@ -101,4 +103,14 @@ public class NotificationService {
             return null;
         }
     }
+    
+    // ── 단건 알림 읽음 처리 ────
+    @Transactional
+    public ReadNotificationResult read(UUID userId, UUID notificationId) {
+        Notification notification = notificationRepository.findByIdAndReceiverId(notificationId, userId)
+                .orElseThrow(NotificationNotFoundException::new);
+        notification.read();
+        return ReadNotificationResult.from(notification);
+    }
+
 }
