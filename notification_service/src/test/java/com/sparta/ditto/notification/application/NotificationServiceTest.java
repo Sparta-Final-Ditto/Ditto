@@ -10,15 +10,19 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.sparta.ditto.notification.application.dto.ReadNotificationResult;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -224,4 +228,40 @@ class NotificationServiceTest {
         verify(notificationRepository)
                 .findNotificationsWithCursor(USER_ID, null, null, 21);
     }
+    
+    // ──  읽음 처리 성공 (멱등 + Kafka 미발행) ────────────────────────
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("readStates")
+    @DisplayName("읽지 않은/이미 읽은 알림 모두 read() 결과 isRead=true (멱등)")
+    void read_멱등_isRead_true(String label, Notification notification) {
+        // given
+        UUID notificationId = UUID.randomUUID();
+        when(notificationRepository.findByIdAndReceiverId(notificationId, USER_ID))
+                .thenReturn(Optional.of(notification));
+
+        // when
+        ReadNotificationResult result = notificationService.read(USER_ID, notificationId);
+
+        // then
+        assertThat(result.isRead()).isTrue();
+        // Service에 KafkaProducer 의존이 없으므로 Kafka 미발행은 구조적으로 보장된다.
+    }
+
+    static Stream<Arguments> readStates() {
+        Notification unread = Notification.create(
+                USER_ID, UUID.randomUUID(), NotificationType.LIKE, TargetType.POST,
+                "target-1", "message", null);
+
+        Notification alreadyRead = Notification.create(
+                USER_ID, UUID.randomUUID(), NotificationType.LIKE, TargetType.POST,
+                "target-2", "message", null);
+        alreadyRead.read();
+
+        return Stream.of(
+                Arguments.of("읽지 않은 알림", unread),
+                Arguments.of("이미 읽은 알림", alreadyRead)
+        );
+    }
+
 }
