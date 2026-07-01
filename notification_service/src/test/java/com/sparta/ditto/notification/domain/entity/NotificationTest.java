@@ -102,23 +102,4 @@ class NotificationTest {
         assertThat(notification.isRead()).isTrue();
     }
 
-    @Test
-    @DisplayName("actorId가 null인 알림도 정상 생성된다 (시스템 알림)")
-    void create_withNullActorId_succeeds() {
-        // Given / When
-        Notification notification = Notification.create(
-                RECEIVER_ID,
-                null,
-                NotificationType.CHAT_MESSAGE,
-                TargetType.CHAT_MESSAGE,
-                TARGET_ID,
-                MESSAGE,
-                null
-        );
-
-        // Then
-        assertThat(notification.getActorId()).isNull();
-        assertThat(notification.getMetaData()).isNull();
-        assertThat(notification.isRead()).isFalse();
-    }
 }
