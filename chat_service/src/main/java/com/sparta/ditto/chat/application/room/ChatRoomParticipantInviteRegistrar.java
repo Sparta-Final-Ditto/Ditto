@@ -1,7 +1,9 @@
 package com.sparta.ditto.chat.application.room;
 
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.exception.ChatAlreadyParticipantException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -16,17 +18,21 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatRoomParticipantInviteRegistrar {
 
+    private static final String SYSTEM_INVITE_CONTENT_FORMAT = "%s님이 초대되었습니다.";
+
     private final ChatRoomParticipantPort chatRoomParticipantPort;
+    private final ChatMessageSendService chatMessageSendService;
 
     @Transactional
-    public void register(ChatRoom chatRoom, List<UUID> targetUserIds) {
-        for (UUID targetUserId : targetUserIds) {
-            inviteParticipant(chatRoom, targetUserId);
+    public void register(ChatRoom chatRoom, List<InvitedTarget> targets) {
+        for (InvitedTarget target : targets) {
+            inviteParticipant(chatRoom, target);
         }
     }
 
-    private void inviteParticipant(ChatRoom chatRoom, UUID targetUserId) {
+    private void inviteParticipant(ChatRoom chatRoom, InvitedTarget target) {
         UUID roomId = chatRoom.getId();
+        UUID targetUserId = target.userId();
         Optional<ChatRoomParticipant> existing =
                 chatRoomParticipantPort.findByRoomIdAndUserId(roomId, targetUserId);
 
@@ -44,8 +50,15 @@ public class ChatRoomParticipantInviteRegistrar {
         }
 
         markReadUpToCurrentMessage(participant, chatRoom);
-
         chatRoomParticipantPort.save(participant);
+
+        // 초대 안내 시스템 메시지 저장
+        chatMessageSendService.saveSystemMessage(
+                roomId,
+                targetUserId,
+                MessageType.SYSTEM_INVITE,
+                String.format(SYSTEM_INVITE_CONTENT_FORMAT, target.nickname())
+        );
     }
 
     private void markReadUpToCurrentMessage(ChatRoomParticipant participant, ChatRoom chatRoom) {

@@ -4,6 +4,8 @@ import com.sparta.ditto.chat.application.room.dto.command.ChatRoomInviteCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomInviteResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
+import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.domain.exception.ChatInviteForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatNotGroupRoomException;
@@ -17,6 +19,7 @@ import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -30,10 +33,13 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class ChatRoomInviteService {
 
+    private static final String UNKNOWN_NICKNAME = "알 수 없는 사용자";
+
     private final ChatRoomPort chatRoomPort;
     private final ChatRoomParticipantPort chatRoomParticipantPort;
     private final ChatUserValidationPort chatUserValidationPort;
     private final ChatRoomParticipantInviteRegistrar inviteRegistrar;
+    private final ChatUserProfilePort chatUserProfilePort;
 
     public ChatRoomInviteResult invite(ChatRoomInviteCommand command) {
         if (command == null) {
@@ -63,7 +69,13 @@ public class ChatRoomInviteService {
         // 초대 대상 존재/차단 관계 검증은 트랜잭션 밖에서 먼저 끝낸다.
         chatUserValidationPort.validateGroupChatParticipants(requesterId, targetUserIds);
 
-        inviteRegistrar.register(chatRoom, targetUserIds);
+        // 닉네임 조회도 트랜잭션 밖에서 끝내고 저장은 registrar 트랜잭션에 위임
+        List<InvitedTarget> invitedTargets = new ArrayList<>();
+        for (UUID targetUserId : targetUserIds) {
+            invitedTargets.add(new InvitedTarget(targetUserId, resolveNickname(targetUserId)));
+        }
+
+        inviteRegistrar.register(chatRoom, invitedTargets);;
 
         log.info("Chat room invited. requesterId={}, roomId={}, invitedCount={}",
                 requesterId, roomId, targetUserIds.size());
@@ -85,5 +97,11 @@ public class ChatRoomInviteService {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
         return List.copyOf(uniqueTargetIds);
+    }
+
+    private String resolveNickname(UUID userId) {
+        ChatSenderProfile profile = chatUserProfilePort.findProfile(userId);
+        String nickname = profile.nickname();
+        return (nickname == null || nickname.isBlank()) ? UNKNOWN_NICKNAME : nickname;
     }
 }

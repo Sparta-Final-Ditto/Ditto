@@ -1,11 +1,15 @@
 package com.sparta.ditto.chat.application.room;
 
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
 import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
+import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.domain.exception.ChatInvalidGroupParticipantsException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -26,9 +30,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChatGroupRoomService {
 
+    private static final String UNKNOWN_NICKNAME = "알 수 없는 사용자";
+    private static final String SYSTEM_JOIN_CONTENT_FORMAT = "%s님이 채팅방을 생성했습니다.";
+
     private final ChatRoomPort chatRoomPort;
     private final ChatRoomParticipantPort chatRoomParticipantPort;
     private final ChatUserValidationPort chatUserValidationPort;
+    private final ChatMessageSendService chatMessageSendService;
+    private final ChatUserProfilePort chatUserProfilePort;
 
     @Transactional
     public ChatGroupRoomResult createGroupRoom(ChatGroupRoomCreateCommand command) {
@@ -59,6 +68,15 @@ public class ChatGroupRoomService {
                 ParticipantRole.MEMBER
         )));
         chatRoomParticipantPort.saveAll(participants);
+
+        // 그룹방 생성 안내 시스템 메시지 저장
+        String creatorNickname = resolveNickname(requesterId);
+        chatMessageSendService.saveSystemMessage(
+                chatRoom.getId(),
+                requesterId,
+                MessageType.SYSTEM_JOIN,
+                String.format(SYSTEM_JOIN_CONTENT_FORMAT, creatorNickname)
+        );
 
         log.info("Group chat room created. requesterId={}, roomId={}, participantCount={}",
                 requesterId, chatRoom.getId(), participants.size());
@@ -91,5 +109,11 @@ public class ChatGroupRoomService {
             throw new ChatInvalidGroupParticipantsException();
         }
         return List.copyOf(uniqueMemberIds);
+    }
+
+    private String resolveNickname(UUID userId) {
+        ChatSenderProfile profile = chatUserProfilePort.findProfile(userId);
+        String nickname = profile.nickname();
+        return (nickname == null || nickname.isBlank()) ? UNKNOWN_NICKNAME : nickname;
     }
 }

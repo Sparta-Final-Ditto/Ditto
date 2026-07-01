@@ -3,12 +3,16 @@ package com.sparta.ditto.chat.application.room;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.exception.ChatAlreadyParticipantException;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -30,25 +34,29 @@ class ChatRoomParticipantInviteRegistrarTest {
             UUID.fromString("00000000-0000-0000-0000-000000000200");
     private static final String LAST_MESSAGE_ID = "msg-100";
     private static final Instant LAST_MESSAGE_AT = Instant.parse("2026-06-29T00:00:00Z");
+    private static final String NICKNAME = "초대대상";
 
     private ChatRoomParticipantPort chatRoomParticipantPort;
+    private ChatMessageSendService chatMessageSendService;
     private ChatRoomParticipantInviteRegistrar inviteRegistrar;
 
     @BeforeEach
     void setUp() {
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
-        inviteRegistrar = new ChatRoomParticipantInviteRegistrar(chatRoomParticipantPort);
+        chatMessageSendService = mock(ChatMessageSendService.class);
+        inviteRegistrar = new ChatRoomParticipantInviteRegistrar(
+                chatRoomParticipantPort, chatMessageSendService);
     }
 
     @Test
-    @DisplayName("신규 사용자는 MEMBER로 등록하고 읽음 기준을 현재 마지막 메시지로 맞춘다")
+    @DisplayName("신규 사용자는 MEMBER로 등록하고 읽음 기준을 맞춘 뒤 초대 시스템 메시지를 저장한다")
     void register_should_save_new_member_with_read_baseline() {
         // given
         given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, TARGET_ID))
                 .willReturn(Optional.empty());
 
         // when
-        inviteRegistrar.register(roomWithLastMessage(), List.of(TARGET_ID));
+        inviteRegistrar.register(roomWithLastMessage(), List.of(invitedTarget()));
 
         // then
         ArgumentCaptor<ChatRoomParticipant> captor = ArgumentCaptor.captor();
@@ -59,6 +67,9 @@ class ChatRoomParticipantInviteRegistrarTest {
         assertThat(saved.getLeftAt()).isNull();
         assertThat(saved.getLastReadMessageId()).isEqualTo(LAST_MESSAGE_ID);
         assertThat(saved.getLastReadAt()).isEqualTo(LAST_MESSAGE_AT);
+
+        verify(chatMessageSendService).saveSystemMessage(
+                eq(ROOM_ID), eq(TARGET_ID), eq(MessageType.SYSTEM_INVITE), anyString());
     }
 
     @Test
@@ -73,7 +84,7 @@ class ChatRoomParticipantInviteRegistrarTest {
                 .willReturn(Optional.of(leftParticipant));
 
         // when
-        inviteRegistrar.register(roomWithLastMessage(), List.of(TARGET_ID));
+        inviteRegistrar.register(roomWithLastMessage(), List.of(invitedTarget()));
 
         // then
         verify(chatRoomParticipantPort).save(leftParticipant);
@@ -95,7 +106,7 @@ class ChatRoomParticipantInviteRegistrarTest {
                 .willReturn(Optional.empty());
 
         // when
-        inviteRegistrar.register(emptyRoom, List.of(TARGET_ID));
+        inviteRegistrar.register(emptyRoom, List.of(invitedTarget()));
 
         // then
         ArgumentCaptor<ChatRoomParticipant> captor = ArgumentCaptor.captor();
@@ -114,9 +125,15 @@ class ChatRoomParticipantInviteRegistrarTest {
 
         // when & then
         assertThatThrownBy(() ->
-                inviteRegistrar.register(roomWithLastMessage(), List.of(TARGET_ID)))
+                inviteRegistrar.register(roomWithLastMessage(), List.of(invitedTarget())))
                 .isInstanceOf(ChatAlreadyParticipantException.class);
         verify(chatRoomParticipantPort, never()).save(any());
+        verify(chatMessageSendService, never())
+                .saveSystemMessage(any(), any(), any(), anyString());
+    }
+
+    private InvitedTarget invitedTarget() {
+        return new InvitedTarget(TARGET_ID, NICKNAME);
     }
 
     private ChatRoom roomWithLastMessage() {
