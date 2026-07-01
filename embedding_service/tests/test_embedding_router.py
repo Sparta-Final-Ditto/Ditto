@@ -94,11 +94,11 @@ class TestEmbeddingRouter(unittest.TestCase):
 
         self.mock_svc.retry_embedding.assert_called_once()
 
-    # ── POST /test ─────────────────────────────────────────────────────────────
+    # ── POST /api/v1/test/embedding ───────────────────────────────────────────
 
     def test_embed_test_returns_768_dim(self):
         """테스트 임베딩 — dimension=768, sample 길이=7."""
-        resp = self.client.post("/api/v1/embedding/test", json={"text": "테스트 문장"})
+        resp = self.client.post("/api/v1/test/embedding", json={"text": "테스트 문장"})
 
         self.assertEqual(resp.status_code, 200)
         data = resp.json()["data"]
@@ -108,24 +108,24 @@ class TestEmbeddingRouter(unittest.TestCase):
     def test_embed_test_input_text_echoed(self):
         """input_text 필드에 입력값이 그대로 반환된다."""
         text = "안녕하세요"
-        resp = self.client.post("/api/v1/embedding/test", json={"text": text})
+        resp = self.client.post("/api/v1/test/embedding", json={"text": text})
         self.assertEqual(resp.json()["data"]["input_text"], text)
 
-    # ── POST /test/initial-profile ─────────────────────────────────────────────
+    # ── POST /api/v1/test/embedding/initial-profile ───────────────────────────
 
     def test_embed_initial_profile_returns_768_dim(self):
         resp = self.client.post(
-            "/api/v1/embedding/test/initial-profile",
+            "/api/v1/test/embedding/initial-profile",
             json={"hashtags": ["등산", "카공"], "gender": "여", "age_group": "20대"},
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["data"]["dimension"], 768)
 
-    # ── POST /test/post ────────────────────────────────────────────────────────
+    # ── POST /api/v1/test/embedding/post ──────────────────────────────────────
 
     def test_embed_post_returns_768_dim(self):
         resp = self.client.post(
-            "/api/v1/embedding/test/post",
+            "/api/v1/test/embedding/post",
             json={"content": "오늘 한강 갔다", "hashtags": ["한강"]},
         )
         self.assertEqual(resp.status_code, 200)
