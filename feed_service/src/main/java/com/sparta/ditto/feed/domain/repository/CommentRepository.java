@@ -21,4 +21,6 @@ public interface CommentRepository {
     List<Comment> findByPostIdAndDeletedAtIsNull(UUID postId);
 
     void hardDeleteAllByPostId(UUID postId);
+
+    void restoreAllByPostId(UUID postId);
 }

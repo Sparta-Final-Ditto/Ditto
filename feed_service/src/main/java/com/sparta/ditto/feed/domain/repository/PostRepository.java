@@ -43,4 +43,6 @@ public interface PostRepository {
     List<Post> findExpiredSoftDeleted(Instant cutoff, int limit);
 
     void hardDeleteById(UUID postId);
+
+    void restoreById(UUID postId);
 }

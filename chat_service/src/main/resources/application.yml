@@ -9,6 +9,12 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # 기본값 10. 메시지 전송 시 PostgreSQL 쿼리가 여러 번 나가 동시 요청 시 커넥션 대기가 생길 수 있어 늘림.
+      # 검증 결과(2026-06-30): ack-only saturation에서 풀 20 vs 40의 break point가 VU 150~200으로 동일 →
+      # 풀 사이즈는 이 워크로드의 병목이 아님. 무리한 증설 불필요해 20 유지(기본 10보다 동시요청 여유만 확보).
+      # 운영 환경에선 DB max_connections(로컬 100) 고려해 환경별로 분리 검토.
+      maximum-pool-size: 20
   jpa:
     hibernate:
       ddl-auto: validate

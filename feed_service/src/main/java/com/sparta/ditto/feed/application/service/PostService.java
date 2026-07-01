@@ -100,6 +100,26 @@ public class PostService {
     }
 
     @Transactional
+    public void restorePost(UUID postId, UUID requesterId, String requesterRole) {
+        // hard delete된 게시글은 findById로 조회되지 않아 자연히 404 반환 (복구 불가)
+        Post post = postRepository.findById(postId)
+                .filter(Post::isDeleted)
+                .orElseThrow(PostNotFoundException::new);
+
+        boolean isAuthor = requesterId.equals(post.getUserId());
+        boolean isAdmin = "ADMIN".equals(requesterRole);
+
+        if (!isAuthor && !isAdmin) {
+            throw new ForbiddenException();
+        }
+
+        outboxEventRepository.save(outboxEventPort.buildPostRestored(post, requesterId));
+        postRepository.restoreById(postId);
+        commentRepository.restoreAllByPostId(postId);
+        likeRepository.restoreAllByPostId(postId);
+    }
+
+    @Transactional
     public void deletePost(UUID postId, UUID requesterId, String requesterRole) {
         Post post = postRepository.findByIdAndDeletedAtIsNull(postId)
                 .orElseThrow(PostNotFoundException::new);
