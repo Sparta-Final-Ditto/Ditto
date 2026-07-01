@@ -175,6 +175,34 @@ class NotificationServiceTest {
         verify(notificationRepository, never()).findUnreadChatByReceiverId(any());
     }
 
+    // ── getUnreadCount ────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("미읽음 알림이 N건이면 N을 반환한다")
+    void getUnreadCount_미읽음존재_N반환() {
+        // given
+        when(notificationRepository.countUnreadByReceiverId(USER_ID)).thenReturn(5L);
+
+        // when
+        long result = notificationService.getUnreadCount(USER_ID);
+
+        // then
+        assertThat(result).isEqualTo(5L);
+    }
+
+    @Test
+    @DisplayName("미읽음 알림이 없으면 0을 반환한다")
+    void getUnreadCount_미읽음없음_0반환() {
+        // given
+        when(notificationRepository.countUnreadByReceiverId(USER_ID)).thenReturn(0L);
+
+        // when
+        long result = notificationService.getUnreadCount(USER_ID);
+
+        // then
+        assertThat(result).isEqualTo(0L);
+    }
+
     // ── cursor fallback ───────────────────────────────────────────────────────
 
     @Test

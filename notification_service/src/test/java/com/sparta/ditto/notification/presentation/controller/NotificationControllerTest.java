@@ -104,4 +104,30 @@ class NotificationControllerTest {
                         .value(chatNotifId.toString()))
                 .andExpect(jsonPath("$.data.notifications[1].roomUnreadCount").value(3));
     }
+
+    // ── GET /notifications/unread-count ──────────────────────────────────────
+
+    @Test
+    @DisplayName("미읽음 수 조회 200 OK, message=SUCCESS, unreadCount 반환")
+    void getUnreadCount_200OK() throws Exception {
+        // given
+        when(notificationService.getUnreadCount(userId)).thenReturn(3L);
+
+        // when / then
+        mockMvc.perform(get("/api/v1/notifications/unread-count")
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.unreadCount").value(3));
+    }
+
+    @Test
+    @DisplayName("X-User-Id 헤더 누락 시 401, code=COMMON-002")
+    void getUnreadCount_헤더누락_401() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications/unread-count"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
 }
