@@ -19,8 +19,10 @@ class PostConsumer(KafkaConsumerBase):
     """
     feed_service 'post-events' 토픽 수신.
     Envelope 구조: { "eventId", "eventType", "occurredAt", "payload": { ... } }
-    POST_CREATED payload: { "postId", "userId", "content", "tags", ... }
-    POST_DELETED payload: { "postId", "ownerId", "deletedBy", "deleteType", "deletedAt" }
+    POST_CREATED      payload: { "postId", "userId", "content", "tags", ... }
+    POST_DELETED      payload: { "postId", "ownerId", "deletedBy", "deleteType", "deletedAt" }
+    POST_HARD_DELETED payload: { "postId", "authorId", "deletedBy" }
+    POST_RESTORED     payload: { "postId", "authorId", "restoredBy" }
     """
 
     def __init__(self) -> None:
