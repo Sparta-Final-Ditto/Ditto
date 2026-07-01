@@ -8,7 +8,8 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum NotificationErrorCode implements ErrorCode {
 
-    NOTIFICATION_NOT_FOUND("NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다.", 404);
+    NOTIFICATION_NOT_FOUND("NOTIFICATION_NOT_FOUND", "알림을 찾을 수 없습니다.", 404),
+    ROOM_ID_REQUIRED("VALIDATION_ERROR", "roomId는 필수입니다.", 400);
 
     private final String code;
     private final String message;
