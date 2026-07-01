@@ -3,13 +3,16 @@ package com.sparta.ditto.notification.infrastructure.persistence;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 public interface NotificationJpaRepository extends JpaRepository<Notification, UUID> {
 
@@ -45,4 +48,10 @@ public interface NotificationJpaRepository extends JpaRepository<Notification, U
             @Param("receiverId") UUID receiverId,
             @Param("type") NotificationType type
     );
+
+    @Transactional
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Notification n SET n.isRead = true WHERE n.id IN :ids AND n.isRead = false")
+    int bulkMarkAsRead(@Param("ids") Collection<UUID> ids);
 }
+

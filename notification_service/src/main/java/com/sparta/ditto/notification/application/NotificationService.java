@@ -3,6 +3,7 @@ package com.sparta.ditto.notification.application;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.dto.NotificationItemResult;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
+import com.sparta.ditto.notification.application.dto.ReadByRoomResult;
 import com.sparta.ditto.notification.application.dto.ReadNotificationResult;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.exception.NotificationNotFoundException;
@@ -112,5 +113,24 @@ public class NotificationService {
         notification.read();
         return ReadNotificationResult.from(notification);
     }
+    
+    // ── 채팅방 단위 읽음 처리 ────
+    @Transactional
+    public ReadByRoomResult readByRoom(UUID userId, String roomId) {
+        List<Notification> unreadChats = notificationRepository.findUnreadChatByReceiverId(userId);
+
+        List<UUID> matchingIds = unreadChats.stream()
+                .filter(n -> roomId.equals(extractRoomId(n.getMetaData())))
+                .map(Notification::getId)
+                .toList();
+
+        if (matchingIds.isEmpty()) {
+            return ReadByRoomResult.of(roomId, 0);
+        }
+
+        int updatedCount = notificationRepository.markAsReadByIds(matchingIds);
+        return ReadByRoomResult.of(roomId, updatedCount);
+    }
 
 }
+

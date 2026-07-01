@@ -4,6 +4,7 @@ import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.repository.NotificationRepository;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,5 +43,13 @@ public class NotificationRepositoryImpl implements NotificationRepository {
     @Override
     public List<Notification> findUnreadChatByReceiverId(UUID receiverId) {
         return jpaRepository.findUnreadByReceiverIdAndType(receiverId, NotificationType.CHAT_MESSAGE);
+    }
+
+    @Override
+    public int markAsReadByIds(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        return jpaRepository.bulkMarkAsRead(ids);
     }
 }

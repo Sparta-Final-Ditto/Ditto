@@ -4,6 +4,7 @@ import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.notification.application.NotificationService;
 import com.sparta.ditto.notification.application.dto.NotificationItemResult;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
+import com.sparta.ditto.notification.application.dto.ReadByRoomResult;
 import com.sparta.ditto.notification.application.dto.ReadNotificationResult;
 import com.sparta.ditto.notification.domain.exception.NotificationNotFoundException;
 import com.sparta.ditto.notification.domain.type.NotificationType;
@@ -24,12 +25,14 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
+import org.springframework.http.MediaType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -185,6 +188,48 @@ class NotificationControllerTest {
         UUID notificationId = UUID.randomUUID();
 
         mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notificationId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    // ── POST /notifications/read-by-room ─────────────────────────────────────
+
+    @Test
+    @DisplayName("방 단위 읽음 처리 성공 - 200 UPDATED, roomId·updatedCount 반환")
+    void readByRoom_성공_200UPDATED() throws Exception {
+        when(notificationService.readByRoom(userId, "room_3f6e"))
+                .thenReturn(new ReadByRoomResult("room_3f6e", 3));
+
+        mockMvc.perform(post("/api/v1/notifications/read-by-room")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roomId\":\"room_3f6e\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("UPDATED"))
+                .andExpect(jsonPath("$.data.roomId").value("room_3f6e"))
+                .andExpect(jsonPath("$.data.updatedCount").value(3));
+    }
+
+    @Test
+    @DisplayName("roomId 누락 시 400, code=VALIDATION_ERROR")
+    void readByRoom_roomId누락_400VALIDATION_ERROR() throws Exception {
+        mockMvc.perform(post("/api/v1/notifications/read-by-room")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("X-User-Id 헤더 누락 시 401, code=COMMON-002")
+    void readByRoom_헤더누락_401() throws Exception {
+        mockMvc.perform(post("/api/v1/notifications/read-by-room")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roomId\":\"room_3f6e\"}"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401))
                 .andExpect(jsonPath("$.code").value("COMMON-002"));
