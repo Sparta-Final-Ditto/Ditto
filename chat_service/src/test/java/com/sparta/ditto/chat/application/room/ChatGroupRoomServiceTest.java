@@ -2,20 +2,23 @@ package com.sparta.ditto.chat.application.room;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-
+import com.sparta.ditto.chat.application.message.ChatMessageSendService;
 import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
+import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
+import com.sparta.ditto.chat.domain.message.MessageType;
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
 import com.sparta.ditto.chat.domain.participant.ParticipantRole;
 import com.sparta.ditto.chat.domain.room.ChatRoom;
@@ -45,6 +48,8 @@ class ChatGroupRoomServiceTest {
     private ChatRoomPort chatRoomPort;
     private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatUserValidationPort chatUserValidationPort;
+    private ChatMessageSendService chatMessageSendService;
+    private ChatUserProfilePort chatUserProfilePort;
     private ChatGroupRoomService chatGroupRoomService;
 
     @BeforeEach
@@ -52,10 +57,17 @@ class ChatGroupRoomServiceTest {
         chatRoomPort = mock(ChatRoomPort.class);
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatUserValidationPort = mock(ChatUserValidationPort.class);
+        chatMessageSendService = mock(ChatMessageSendService.class);
+        chatUserProfilePort = mock(ChatUserProfilePort.class);
+        // 그룹방 생성 성공 경로에서 생성자 닉네임 조회를 위해 기본 stub을 둔다.
+        given(chatUserProfilePort.findProfile(REQUESTER_ID))
+                .willReturn(new ChatSenderProfile("방장", null));
         chatGroupRoomService = new ChatGroupRoomService(
                 chatRoomPort,
                 chatRoomParticipantPort,
-                chatUserValidationPort
+                chatUserValidationPort,
+                chatMessageSendService,
+                chatUserProfilePort
         );
     }
 
@@ -94,6 +106,10 @@ class ChatGroupRoomServiceTest {
                         ParticipantRole.MEMBER,
                         ParticipantRole.MEMBER
                 );
+
+        // 생성 안내 시스템 메시지(SYSTEM_JOIN)를 저장한다.
+        verify(chatMessageSendService).saveSystemMessage(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(MessageType.SYSTEM_JOIN), anyString());
     }
 
     @Test

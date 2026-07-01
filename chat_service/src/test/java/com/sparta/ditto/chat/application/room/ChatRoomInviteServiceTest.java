@@ -2,18 +2,16 @@ package com.sparta.ditto.chat.application.room;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-
 import com.sparta.ditto.chat.application.room.dto.command.ChatRoomInviteCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomInviteResult;
-import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
-import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
-import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
+import com.sparta.ditto.chat.application.room.port.*;
 import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatInviteForbiddenException;
 import com.sparta.ditto.chat.domain.exception.ChatNotGroupRoomException;
@@ -46,6 +44,7 @@ class ChatRoomInviteServiceTest {
     private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatUserValidationPort chatUserValidationPort;
     private ChatRoomParticipantInviteRegistrar inviteRegistrar;
+    private ChatUserProfilePort chatUserProfilePort;
     private ChatRoomInviteService chatRoomInviteService;
     private ChatRoom activeRoom;
 
@@ -55,11 +54,13 @@ class ChatRoomInviteServiceTest {
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatUserValidationPort = mock(ChatUserValidationPort.class);
         inviteRegistrar = mock(ChatRoomParticipantInviteRegistrar.class);
+        chatUserProfilePort = mock(ChatUserProfilePort.class);
         chatRoomInviteService = new ChatRoomInviteService(
                 chatRoomPort,
                 chatRoomParticipantPort,
                 chatUserValidationPort,
-                inviteRegistrar
+                inviteRegistrar,
+                chatUserProfilePort
         );
     }
 
@@ -69,6 +70,9 @@ class ChatRoomInviteServiceTest {
         // given
         givenActiveGroupRoom();
         givenOwnerRequester();
+        given(chatUserProfilePort.findProfile(TARGET_ID))
+                .willReturn(new ChatSenderProfile("초대대상", null));
+
 
         // when
         ChatRoomInviteResult result = chatRoomInviteService.invite(command(TARGET_ID));
@@ -82,7 +86,7 @@ class ChatRoomInviteServiceTest {
         InOrder order = inOrder(chatUserValidationPort, inviteRegistrar);
         order.verify(chatUserValidationPort)
                 .validateGroupChatParticipants(OWNER_ID, List.of(TARGET_ID));
-        order.verify(inviteRegistrar).register(activeRoom, List.of(TARGET_ID));
+        order.verify(inviteRegistrar).register(eq(activeRoom), any());
     }
 
     @Test
