@@ -1,6 +1,6 @@
 from datetime import datetime, timezone, date
 from uuid import UUID
-from sqlalchemy import select, func, update, distinct
+from sqlalchemy import select, func, update, delete, distinct
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.common.db.models import UserPostEmbedding
@@ -140,6 +140,12 @@ class PgPostEmbeddingRepository(PostEmbeddingRepository):
             )
         )
         return result.scalar_one()
+
+    async def delete_by_post_id(self, post_id: UUID) -> None:
+        await self.db.execute(
+            delete(UserPostEmbedding).where(UserPostEmbedding.post_id == post_id)
+        )
+        await self.db.commit()
 
     async def reset_failed_to_done(self) -> int:
         result = await self.db.execute(

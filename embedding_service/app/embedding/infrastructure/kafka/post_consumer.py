@@ -32,6 +32,8 @@ class PostConsumer(KafkaConsumerBase):
             await self._handle_post_created(message)
         elif event_type == "POST_DELETED":
             await self._handle_post_deleted(message)
+        elif event_type == "POST_HARD_DELETED":
+            await self._handle_post_hard_deleted(message)
 
     async def _handle_post_created(self, message: dict) -> None:
         try:
@@ -98,3 +100,29 @@ class PostConsumer(KafkaConsumerBase):
             done_count = await post_repo.count_done_by_user_id(user_id)
             profile_repo = PgUserProfileRepository(db)
             await profile_repo.sync_count_and_active(user_id, done_count)
+
+    async def _handle_post_hard_deleted(self, message: dict) -> None:
+        try:
+            payload: dict = message["payload"]
+            post_id = UUID(payload["postId"])
+            author_id = UUID(payload["authorId"])
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"[PostConsumer] POST_HARD_DELETED 파싱 실패: {e} | raw={message}")
+            return
+
+        async with AsyncSessionLocal() as db:
+            post_repo = PgPostEmbeddingRepository(db)
+            embedding = await post_repo.find_by_post_id(post_id)
+
+            if embedding is None:
+                logger.info(f"[PostConsumer] 임베딩 없음 — PASS: post_id={post_id}")
+                return
+
+            await post_repo.delete_by_post_id(post_id)
+            logger.info(f"[PostConsumer] hard delete 완료: post_id={post_id}")
+
+            # 엣지케이스: soft delete 이벤트 누락으로 DONE 상태인 경우 record_count 보정
+            if embedding.embedding_status == "DONE":
+                done_count = await post_repo.count_done_by_user_id(author_id)
+                profile_repo = PgUserProfileRepository(db)
+                await profile_repo.sync_count_and_active(author_id, done_count)

@@ -50,3 +50,8 @@ class PostEmbeddingRepository(ABC):
     ) -> list[tuple[UUID, list[float], datetime]]:
         """월배치용: DONE 상태의 (post_id, vector, embedded_at) 목록을 embedded_at ASC 순서로 반환."""
         ...
+
+    @abstractmethod
+    async def delete_by_post_id(self, post_id: UUID) -> None:
+        """hard delete: 임베딩 레코드 물리 삭제."""
+        ...

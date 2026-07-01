@@ -56,12 +56,32 @@ def _make_deleted_message(
     }
 
 
-def _make_post_embedding(embedded_at: datetime) -> PostEmbedding:
+def _make_hard_deleted_message(
+    post_id: str | None = None,
+    author_id: str | None = None,
+) -> dict:
+    return {
+        "eventId": str(uuid.uuid4()),
+        "eventType": "POST_HARD_DELETED",
+        "occurredAt": "2026-06-25T00:00:00Z",
+        "payload": {
+            "postId": post_id or str(uuid.uuid4()),
+            "authorId": author_id or str(uuid.uuid4()),
+            "deletedBy": str(uuid.uuid4()),
+            "occurredAt": "2026-06-25T00:00:00Z",
+        },
+    }
+
+
+def _make_post_embedding(
+    embedded_at: datetime,
+    embedding_status: str = "DONE",
+) -> PostEmbedding:
     return PostEmbedding(
         post_id=uuid.uuid4(),
         user_id=uuid.uuid4(),
         vector=[0.0] * 768,
-        embedding_status="DONE",
+        embedding_status=embedding_status,
         embedded_at=embedded_at,
     )
 
@@ -96,7 +116,7 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
         self.mock_svc.embed_and_store.assert_called_once()
 
     async def test_non_post_created_event_ignored(self):
-        """POST_CREATED·POST_DELETED 외 이벤트 — embed_and_store 미호출."""
+        """POST_CREATED·POST_DELETED·POST_HARD_DELETED 외 이벤트 — embed_and_store 미호출."""
         for event_type in ["POST_UPDATED", "USER_CREATED"]:
             self.mock_svc.embed_and_store.reset_mock()
             await self.consumer.handle({"eventType": event_type, "payload": {}})
@@ -240,6 +260,74 @@ class TestPostConsumerPostDeleted(unittest.IsolatedAsyncioTestCase):
         await self.consumer.handle(msg)
 
         self.mock_post_repo.update_status.assert_not_called()
+
+
+class TestPostConsumerPostHardDeleted(unittest.IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        self.mock_post_repo = AsyncMock()
+        self.mock_profile_repo = AsyncMock()
+
+        mock_db = MagicMock()
+        mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_db.__aexit__ = AsyncMock(return_value=False)
+
+        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
+        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
+        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
+        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
+        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=AsyncMock())
+
+        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+            p.start()
+            self.addCleanup(p.stop)
+
+        self.consumer = PostConsumer()
+
+    async def test_deleted_status_hard_deletes_without_count_update(self):
+        """정상 케이스: status=DELETED 게시글 hard delete — delete_by_post_id 호출, record_count 갱신 없음."""
+        KST = timezone(timedelta(hours=9))
+        self.mock_post_repo.find_by_post_id.return_value = _make_post_embedding(
+            embedded_at=datetime.now(KST),
+            embedding_status="DELETED",
+        )
+
+        await self.consumer.handle(_make_hard_deleted_message())
+
+        self.mock_post_repo.delete_by_post_id.assert_called_once()
+        self.mock_profile_repo.sync_count_and_active.assert_not_called()
+
+    async def test_done_status_hard_deletes_and_updates_count(self):
+        """엣지케이스: soft delete 누락으로 status=DONE 상태 — delete_by_post_id + record_count 보정."""
+        KST = timezone(timedelta(hours=9))
+        self.mock_post_repo.find_by_post_id.return_value = _make_post_embedding(
+            embedded_at=datetime.now(KST),
+            embedding_status="DONE",
+        )
+        self.mock_post_repo.count_done_by_user_id.return_value = 1
+
+        await self.consumer.handle(_make_hard_deleted_message())
+
+        self.mock_post_repo.delete_by_post_id.assert_called_once()
+        self.mock_profile_repo.sync_count_and_active.assert_called_once_with(unittest.mock.ANY, 1)
+
+    async def test_no_embedding_ignored(self):
+        """임베딩 레코드 없는 게시글 hard delete — delete_by_post_id 미호출."""
+        self.mock_post_repo.find_by_post_id.return_value = None
+
+        await self.consumer.handle(_make_hard_deleted_message())
+
+        self.mock_post_repo.delete_by_post_id.assert_not_called()
+
+    async def test_invalid_payload_ignored(self):
+        """필수 필드 누락(authorId) — 예외 전파 없음, delete_by_post_id 미호출."""
+        msg = {
+            "eventType": "POST_HARD_DELETED",
+            "payload": {"postId": str(uuid.uuid4())},
+        }
+        await self.consumer.handle(msg)
+
+        self.mock_post_repo.delete_by_post_id.assert_not_called()
 
 
 if __name__ == "__main__":
