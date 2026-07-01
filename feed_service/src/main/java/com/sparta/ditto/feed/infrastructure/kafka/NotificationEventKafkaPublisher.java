@@ -26,7 +26,7 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
 
     @Override
     public void publishPostLiked(PostLikedEvent event) {
-        record Payload(String postId, String userId, String ownerId, String likedAt) {}
+        record Payload(String likeId, String postId, String userId, String ownerId, String likedAt) {}
 
         record Envelope(String eventId, String eventType, String occurredAt, Payload payload) {}
 
@@ -36,6 +36,7 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
                     "POST_LIKED",
                     Instant.now().toString(),
                     new Payload(
+                            event.likeId().toString(),
                             event.postId().toString(),
                             event.likerId().toString(),
                             event.ownerId().toString(),
