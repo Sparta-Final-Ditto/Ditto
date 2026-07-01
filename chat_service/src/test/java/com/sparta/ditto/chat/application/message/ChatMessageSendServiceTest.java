@@ -1,6 +1,5 @@
 package com.sparta.ditto.chat.application.message;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -9,7 +8,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-
+import com.sparta.ditto.chat.application.event.ChatSystemMessageBroadcastRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
@@ -29,6 +28,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("ChatMessageSendService 테스트")
 class ChatMessageSendServiceTest {
@@ -46,6 +46,7 @@ class ChatMessageSendServiceTest {
     private ChatMessagePublisher chatMessagePublisher;
     private ChatMessageDedupStore chatMessageDedupStore;
     private ChatMessageCommitService chatMessageCommitService;
+    private ApplicationEventPublisher applicationEventPublisher;
     private ChatMessageSendService chatMessageSendService;
 
     @BeforeEach
@@ -58,11 +59,12 @@ class ChatMessageSendServiceTest {
         chatMessagePublisher = mock(ChatMessagePublisher.class);
         chatMessageDedupStore = mock(ChatMessageDedupStore.class);
         chatMessageCommitService = mock(ChatMessageCommitService.class);
+        applicationEventPublisher = mock(ApplicationEventPublisher.class);
         chatMessageSendService = new ChatMessageSendService(
                 chatMessageCommandPort, chatMessageQueryPort, chatParticipantValidator,
                 messageIdGenerator, chatRoomMetadataService,
                 chatMessagePublisher, chatMessageDedupStore,
-                chatMessageCommitService);
+                chatMessageCommitService, applicationEventPublisher);
     }
 
     @Test
@@ -127,7 +129,7 @@ class ChatMessageSendServiceTest {
     }
 
     @Test
-    @DisplayName("성공 - 시스템 메시지 저장 후 lastMessage를 갱신하고 브로드캐스트한다")
+    @DisplayName("성공 - 시스템 메시지 저장 후 lastMessage를 갱신하고 커밋 후 브로드캐스트 이벤트를 발행한다")
     void success_save_system_message() {
         // given
         given(messageIdGenerator.generate()).willReturn("system-msg-1");
@@ -149,7 +151,10 @@ class ChatMessageSendServiceTest {
         verify(chatRoomMetadataService)
                 .updateLastMessage(eq(ROOM_ID), eq("system-msg-1"), any());
         verify(chatMessagePublisher, never()).ackToSender(any(), any());
-        verify(chatMessagePublisher).broadcast(eq(ROOM_ID), any(SentMessage.class));
+        // broadcast는 직접 호출하지 않고 커밋 이후 이벤트로 발행한다.
+        verify(chatMessagePublisher, never()).broadcast(any(), any());
+        verify(applicationEventPublisher)
+                .publishEvent(any(ChatSystemMessageBroadcastRequestedEvent.class));
     }
 
     @Test
