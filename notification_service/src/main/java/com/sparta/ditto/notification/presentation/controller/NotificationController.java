@@ -6,6 +6,7 @@ import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.notification.application.NotificationService;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
 import com.sparta.ditto.notification.presentation.dto.response.NotificationListResponse;
+import com.sparta.ditto.notification.presentation.dto.response.UnreadCountResponse;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.util.UUID;
@@ -37,5 +38,16 @@ public class NotificationController {
         }
         NotificationListResult result = notificationService.getNotifications(userId, cursor, size);
         return ResponseEntity.ok(ApiResponse.success(NotificationListResponse.from(result)));
+    }
+
+    @GetMapping("/unread-count")
+    public ResponseEntity<ApiResponse<UnreadCountResponse>> getUnreadCount(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+    ) {
+        if (userId == null) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        long unreadCount = notificationService.getUnreadCount(userId);
+        return ResponseEntity.ok(ApiResponse.success(UnreadCountResponse.from(unreadCount)));
     }
 }

@@ -28,6 +28,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
 
+    // ── 알림 목록 조회 ────
     public NotificationListResult getNotifications(UUID userId, UUID cursorId, int size) {
         // cursor 해석: 없거나 삭제됐으면 첫 페이지 fallback
         Instant cursorCreatedAt = null;
@@ -83,6 +84,11 @@ public class NotificationService {
                 .toList();
 
         return NotificationListResult.of(unreadCount, results, nextCursor, hasNext);
+    }
+
+    // ── 알림 미읽음 수 조회 ────
+    public long getUnreadCount(UUID userId) {
+        return notificationRepository.countUnreadByReceiverId(userId);
     }
 
     private static String extractRoomId(String metaData) {
