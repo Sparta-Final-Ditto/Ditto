@@ -34,6 +34,8 @@ class PostConsumer(KafkaConsumerBase):
             await self._handle_post_deleted(message)
         elif event_type == "POST_HARD_DELETED":
             await self._handle_post_hard_deleted(message)
+        elif event_type == "POST_RESTORED":
+            await self._handle_post_restored(message)
 
     async def _handle_post_created(self, message: dict) -> None:
         try:
@@ -126,3 +128,32 @@ class PostConsumer(KafkaConsumerBase):
                 done_count = await post_repo.count_done_by_user_id(author_id)
                 profile_repo = PgUserProfileRepository(db)
                 await profile_repo.sync_count_and_active(author_id, done_count)
+
+    async def _handle_post_restored(self, message: dict) -> None:
+        try:
+            payload: dict = message["payload"]
+            post_id = UUID(payload["postId"])
+            author_id = UUID(payload["authorId"])
+        except (KeyError, ValueError, TypeError) as e:
+            logger.error(f"[PostConsumer] POST_RESTORED 파싱 실패: {e} | raw={message}")
+            return
+
+        async with AsyncSessionLocal() as db:
+            post_repo = PgPostEmbeddingRepository(db)
+            embedding = await post_repo.find_by_post_id(post_id)
+
+            if embedding is None:
+                logger.info(f"[PostConsumer] 임베딩 없음 — PASS: post_id={post_id}")
+                return
+
+            if embedding.embedding_status != "DELETED":
+                logger.info(f"[PostConsumer] DELETED 상태 아님 — PASS: post_id={post_id}, status={embedding.embedding_status}")
+                return
+
+            await post_repo.update_status(post_id, "DONE")
+            logger.info(f"[PostConsumer] 게시글 복구 DONE 처리: post_id={post_id}")
+
+            # record_count/active 즉시 갱신, 벡터 재계산은 월배치에서 처리
+            done_count = await post_repo.count_done_by_user_id(author_id)
+            profile_repo = PgUserProfileRepository(db)
+            await profile_repo.sync_count_and_active(author_id, done_count)

@@ -56,6 +56,23 @@ def _make_deleted_message(
     }
 
 
+def _make_restored_message(
+    post_id: str | None = None,
+    author_id: str | None = None,
+) -> dict:
+    return {
+        "eventId": str(uuid.uuid4()),
+        "eventType": "POST_RESTORED",
+        "occurredAt": "2026-06-25T00:00:00Z",
+        "payload": {
+            "postId": post_id or str(uuid.uuid4()),
+            "authorId": author_id or str(uuid.uuid4()),
+            "restoredBy": str(uuid.uuid4()),
+            "occurredAt": "2026-06-25T00:00:00Z",
+        },
+    }
+
+
 def _make_hard_deleted_message(
     post_id: str | None = None,
     author_id: str | None = None,
@@ -328,6 +345,75 @@ class TestPostConsumerPostHardDeleted(unittest.IsolatedAsyncioTestCase):
         await self.consumer.handle(msg)
 
         self.mock_post_repo.delete_by_post_id.assert_not_called()
+
+
+class TestPostConsumerPostRestored(unittest.IsolatedAsyncioTestCase):
+
+    def setUp(self):
+        self.mock_post_repo = AsyncMock()
+        self.mock_profile_repo = AsyncMock()
+
+        mock_db = MagicMock()
+        mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
+        mock_db.__aexit__ = AsyncMock(return_value=False)
+
+        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
+        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
+        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
+        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
+        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=AsyncMock())
+
+        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+            p.start()
+            self.addCleanup(p.stop)
+
+        self.consumer = PostConsumer()
+
+    async def test_deleted_post_restored_to_done(self):
+        """status=DELETED 게시글 복구 — status=DONE 갱신 및 record_count 즉시 반영."""
+        KST = timezone(timedelta(hours=9))
+        self.mock_post_repo.find_by_post_id.return_value = _make_post_embedding(
+            embedded_at=datetime.now(KST),
+            embedding_status="DELETED",
+        )
+        self.mock_post_repo.count_done_by_user_id.return_value = 3
+
+        await self.consumer.handle(_make_restored_message())
+
+        self.mock_post_repo.update_status.assert_called_once()
+        args = self.mock_post_repo.update_status.call_args.args
+        self.assertEqual(args[1], "DONE")
+        self.mock_profile_repo.sync_count_and_active.assert_called_once_with(unittest.mock.ANY, 3)
+
+    async def test_non_deleted_status_ignored(self):
+        """status=DONE 게시글에 복구 이벤트 — update_status 미호출."""
+        KST = timezone(timedelta(hours=9))
+        self.mock_post_repo.find_by_post_id.return_value = _make_post_embedding(
+            embedded_at=datetime.now(KST),
+            embedding_status="DONE",
+        )
+
+        await self.consumer.handle(_make_restored_message())
+
+        self.mock_post_repo.update_status.assert_not_called()
+
+    async def test_no_embedding_ignored(self):
+        """임베딩 레코드 없는 게시글 복구 — update_status 미호출."""
+        self.mock_post_repo.find_by_post_id.return_value = None
+
+        await self.consumer.handle(_make_restored_message())
+
+        self.mock_post_repo.update_status.assert_not_called()
+
+    async def test_invalid_payload_ignored(self):
+        """필수 필드 누락(authorId) — 예외 전파 없음, update_status 미호출."""
+        msg = {
+            "eventType": "POST_RESTORED",
+            "payload": {"postId": str(uuid.uuid4())},
+        }
+        await self.consumer.handle(msg)
+
+        self.mock_post_repo.update_status.assert_not_called()
 
 
 if __name__ == "__main__":
