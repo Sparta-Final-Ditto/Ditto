@@ -54,8 +54,9 @@ public class ChatRoomOwnerTransferService {
             throw new ChatRoomInactiveException();
         }
 
+        // 동시 위임 요청을 직렬화하기 위해 요청자 row에 쓰기 락을 건다.
         ChatRoomParticipant requester = chatRoomParticipantPort
-                .findActiveParticipant(roomId, requesterId)
+                .findActiveParticipantForUpdate(roomId, requesterId)
                 .orElseThrow(ChatNotParticipantException::new);
         if (requester.getRole() != ParticipantRole.OWNER) {
             throw new ChatRoleChangeForbiddenException();

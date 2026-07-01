@@ -21,4 +21,6 @@ public interface ChatRoomParticipantPort {
     ChatRoomParticipant save(ChatRoomParticipant participant);
 
     void saveAll(Collection<ChatRoomParticipant> participants);
+
+    Optional<ChatRoomParticipant> findActiveParticipantForUpdate(UUID roomId, UUID userId);
 }

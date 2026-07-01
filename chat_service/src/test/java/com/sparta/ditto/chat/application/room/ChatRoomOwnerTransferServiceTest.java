@@ -54,7 +54,7 @@ class ChatRoomOwnerTransferServiceTest {
                 ChatRoomParticipant.join(ROOM_ID, OWNER_ID, ParticipantRole.OWNER);
         ChatRoomParticipant target =
                 ChatRoomParticipant.join(ROOM_ID, TARGET_ID, ParticipantRole.MEMBER);
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, OWNER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, OWNER_ID))
                 .willReturn(Optional.of(owner));
         given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, TARGET_ID))
                 .willReturn(Optional.of(target));
@@ -77,7 +77,7 @@ class ChatRoomOwnerTransferServiceTest {
         givenActiveGroupRoom();
         ChatRoomParticipant member =
                 ChatRoomParticipant.join(ROOM_ID, OWNER_ID, ParticipantRole.MEMBER);
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, OWNER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, OWNER_ID))
                 .willReturn(Optional.of(member));
 
         // when & then
@@ -93,7 +93,7 @@ class ChatRoomOwnerTransferServiceTest {
         givenActiveGroupRoom();
         ChatRoomParticipant owner =
                 ChatRoomParticipant.join(ROOM_ID, OWNER_ID, ParticipantRole.OWNER);
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, OWNER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, OWNER_ID))
                 .willReturn(Optional.of(owner));
         given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, TARGET_ID))
                 .willReturn(Optional.empty());
@@ -126,6 +126,22 @@ class ChatRoomOwnerTransferServiceTest {
         assertThatThrownBy(() -> chatRoomOwnerTransferService.transferOwner(
                 OWNER_ID, ROOM_ID, OWNER_ID, ParticipantRole.OWNER))
                 .isInstanceOf(ChatCannotTransferSelfException.class);
+    }
+
+    @Test
+    @DisplayName("이미 OWNER가 아니게 된(동시 위임된) 요청자는 위임할 수 없다")
+    void transfer_should_reject_when_requester_no_longer_owner() {
+        // given — 락 획득 후 다시 읽었을 때 이미 MEMBER로 강등된 상황
+        givenActiveGroupRoom();
+        ChatRoomParticipant demoted =
+                ChatRoomParticipant.join(ROOM_ID, OWNER_ID, ParticipantRole.MEMBER);
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, OWNER_ID))
+                .willReturn(Optional.of(demoted));
+
+        // when & then
+        assertThatThrownBy(() -> chatRoomOwnerTransferService.transferOwner(
+                OWNER_ID, ROOM_ID, TARGET_ID, ParticipantRole.OWNER))
+                .isInstanceOf(ChatRoleChangeForbiddenException.class);
     }
 
     private void givenActiveGroupRoom() {
