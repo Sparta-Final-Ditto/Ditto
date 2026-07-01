@@ -75,7 +75,7 @@ public class ChatRoomInviteService {
             invitedTargets.add(new InvitedTarget(targetUserId, resolveNickname(targetUserId)));
         }
 
-        inviteRegistrar.register(chatRoom, invitedTargets);;
+        inviteRegistrar.register(chatRoom, invitedTargets);
 
         log.info("Chat room invited. requesterId={}, roomId={}, invitedCount={}",
                 requesterId, roomId, targetUserIds.size());
