@@ -1,7 +1,12 @@
 package com.sparta.ditto.feed.application.service;
 
+import com.sparta.ditto.feed.application.port.OutboxEventPort;
+import com.sparta.ditto.feed.domain.entity.OutboxEvent;
+import com.sparta.ditto.feed.domain.entity.Post;
+import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
 import com.sparta.ditto.feed.domain.repository.CommentRepository;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
+import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.repository.PostMediaRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.repository.PostTagRepository;
@@ -29,9 +34,20 @@ public class PostHardDeleteService {
     private final PostMediaRepository postMediaRepository;
     private final PostTagRepository postTagRepository;
     private final PostRepository postRepository;
+    private final OutboxEventPort outboxEventPort;
+    private final OutboxEventRepository outboxEventRepository;
 
     @Transactional
     public void purgePost(UUID postId) {
+        // outbox 이벤트 생성을 위해 물리 삭제 전에 post를 먼저 확보한다.
+        Post post = postRepository.findById(postId)
+                .orElseThrow(PostNotFoundException::new);
+
+        // deletedBy: hard delete는 시스템(스케줄러)이 수행. 별도 시스템 UUID 상수 미정의이므로
+        // soft delete 요청자(post.getDeletedBy())를 재사용한다.
+        OutboxEvent outboxEvent = outboxEventPort.buildPostHardDeleted(post, post.getDeletedBy());
+        outboxEventRepository.save(outboxEvent);
+
         commentRepository.hardDeleteAllByPostId(postId);
         likeRepository.hardDeleteAllByPostId(postId);
         postMediaRepository.deleteByPostId(postId);

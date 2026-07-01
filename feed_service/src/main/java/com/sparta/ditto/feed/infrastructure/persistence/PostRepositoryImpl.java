@@ -101,4 +101,9 @@ public class PostRepositoryImpl implements PostRepository {
     public void hardDeleteById(UUID postId) {
         jpaRepository.hardDeleteById(postId);
     }
+
+    @Override
+    public void restoreById(UUID postId) {
+        jpaRepository.restoreById(postId);
+    }
 }

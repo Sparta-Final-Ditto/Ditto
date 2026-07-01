@@ -1,6 +1,5 @@
 package com.sparta.ditto.chat.application.message;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -9,7 +8,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-
+import com.sparta.ditto.chat.application.event.ChatSystemMessageBroadcastRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
@@ -29,6 +28,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 @DisplayName("ChatMessageSendService 테스트")
 class ChatMessageSendServiceTest {
@@ -45,7 +45,8 @@ class ChatMessageSendServiceTest {
     private ChatRoomMetadataService chatRoomMetadataService;
     private ChatMessagePublisher chatMessagePublisher;
     private ChatMessageDedupStore chatMessageDedupStore;
-    private ChatMessageNotificationService chatMessageNotificationService;
+    private ChatMessageCommitService chatMessageCommitService;
+    private ApplicationEventPublisher applicationEventPublisher;
     private ChatMessageSendService chatMessageSendService;
 
     @BeforeEach
@@ -57,12 +58,13 @@ class ChatMessageSendServiceTest {
         chatRoomMetadataService = mock(ChatRoomMetadataService.class);
         chatMessagePublisher = mock(ChatMessagePublisher.class);
         chatMessageDedupStore = mock(ChatMessageDedupStore.class);
-        chatMessageNotificationService = mock(ChatMessageNotificationService.class);
+        chatMessageCommitService = mock(ChatMessageCommitService.class);
+        applicationEventPublisher = mock(ApplicationEventPublisher.class);
         chatMessageSendService = new ChatMessageSendService(
                 chatMessageCommandPort, chatMessageQueryPort, chatParticipantValidator,
                 messageIdGenerator, chatRoomMetadataService,
                 chatMessagePublisher, chatMessageDedupStore,
-                chatMessageNotificationService);
+                chatMessageCommitService, applicationEventPublisher);
     }
 
     @Test
@@ -82,7 +84,9 @@ class ChatMessageSendServiceTest {
         verify(chatMessageCommandPort)
                 .saveUserMessage(eq("msg-1"), eq(ROOM_ID), eq(SENDER_ID),
                         eq(CLIENT_MESSAGE_ID), eq(MessageType.TEXT), eq("hello"));
-        verify(chatRoomMetadataService).updateLastMessage(eq(ROOM_ID), eq("msg-1"), any());
+        // 메타갱신 + 알림 이벤트 발행은 ChatMessageCommitService가 트랜잭션으로 묶어 처리한다.
+        verify(chatMessageCommitService)
+                .commitMetadataAndRegisterNotification(eq(ROOM_ID), any(SentMessage.class));
         verify(chatMessageDedupStore)
                 .complete(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID), eq("msg-1"));
         verify(chatMessagePublisher).ackToSender(eq(SENDER_ID), any(SentMessage.class));
@@ -125,7 +129,7 @@ class ChatMessageSendServiceTest {
     }
 
     @Test
-    @DisplayName("성공 - 시스템 메시지 저장 후 lastMessage를 갱신하고 브로드캐스트한다")
+    @DisplayName("성공 - 시스템 메시지 저장 후 lastMessage를 갱신하고 커밋 후 브로드캐스트 이벤트를 발행한다")
     void success_save_system_message() {
         // given
         given(messageIdGenerator.generate()).willReturn("system-msg-1");
@@ -147,7 +151,10 @@ class ChatMessageSendServiceTest {
         verify(chatRoomMetadataService)
                 .updateLastMessage(eq(ROOM_ID), eq("system-msg-1"), any());
         verify(chatMessagePublisher, never()).ackToSender(any(), any());
-        verify(chatMessagePublisher).broadcast(eq(ROOM_ID), any(SentMessage.class));
+        // broadcast는 직접 호출하지 않고 커밋 이후 이벤트로 발행한다.
+        verify(chatMessagePublisher, never()).broadcast(any(), any());
+        verify(applicationEventPublisher)
+                .publishEvent(any(ChatSystemMessageBroadcastRequestedEvent.class));
     }
 
     @Test
@@ -212,43 +219,6 @@ class ChatMessageSendServiceTest {
         verify(chatMessageDedupStore)
                 .release(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID));
         verify(chatMessagePublisher, never()).ackToSender(any(), any());
-    }
-
-    @Test
-    @DisplayName("성공 - 신규 메시지 전송 시 알림 dispatch를 호출한다")
-    void sendUserMessage_dispatchesNotification() {
-        // given
-        given(chatMessageDedupStore.begin(any(), any(), any()))
-                .willReturn(DedupBeginResult.newRequest());
-        given(messageIdGenerator.generate()).willReturn("msg-1");
-        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
-                .willReturn(existingMessage("msg-1"));
-
-        // when
-        chatMessageSendService.sendUserMessage(command());
-
-        // then
-        verify(chatMessageNotificationService).dispatch(any(SentMessage.class));
-    }
-
-    @Test
-    @DisplayName("격리 - 알림 발행이 실패해도 전송은 성공한다")
-    void sendUserMessage_notificationFailureDoesNotBreakSend() {
-        // given
-        given(chatMessageDedupStore.begin(any(), any(), any()))
-                .willReturn(DedupBeginResult.newRequest());
-        given(messageIdGenerator.generate()).willReturn("msg-1");
-        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
-                .willReturn(existingMessage("msg-1"));
-        willThrow(new RuntimeException("kafka down"))
-                .given(chatMessageNotificationService).dispatch(any());
-
-        // when
-        SentMessage result = chatMessageSendService.sendUserMessage(command());
-
-        // then
-        assertThat(result).isNotNull();
-        verify(chatMessagePublisher).broadcast(eq(ROOM_ID), any(SentMessage.class));
     }
 
     private ChatMessageSendCommand command() {

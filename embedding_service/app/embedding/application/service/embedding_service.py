@@ -148,6 +148,14 @@ class EmbeddingService:
         """임베딩 실패 게시글 재처리 — 원본 데이터를 다시 받아 처리한다."""
         await self.embed_and_store(post_id, user_id, content, hashtags)
 
+    async def trigger_daily_batch(self) -> None:
+        from app.embedding.infrastructure.batch.batch_embedding import run_batch
+        await run_batch()
+
+    async def trigger_monthly_batch(self) -> None:
+        from app.embedding.infrastructure.batch.batch_embedding import run_monthly_batch
+        await run_monthly_batch()
+
 
 def _compute_age_group(birthdate: date) -> str:
     from datetime import date as date_cls
