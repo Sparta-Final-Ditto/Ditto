@@ -1,5 +1,6 @@
 package com.sparta.ditto.chat.application.message;
 
+import com.sparta.ditto.chat.application.event.ChatSystemMessageBroadcastRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.message.port.ChatMessageCommandPort;
@@ -17,6 +18,7 @@ import com.sparta.ditto.common.exception.CommonErrorCode;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -32,6 +34,7 @@ public class ChatMessageSendService {
     private final ChatMessagePublisher chatMessagePublisher;
     private final ChatMessageDedupStore chatMessageDedupStore;
     private final ChatMessageCommitService chatMessageCommitService;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     // 사용자 메시지 전송: 검증 → 중복 확인 → 저장 → last message 갱신 → ACK → 브로드캐스트
     public SentMessage sendUserMessage(ChatMessageSendCommand command) {
@@ -60,7 +63,7 @@ public class ChatMessageSendService {
         };
     }
 
-    // 시스템 메시지 저장 + 브로드캐스트
+    // 시스템 메시지 저장 + 커밋 이후 브로드캐스트
     public SentMessage saveSystemMessage(
             UUID roomId, UUID actorId, MessageType messageType, String content) {
         String messageId = messageIdGenerator.generate();
@@ -70,8 +73,11 @@ public class ChatMessageSendService {
         chatRoomMetadataService.updateLastMessage(
                 roomId, saved.messageId(), saved.createdAt());
 
-        chatMessagePublisher.broadcast(roomId, saved);
-        log.debug("System chat message saved and broadcast. "
+        // broadcast를 호출 트랜잭션 커밋 이후로 미룸. 롤백 시 클라이언트가 메시지를 받지 않도록 함.
+        applicationEventPublisher.publishEvent(
+                new ChatSystemMessageBroadcastRequestedEvent(roomId, saved));
+
+        log.debug("System chat message saved, broadcast scheduled after commit. "
                         + "roomId={}, actorId={}, messageId={}, messageType={}",
                 roomId, actorId, saved.messageId(), messageType);
         return saved;
