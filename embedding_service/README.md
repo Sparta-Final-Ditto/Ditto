@@ -17,10 +17,16 @@
 
 ## 서비스 의존 관계
 
-```
-user_service  ──(Kafka: USER_REGISTERED)──►  embedding_service
-feed_service  ──(Kafka: post-events)──────►  embedding_service
-embedding_service  ──(REST: OpenFeign)────►  match_service
+
+```mermaid
+flowchart LR
+    US[user_service]:::producer -->|Kafka: USER_REGISTERED| ES[embedding_service]:::consumer
+    FS[feed_service]:::producer -->|Kafka: post-events| ES
+    ES -->|REST: OpenFeign| MS[match_service]:::rest
+
+    classDef producer fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef consumer fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef rest fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
 ```
 
 ---
@@ -69,6 +75,16 @@ POST_DELETED 이벤트
   └─ KST 당일 게시글인 경우만 status=DELETED 처리
   └─ record_count 감소, active 재확인
   └─ 새벽 배치 EMA 계산에서 자동 제외 (WHERE status='DONE')
+
+POST_HARD_DELETED 이벤트 (soft delete 30일 후 영구 삭제)
+  └─ user_posts_embeddings 행 물리 삭제
+  └─ status=DELETED 상태였으면 record_count 변경 없음 (soft delete 시 이미 처리)
+  └─ status=DONE 상태였으면 (soft delete 이벤트 누락 엣지케이스) record_count 보정
+
+POST_RESTORED 이벤트
+  └─ status=DELETED → DONE 복구
+  └─ record_count 증가, active 재확인
+  └─ 벡터 재계산은 월배치에서 반영 (last_processed_record_id 유지)
 
 일배치 (매일 KST 03:00)
   └─ FAILED → DONE 복구
@@ -130,7 +146,19 @@ POST_DELETED 이벤트
 | `PENDING` | 임베딩 처리 전 초기 상태 |
 | `DONE` | 임베딩 완료, 배치 EMA 계산 대상 |
 | `FAILED` | 3회 재시도 실패, 다음 일배치에서 DONE으로 복구 후 재계산 |
-| `DELETED` | 당일 게시글 삭제 처리, 배치 계산에서 영구 제외 |
+| `DELETED` | 당일 게시글 삭제 처리, 배치 계산에서 제외. POST_HARD_DELETED 수신 시 행 물리 삭제 |
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> PENDING
+    PENDING --> DONE : 임베딩 성공
+    PENDING --> FAILED : 3회 재시도 실패
+    FAILED --> DONE : 일배치 복구
+    DONE --> DELETED : POST_DELETED (당일 게시글)
+    DELETED --> DONE : POST_RESTORED
+    DELETED --> [*] : POST_HARD_DELETED (물리 삭제)
+```
 
 ### 매칭 활성화 기준
 
@@ -241,7 +269,9 @@ uvicorn app.main:app --reload
 | 토픽 | 방향 | 이벤트 | 설명 |
 |---|---|---|---|
 | `post-events` | 소비 | `POST_CREATED` | 게시글 임베딩 생성 및 프로필 갱신 |
-| `post-events` | 소비 | `POST_DELETED` | 당일 게시글 DELETED 처리 |
+| `post-events` | 소비 | `POST_DELETED` | 당일 게시글 DELETED 처리, record_count 감소 |
+| `post-events` | 소비 | `POST_HARD_DELETED` | 임베딩 레코드 물리 삭제 (30일 후 영구 삭제) |
+| `post-events` | 소비 | `POST_RESTORED` | DELETED → DONE 복구, record_count 증가 |
 | `USER_REGISTERED` | 소비 | `USER_CREATED` | 프로필 stub 행 생성 (vector=NULL) |
 | `USER_REGISTERED` | 소비 | `USER_INTERESTS_REGISTERED` | 관심사 기반 초기 프로필 벡터 생성 |
 | `post-events-dlq` | 소비·발행 | — | 임베딩 3회 실패 메시지 보관, 일배치 재처리 |
