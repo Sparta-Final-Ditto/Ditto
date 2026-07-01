@@ -27,9 +27,10 @@ from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.common.kafka.dlq_producer import DlqProducer
 from app.embedding.infrastructure.kafka.post_consumer import PostConsumer
 from app.embedding.infrastructure.kafka.user_consumer import UserRegisteredConsumer
-from app.embedding.infrastructure.batch.batch_embedding import run_batch
+from app.embedding.infrastructure.batch.batch_embedding import run_batch, run_monthly_batch
 from app.embedding.presentation.router.embedding_router import router as embedding_router
 from app.embedding.presentation.router.internal_router import router as internal_router
+from app.embedding.presentation.router.test_router import router as test_router
 
 TAGS_METADATA = [
     {
@@ -44,6 +45,10 @@ TAGS_METADATA = [
         "name": "Health",
         "description": "서비스 상태 확인",
     },
+    {
+        "name": "Test",
+        "description": "개발·검증용 수동 트리거 엔드포인트 (배치 즉시 실행 등)",
+    },
 ]
 
 
@@ -56,6 +61,7 @@ async def lifespan(_: FastAPI):
 
     scheduler = AsyncIOScheduler()
     scheduler.add_job(run_batch, CronTrigger(hour=3, minute=0, timezone="Asia/Seoul"))
+    scheduler.add_job(run_monthly_batch, CronTrigger(day=1, hour=4, minute=0, timezone="Asia/Seoul"))
     scheduler.start()
 
     yield
@@ -91,3 +97,4 @@ app.add_middleware(
 app.include_router(health_router, prefix="/health")
 app.include_router(embedding_router, prefix="/api/v1/embedding")
 app.include_router(internal_router, prefix="/api/v1/internal/embedding")
+app.include_router(test_router, prefix="/api/v1/test")
