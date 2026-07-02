@@ -1,4 +1,9 @@
 package com.sparta.ditto.assistant.application.dto.command;
 
-public class AskAssistantCommand {
+import java.util.UUID;
+
+public record AskAssistantCommand(
+        UUID userId,
+        String question
+) {
 }
