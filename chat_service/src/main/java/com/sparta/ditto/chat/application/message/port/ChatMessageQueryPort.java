@@ -47,4 +47,8 @@ public interface ChatMessageQueryPort {
 
     // 방 목록 lastMessage 본문 채우기용 batch 조회
     List<SentMessage> findByMessageIds(Collection<String> messageIds);
+
+    // 중복키 흡수: 유니크 키(roomId+senderId+clientMessageId)로 기존 사용자 메시지 조회
+    Optional<SentMessage> findByRoomIdAndSenderIdAndClientMessageId(
+            UUID roomId, UUID senderId, UUID clientMessageId);
 }
