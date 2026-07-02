@@ -176,4 +176,12 @@ public class ChatMessageMongoAdapter implements ChatMessageCommandPort, ChatMess
                 .map(this::toSentMessage)
                 .toList();
     }
+
+    @Override
+    public Optional<SentMessage> findByRoomIdAndSenderIdAndClientMessageId(
+            UUID roomId, UUID senderId, UUID clientMessageId) {
+        return chatMessageMongoRepository
+                .findByRoomIdAndSenderIdAndClientMessageId(roomId, senderId, clientMessageId)
+                .map(this::toSentMessage);
+    }
 }
