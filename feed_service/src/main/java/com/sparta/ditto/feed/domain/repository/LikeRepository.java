@@ -25,4 +25,6 @@ public interface LikeRepository {
     List<Like> findLikesWithCursor(UUID postId, Instant cursorAt, UUID cursorId, int limit);
 
     void hardDeleteAllByPostId(UUID postId);
+
+    void restoreAllByPostId(UUID postId);
 }

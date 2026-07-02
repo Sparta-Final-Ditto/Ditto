@@ -49,12 +49,12 @@ public class PostInteractionService {
             throw new DuplicateLikeException();
         }
 
-        likeRepository.save(new Like(postId, userId, userNickname));
+        Like like = likeRepository.save(new Like(postId, userId, userNickname));
         postRepository.incrementLikeCount(postId);
 
         if (!userId.equals(post.getUserId())) {
             applicationEventPublisher.publishEvent(
-                    new PostLikedEvent(post.getId(), userId, post.getUserId(), Instant.now()));
+                    new PostLikedEvent(like.getId(), post.getId(), userId, post.getUserId(), Instant.now()));
         }
 
         return LikeResult.liked(post);

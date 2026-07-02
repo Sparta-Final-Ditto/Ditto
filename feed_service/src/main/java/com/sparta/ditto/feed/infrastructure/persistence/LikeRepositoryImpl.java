@@ -64,4 +64,10 @@ public class LikeRepositoryImpl implements LikeRepository {
     public void hardDeleteAllByPostId(UUID postId) {
         jpaRepository.hardDeleteAllByPostId(postId);
     }
+
+    @Override
+    @Transactional
+    public void restoreAllByPostId(UUID postId) {
+        jpaRepository.restoreAllByPostId(postId);
+    }
 }

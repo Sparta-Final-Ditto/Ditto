@@ -42,6 +42,9 @@ public class Comment extends BaseEntity {
     @Column(length = 200, nullable = false)
     private String content;
 
+    @Column(nullable = false)
+    private boolean deletedByPostDeletion = false;
+
     public Comment(UUID postId, UUID userId, String userNickname, String content) {
         this.postId = postId;
         this.userId = userId;

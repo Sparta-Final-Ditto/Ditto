@@ -27,4 +27,6 @@ public interface ChatRoomParticipantPort {
 
     int markReadAndResetUnread(
             UUID roomId, UUID userId, String lastReadMessageId, Instant lastReadAt);
+
+    Optional<ChatRoomParticipant> findActiveParticipantForUpdate(UUID roomId, UUID userId);
 }

@@ -75,4 +75,9 @@ public class ChatRoomParticipantPersistenceAdapter implements ChatRoomParticipan
         return chatRoomParticipantRepository.markReadAndResetUnread(
                 roomId, userId, lastReadMessageId, lastReadAt);
     }
+
+    @Override
+    public Optional<ChatRoomParticipant> findActiveParticipantForUpdate(UUID roomId, UUID userId) {
+        return chatRoomParticipantRepository.findActiveParticipantForUpdate(roomId, userId);
+    }
 }

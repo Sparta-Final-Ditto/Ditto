@@ -146,6 +146,10 @@ public class ChatRoomParticipant {
         this.role = ParticipantRole.OWNER;
     }
 
+    public void assignMemberRole() {
+        this.role = ParticipantRole.MEMBER;
+    }
+
     @PrePersist
     void prePersist() {
         if (this.joinedAt == null) {

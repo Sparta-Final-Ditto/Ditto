@@ -1,11 +1,13 @@
 package com.sparta.ditto.chat.infrastructure.jpa;
 
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -63,4 +65,10 @@ public interface ChatRoomParticipantRepository extends JpaRepository<ChatRoomPar
             @Param("lastReadAt") Instant lastReadAt
     );
 
+    // OWNER 위임 등 권한 변경 시 동시 요청을 직렬화하기 위해 요청자 참여자 row에 쓰기 락을 건다.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select p from ChatRoomParticipant p "
+            + "where p.roomId = :roomId and p.userId = :userId and p.leftAt is null")
+    Optional<ChatRoomParticipant> findActiveParticipantForUpdate(
+            @Param("roomId") UUID roomId, @Param("userId") UUID userId);
 }
