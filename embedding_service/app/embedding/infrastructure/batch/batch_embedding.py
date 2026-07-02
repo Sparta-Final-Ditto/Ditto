@@ -196,3 +196,10 @@ async def run_monthly_batch() -> None:
                 fail += 1
 
     logger.info(f"[MonthlyBatch] 완료 — 성공: {success}, 스킵: {skip}, 실패: {fail}")
+
+    await ProfileEmbeddingProducer.publish_bulk_completed(
+        batch_type="MONTHLY",
+        total_updated=success,
+        total_skipped=skip,
+        total_failed=fail,
+    )
