@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -63,6 +64,10 @@ class ChatReadServiceTest {
                 chatRoomParticipantPort,
                 chatReadMessagePort
         );
+        // 읽음 갱신은 기본 1건 성공으로 둔다(반환 0이면 서비스가 참여자 없음 예외를 던지므로).
+        lenient().when(chatRoomParticipantPort
+                        .markReadAndResetUnread(any(), any(), any(), any()))
+                .thenReturn(1);
     }
 
     @Test
@@ -145,6 +150,21 @@ class ChatReadServiceTest {
         verify(chatRoomParticipantPort).markReadAndResetUnread(
                 eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
         assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
+    }
+
+    @Test
+    @DisplayName("읽음 갱신이 0건이면(참여자 소멸) 참여자 없음 예외를 던진다")
+    void updateReadState_zero_updated_throws() {
+        // given
+        ChatRoomParticipant participant = participant();
+        givenParticipant(participant);
+        givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
+        given(chatRoomParticipantPort.markReadAndResetUnread(any(), any(), any(), any()))
+                .willReturn(0);
+
+        // when & then
+        assertThatThrownBy(() -> chatReadService.updateReadState(command(NEXT_MESSAGE_ID)))
+                .isInstanceOf(ChatNotParticipantException.class);
     }
 
     @Test

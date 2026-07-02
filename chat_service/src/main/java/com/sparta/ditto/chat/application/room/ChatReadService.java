@@ -55,10 +55,12 @@ public class ChatReadService {
                     readAt
             );
             if (updated == 0) {
-                // 락으로 참여자를 잡았지만 그 사이 leave 등으로 대상 row가 사라지면 0건이 될 수 있다.
-                log.warn("Chat read update affected 0 rows — participant may have left. "
-                                + "userId={}, roomId={}, messageId={}",
+                // 바로 위 findActiveParticipantForUpdate가 같은 트랜잭션에서 이 row에 쓰기 락을 잡으므로
+                // 실제로는 거의 도달하지 않는다(락 획득 전 leave가 커밋됐다면 위에서 이미 예외로 빠짐).
+                // 이중 방어(belt-and-suspenders)로, 도달 시 성공 응답 대신 참여자 없음으로 처리한다.
+                log.warn("Chat read update affected 0 rows. userId={}, roomId={}, messageId={}",
                         command.requesterId(), command.roomId(), command.lastReadMessageId());
+                throw new ChatNotParticipantException();
             }
             log.debug("Chat read position updated. userId={}, roomId={}, messageId={}",
                     command.requesterId(), command.roomId(), command.lastReadMessageId());
