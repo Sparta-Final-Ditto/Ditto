@@ -8,6 +8,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+
 import com.sparta.ditto.chat.application.event.ChatSystemMessageBroadcastRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.ChatMessageSendCommand;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 
 @DisplayName("ChatMessageSendService 테스트")
 class ChatMessageSendServiceTest {
@@ -211,6 +213,54 @@ class ChatMessageSendServiceTest {
         given(chatMessageDedupStore.begin(any(), any(), any()))
                 .willReturn(DedupBeginResult.duplicateCompleted("msg-1"));
         given(chatMessageQueryPort.findByMessageId("msg-1"))
+                .willReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(() -> chatMessageSendService.sendUserMessage(command()))
+                .isInstanceOf(BusinessException.class);
+        verify(chatMessageDedupStore)
+                .release(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID));
+        verify(chatMessagePublisher, never()).ackToSender(any(), any());
+    }
+
+    @Test
+    @DisplayName("저장 시 DuplicateKeyException - 기존 메시지를 조회해 멱등 ACK로 흡수한다")
+    void save_duplicate_key_absorbed_as_idempotent_ack() {
+        // given: Redis dedup은 NEW를 내줬지만 Mongo unique index가 이미 저장된 메시지를 막음
+        given(chatMessageDedupStore.begin(any(), any(), any()))
+                .willReturn(DedupBeginResult.newRequest());
+        given(messageIdGenerator.generate()).willReturn("msg-1");
+        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
+                .willThrow(new DuplicateKeyException("duplicate key"));
+        given(chatMessageQueryPort.findByRoomIdAndSenderIdAndClientMessageId(
+                ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID))
+                .willReturn(Optional.of(existingMessage("existing-msg")));
+
+        // when
+        chatMessageSendService.sendUserMessage(command());
+
+        // then: 500 대신 기존 메시지로 ACK, dedup을 기존 messageId로 확정, release는 하지 않음
+        verify(chatMessagePublisher).ackToSender(eq(SENDER_ID), any(SentMessage.class));
+        verify(chatMessageDedupStore)
+                .complete(eq(ROOM_ID), eq(SENDER_ID), eq(CLIENT_MESSAGE_ID), eq("existing-msg"));
+        verify(chatMessageDedupStore, never()).release(any(), any(), any());
+        verify(chatMessagePublisher, never()).broadcast(any(), any());
+        // 이미 저장된 메시지의 ACK 재전송이므로 lastMessage/unread/알림을 다시 건드리지 않는다.
+        verify(chatMessageCommitService, never())
+                .commitMetadataAndRegisterNotification(any(), any());
+    }
+
+    @Test
+    @DisplayName("저장 시 DuplicateKeyException인데 기존 메시지가 없으면 - dedup 정리 후 예외")
+    void save_duplicate_key_but_existing_missing() {
+        // given
+        given(chatMessageDedupStore.begin(any(), any(), any()))
+                .willReturn(DedupBeginResult.newRequest());
+        given(messageIdGenerator.generate()).willReturn("msg-1");
+        given(chatMessageCommandPort.saveUserMessage(any(), any(), any(), any(), any(), any()))
+                .willThrow(new DuplicateKeyException("duplicate key"));
+        given(chatMessageQueryPort.findByRoomIdAndSenderIdAndClientMessageId(
+                ROOM_ID, SENDER_ID, CLIENT_MESSAGE_ID))
                 .willReturn(Optional.empty());
 
         // when & then

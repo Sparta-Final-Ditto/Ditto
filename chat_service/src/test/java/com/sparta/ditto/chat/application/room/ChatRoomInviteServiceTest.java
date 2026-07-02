@@ -1,7 +1,9 @@
 package com.sparta.ditto.chat.application.room;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
@@ -13,6 +15,8 @@ import com.sparta.ditto.chat.application.room.dto.command.ChatRoomInviteCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomInviteResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
+import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatInviteForbiddenException;
@@ -30,6 +34,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 
 @DisplayName("ChatRoomInviteService 테스트")
@@ -46,6 +51,7 @@ class ChatRoomInviteServiceTest {
     private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatUserValidationPort chatUserValidationPort;
     private ChatRoomParticipantInviteRegistrar inviteRegistrar;
+    private ChatUserProfilePort chatUserProfilePort;
     private ChatRoomInviteService chatRoomInviteService;
     private ChatRoom activeRoom;
 
@@ -55,11 +61,13 @@ class ChatRoomInviteServiceTest {
         chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatUserValidationPort = mock(ChatUserValidationPort.class);
         inviteRegistrar = mock(ChatRoomParticipantInviteRegistrar.class);
+        chatUserProfilePort = mock(ChatUserProfilePort.class);
         chatRoomInviteService = new ChatRoomInviteService(
                 chatRoomPort,
                 chatRoomParticipantPort,
                 chatUserValidationPort,
-                inviteRegistrar
+                inviteRegistrar,
+                chatUserProfilePort
         );
     }
 
@@ -69,20 +77,32 @@ class ChatRoomInviteServiceTest {
         // given
         givenActiveGroupRoom();
         givenOwnerRequester();
+        given(chatUserProfilePort.findProfile(TARGET_ID))
+                .willReturn(new ChatSenderProfile("초대대상", null));
+
 
         // when
         ChatRoomInviteResult result = chatRoomInviteService.invite(command(TARGET_ID));
 
         // then
-        org.assertj.core.api.Assertions.assertThat(result.roomId()).isEqualTo(ROOM_ID);
-        org.assertj.core.api.Assertions.assertThat(result.invitedUserIds())
+        assertThat(result.roomId()).isEqualTo(ROOM_ID);
+        assertThat(result.invitedUserIds())
                 .containsExactly(TARGET_ID);
 
         // 외부 검증이 row 변경(registrar)보다 먼저 실행되어야 한다.
+        ArgumentCaptor<List<InvitedTarget>> targetsCaptor = ArgumentCaptor.captor();
         InOrder order = inOrder(chatUserValidationPort, inviteRegistrar);
         order.verify(chatUserValidationPort)
                 .validateGroupChatParticipants(OWNER_ID, List.of(TARGET_ID));
-        order.verify(inviteRegistrar).register(activeRoom, List.of(TARGET_ID));
+        order.verify(inviteRegistrar).register(eq(activeRoom), targetsCaptor.capture());
+
+        // 초대 대상에 targetId와 조회한 nickname이 제대로 담겼는지 확인한다.
+        assertThat(targetsCaptor.getValue())
+                .singleElement()
+                .satisfies(target -> {
+                    assertThat(target.userId()).isEqualTo(TARGET_ID);
+                    assertThat(target.nickname()).isEqualTo("초대대상");
+                });
     }
 
     @Test

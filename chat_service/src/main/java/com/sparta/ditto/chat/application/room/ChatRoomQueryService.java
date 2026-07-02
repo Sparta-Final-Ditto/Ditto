@@ -82,7 +82,7 @@ public class ChatRoomQueryService {
                         room,
                         participantByRoomId.get(room.getId()),
                         lastMessageById,
-                        requesterId
+                        participantByRoomId.get(room.getId()).getUnreadCount()
                 ))
                 .toList();
     }
@@ -103,13 +103,8 @@ public class ChatRoomQueryService {
             ChatRoom chatRoom,
             ChatRoomParticipant participant,
             Map<String, SentMessage> lastMessageById,
-            UUID requesterId
+            long unreadCount
     ) {
-        long unreadCount = chatMessageQueryPort.countUnread(
-                chatRoom.getId(),
-                participant.getLastReadMessageId(),
-                requesterId
-        );
         return ChatRoomSummaryResult.of(
                 chatRoom.getId(),
                 chatRoom.getRoomType(),
