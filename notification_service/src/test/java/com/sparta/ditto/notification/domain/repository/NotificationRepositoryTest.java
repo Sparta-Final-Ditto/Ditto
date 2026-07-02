@@ -3,6 +3,7 @@ package com.sparta.ditto.notification.domain.repository;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
+import com.sparta.ditto.notification.infrastructure.persistence.NotificationJpaRepository;
 import com.sparta.ditto.notification.infrastructure.persistence.NotificationRepositoryImpl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -55,10 +56,13 @@ class NotificationRepositoryTest {
     @Autowired
     private NotificationRepository notificationRepository;
 
+    @Autowired
+    private NotificationJpaRepository jpaRepository;
+
     private Notification createAndSave(UUID receiverId, NotificationType type,
                                        boolean isRead, String metaData) {
         TargetType targetType = switch (type) {
-            case LIKE -> TargetType.POST;
+            case LIKE -> TargetType.LIKE;
             case COMMENT -> TargetType.COMMENT;
             case CHAT_MESSAGE -> TargetType.CHAT_MESSAGE;
         };
@@ -183,5 +187,67 @@ class NotificationRepositoryTest {
         assertThat(result).hasSize(2);
         assertThat(result).extracting(Notification::getId)
                 .containsExactlyInAnyOrder(unread1.getId(), unread2.getId());
+    }
+
+    // ── markAsReadByIds ───────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("주어진 id의 미읽음 알림이 is_read=true로 변경되고 반환값이 변경 건수와 일치한다")
+    void markAsReadByIds_변경대상_is_read_true이고_반환값일치() {
+        // given
+        UUID receiverId = UUID.randomUUID();
+        String chatMeta = "{\"roomId\":\"room1\"}";
+        Notification n1 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification n2 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification n3 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+
+        // when - n1, n2만 대상, n3는 제외
+        int updatedCount = notificationRepository.markAsReadByIds(List.of(n1.getId(), n2.getId()));
+
+        // then
+        assertThat(updatedCount).isEqualTo(2);
+        assertThat(jpaRepository.findById(n1.getId())).map(Notification::isRead).contains(true);
+        assertThat(jpaRepository.findById(n2.getId())).map(Notification::isRead).contains(true);
+        assertThat(jpaRepository.findById(n3.getId())).map(Notification::isRead).contains(false);
+    }
+
+    @Test
+    @DisplayName("이미 읽은 알림은 WHERE is_read=false 조건으로 반환값에 포함되지 않는다")
+    void markAsReadByIds_이미읽은알림_반환값미포함() {
+        // given
+        UUID receiverId = UUID.randomUUID();
+        String chatMeta = "{\"roomId\":\"room1\"}";
+        Notification unread1 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification unread2 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification alreadyRead1 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, true, chatMeta);
+        Notification alreadyRead2 = createAndSave(receiverId, NotificationType.CHAT_MESSAGE, true, chatMeta);
+
+        // when - 미읽음 2 + 이미읽음 2, 4개 모두 대상
+        int updatedCount = notificationRepository.markAsReadByIds(
+                List.of(unread1.getId(), unread2.getId(), alreadyRead1.getId(), alreadyRead2.getId()));
+
+        // then - false→true로 실제 변경된 건만 2
+        assertThat(updatedCount).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("id 목록에 없는 알림은 변경되지 않는다")
+    void markAsReadByIds_id목록에없는알림_불변() {
+        // given
+        UUID targetReceiverId = UUID.randomUUID();
+        UUID otherReceiverId = UUID.randomUUID();
+        String chatMeta = "{\"roomId\":\"room1\"}";
+        Notification target1 = createAndSave(targetReceiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification target2 = createAndSave(targetReceiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification other1 = createAndSave(otherReceiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+        Notification other2 = createAndSave(otherReceiverId, NotificationType.CHAT_MESSAGE, false, chatMeta);
+
+        // when - targetReceiverId의 id만 전달
+        int updatedCount = notificationRepository.markAsReadByIds(List.of(target1.getId(), target2.getId()));
+
+        // then
+        assertThat(updatedCount).isEqualTo(2);
+        assertThat(jpaRepository.findById(other1.getId())).map(Notification::isRead).contains(false);
+        assertThat(jpaRepository.findById(other2.getId())).map(Notification::isRead).contains(false);
     }
 }

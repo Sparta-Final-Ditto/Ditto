@@ -176,17 +176,4 @@ public class ChatMessageMongoAdapter implements ChatMessageCommandPort, ChatMess
                 .map(this::toSentMessage)
                 .toList();
     }
-
-    @Override
-    public long countUnread(UUID roomId, String lastReadMessageId, UUID myUserId) {
-        // 한 번도 읽지 않았으면 방 전체에서 내 메시지를 제외하고 센다.
-        if (lastReadMessageId == null || lastReadMessageId.isBlank()) {
-            return chatMessageMongoRepository.countUnreadAll(roomId, myUserId);
-        }
-        // lastRead 메시지를 찾으면 그 위치 이후를, 못 찾으면(정합성 깨짐) 전체로 폴백한다.
-        return chatMessageMongoRepository.findByMessageIdAndRoomId(lastReadMessageId, roomId)
-                .map(cursor -> chatMessageMongoRepository.countUnreadAfter(
-                        roomId, myUserId, cursor.getCreatedAt(), cursor.getMessageId()))
-                .orElseGet(() -> chatMessageMongoRepository.countUnreadAll(roomId, myUserId));
-    }
 }

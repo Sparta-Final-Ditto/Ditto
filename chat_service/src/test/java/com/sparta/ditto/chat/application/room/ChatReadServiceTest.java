@@ -2,8 +2,12 @@ package com.sparta.ditto.chat.application.room;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.chat.application.participant.ChatParticipantValidator;
@@ -23,6 +27,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @DisplayName("ChatReadService 테스트")
 class ChatReadServiceTest {
@@ -59,10 +64,14 @@ class ChatReadServiceTest {
                 chatRoomParticipantPort,
                 chatReadMessagePort
         );
+        // 읽음 갱신은 기본 1건 성공으로 둔다(반환 0이면 서비스가 참여자 없음 예외를 던지므로).
+        lenient().when(chatRoomParticipantPort
+                        .markReadAndResetUnread(any(), any(), any(), any()))
+                .thenReturn(1);
     }
 
     @Test
-    @DisplayName("처음 읽음 처리하면 마지막 읽은 메시지와 읽은 시각을 갱신한다")
+    @DisplayName("처음 읽음 처리하면 읽은 위치와 unread를 atomic update로 갱신한다")
     void updateReadState_success_first_read() {
         // given
         ChatRoomParticipant participant = participant();
@@ -74,19 +83,20 @@ class ChatReadServiceTest {
 
         // then
         verify(chatParticipantValidator).ensureRoomActive(ROOM_ID);
-        assertThat(participant.getLastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
-        assertThat(participant.getLastReadAt()).isNotNull();
+        verify(chatRoomParticipantPort).markReadAndResetUnread(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
         assertThat(result.roomId()).isEqualTo(ROOM_ID);
         assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
-        assertThat(result.lastReadAt()).isEqualTo(participant.getLastReadAt());
+        assertThat(result.lastReadAt()).isNotNull();
     }
 
     @Test
-    @DisplayName("기존 읽음 위치보다 최신 메시지이면 읽음 위치를 갱신한다")
+    @DisplayName("기존 읽음 위치보다 최신 메시지이면 읽은 위치와 unread를 atomic update로 갱신한다")
     void updateReadState_success_update_to_newer_message() {
         // given
         ChatRoomParticipant participant = participant();
         participant.updateLastRead(CURRENT_MESSAGE_ID, Instant.now());
+        ReflectionTestUtils.setField(participant, "unreadCount", 5L);
         givenParticipant(participant);
         givenMessage(CURRENT_MESSAGE_ID, CURRENT_MESSAGE_CREATED_AT);
         givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
@@ -95,16 +105,18 @@ class ChatReadServiceTest {
         ChatReadResult result = chatReadService.updateReadState(command(NEXT_MESSAGE_ID));
 
         // then
-        assertThat(participant.getLastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
+        verify(chatRoomParticipantPort).markReadAndResetUnread(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
         assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
     }
 
     @Test
-    @DisplayName("기존 읽음 위치보다 오래된 메시지이면 읽음 위치를 되돌리지 않는다")
+    @DisplayName("기존 읽음 위치보다 오래된 메시지이면 읽음 위치도 unread도 건드리지 않는다")
     void updateReadState_ignore_older_message() {
         // given
         ChatRoomParticipant participant = participant();
         participant.updateLastRead(CURRENT_MESSAGE_ID, Instant.now());
+        ReflectionTestUtils.setField(participant, "unreadCount", 5L);
         givenParticipant(participant);
         givenMessage(CURRENT_MESSAGE_ID, CURRENT_MESSAGE_CREATED_AT);
         givenMessage(PREVIOUS_MESSAGE_ID, PREVIOUS_MESSAGE_CREATED_AT);
@@ -112,9 +124,47 @@ class ChatReadServiceTest {
         // when
         ChatReadResult result = chatReadService.updateReadState(command(PREVIOUS_MESSAGE_ID));
 
-        // then
-        assertThat(participant.getLastReadMessageId()).isEqualTo(CURRENT_MESSAGE_ID);
+        // then: 오래된 요청은 안 읽은 메시지를 유실시키지 않도록 unread를 그대로 둔다
+        verify(chatRoomParticipantPort, never())
+                .markReadAndResetUnread(any(), any(), any(), any());
+        assertThat(participant.getUnreadCount()).isEqualTo(5L);
         assertThat(result.lastReadMessageId()).isEqualTo(CURRENT_MESSAGE_ID);
+    }
+
+    @Test
+    @DisplayName("저장된 과거 읽음 메시지가 삭제/만료돼도 정상 갱신한다")
+    void updateReadState_current_message_missing_still_updates() {
+        // given
+        ChatRoomParticipant participant = participant();
+        participant.updateLastRead(CURRENT_MESSAGE_ID, Instant.now());
+        givenParticipant(participant);
+        // 저장돼 있던 과거 읽음 메시지가 Mongo에 더 이상 없음(삭제/만료)
+        given(chatReadMessagePort.findReadMessage(ROOM_ID, CURRENT_MESSAGE_ID))
+                .willReturn(Optional.empty());
+        givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
+
+        // when
+        ChatReadResult result = chatReadService.updateReadState(command(NEXT_MESSAGE_ID));
+
+        // then: 과거 위치 부재는 오류가 아니라 "비교 불가" → 갱신 허용
+        verify(chatRoomParticipantPort).markReadAndResetUnread(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
+        assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
+    }
+
+    @Test
+    @DisplayName("읽음 갱신이 0건이면(참여자 소멸) 참여자 없음 예외를 던진다")
+    void updateReadState_zero_updated_throws() {
+        // given
+        ChatRoomParticipant participant = participant();
+        givenParticipant(participant);
+        givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
+        given(chatRoomParticipantPort.markReadAndResetUnread(any(), any(), any(), any()))
+                .willReturn(0);
+
+        // when & then
+        assertThatThrownBy(() -> chatReadService.updateReadState(command(NEXT_MESSAGE_ID)))
+                .isInstanceOf(ChatNotParticipantException.class);
     }
 
     @Test
@@ -135,7 +185,7 @@ class ChatReadServiceTest {
     @DisplayName("현재 참여자가 아니면 읽음 상태를 갱신할 수 없다")
     void updateReadState_fail_not_participant() {
         // given
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, REQUESTER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, REQUESTER_ID))
                 .willReturn(Optional.empty());
 
         // when & then
@@ -162,7 +212,7 @@ class ChatReadServiceTest {
     }
 
     private void givenParticipant(ChatRoomParticipant participant) {
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, REQUESTER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, REQUESTER_ID))
                 .willReturn(Optional.of(participant));
     }
 

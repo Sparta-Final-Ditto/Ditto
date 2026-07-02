@@ -31,6 +31,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @DisplayName("ChatRoomKickService 테스트")
@@ -168,6 +169,6 @@ class ChatRoomKickServiceTest {
 
     private void triggerAfterCommit() {
         TransactionSynchronizationManager.getSynchronizations()
-                .forEach(org.springframework.transaction.support.TransactionSynchronization::afterCommit);
+                .forEach(TransactionSynchronization::afterCommit);
     }
 }
