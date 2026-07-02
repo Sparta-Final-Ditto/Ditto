@@ -9,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import com.sparta.ditto.chat.application.event.ChatMessageNotificationRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.room.ChatRoomMetadataService;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
 import com.sparta.ditto.chat.domain.message.MessageType;
 import java.time.Instant;
 import java.util.UUID;
@@ -27,15 +28,17 @@ class ChatMessageCommitServiceTest {
             UUID.fromString("00000000-0000-0000-0000-0000000000aa");
 
     private ChatRoomMetadataService chatRoomMetadataService;
+    private ChatRoomParticipantPort chatRoomParticipantPort;
     private ApplicationEventPublisher applicationEventPublisher;
     private ChatMessageCommitService chatMessageCommitService;
 
     @BeforeEach
     void setUp() {
         chatRoomMetadataService = mock(ChatRoomMetadataService.class);
+        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         applicationEventPublisher = mock(ApplicationEventPublisher.class);
         chatMessageCommitService = new ChatMessageCommitService(
-                chatRoomMetadataService, applicationEventPublisher);
+                chatRoomMetadataService, chatRoomParticipantPort, applicationEventPublisher);
         ReflectionTestUtils.setField(
                 chatMessageCommitService, "notificationDispatchEnabled", true);
     }
@@ -51,6 +54,8 @@ class ChatMessageCommitServiceTest {
 
         // then
         verify(chatRoomMetadataService).updateLastMessage(eq(ROOM_ID), eq("msg-1"), any());
+        verify(chatRoomParticipantPort)
+                .incrementUnreadCountForActiveParticipantsExceptSender(ROOM_ID, SENDER_ID);
         verify(applicationEventPublisher)
                 .publishEvent(any(ChatMessageNotificationRequestedEvent.class));
     }
@@ -68,6 +73,8 @@ class ChatMessageCommitServiceTest {
 
         // then
         verify(chatRoomMetadataService).updateLastMessage(eq(ROOM_ID), eq("msg-1"), any());
+        verify(chatRoomParticipantPort)
+                .incrementUnreadCountForActiveParticipantsExceptSender(ROOM_ID, SENDER_ID);
         verify(applicationEventPublisher, never()).publishEvent(any());
     }
 

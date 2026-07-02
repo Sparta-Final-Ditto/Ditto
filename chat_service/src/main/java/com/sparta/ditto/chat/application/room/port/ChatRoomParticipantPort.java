@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.application.room.port;
 
 import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -21,6 +22,11 @@ public interface ChatRoomParticipantPort {
     ChatRoomParticipant save(ChatRoomParticipant participant);
 
     void saveAll(Collection<ChatRoomParticipant> participants);
+
+    int incrementUnreadCountForActiveParticipantsExceptSender(UUID roomId, UUID senderId);
+
+    int markReadAndResetUnread(
+            UUID roomId, UUID userId, String lastReadMessageId, Instant lastReadAt);
 
     Optional<ChatRoomParticipant> findActiveParticipantForUpdate(UUID roomId, UUID userId);
 }

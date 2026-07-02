@@ -4,10 +4,16 @@ import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.notification.application.NotificationService;
 import com.sparta.ditto.notification.application.dto.NotificationItemResult;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
+import com.sparta.ditto.notification.application.dto.ReadByRoomResult;
+import com.sparta.ditto.notification.application.dto.ReadNotificationResult;
+import com.sparta.ditto.notification.domain.exception.NotificationNotFoundException;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -17,12 +23,16 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
+import org.springframework.http.MediaType;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -73,7 +83,7 @@ class NotificationControllerTest {
         Instant now = Instant.now();
 
         NotificationItemResult likeItem = new NotificationItemResult(
-                likeNotifId, NotificationType.LIKE, actorId, TargetType.POST,
+                likeNotifId, NotificationType.LIKE, actorId, TargetType.LIKE,
                 "post-123", "A님이 좋아요를 눌렀습니다.", false,
                 "{\"postId\":\"post-123\"}", now, null
         );
@@ -103,5 +113,125 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$.data.notifications[1].notificationId")
                         .value(chatNotifId.toString()))
                 .andExpect(jsonPath("$.data.notifications[1].roomUnreadCount").value(3));
+    }
+
+    // ── GET /notifications/unread-count ──────────────────────────────────────
+
+    @Test
+    @DisplayName("미읽음 수 조회 200 OK, message=SUCCESS, unreadCount 반환")
+    void getUnreadCount_200OK() throws Exception {
+        // given
+        when(notificationService.getUnreadCount(userId)).thenReturn(3L);
+
+        // when / then
+        mockMvc.perform(get("/api/v1/notifications/unread-count")
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.unreadCount").value(3));
+    }
+
+    @Test
+    @DisplayName("X-User-Id 헤더 누락 시 401, code=COMMON-002")
+    void getUnreadCount_헤더누락_401() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications/unread-count"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    // ── PATCH /notifications/{notificationId}/read ────────────────────────────
+
+    // 존재하지 않는 알림 / 타인 소유 알림 → 동일하게 404
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("notFoundScenarios")
+    @DisplayName("읽음 처리 - 알림 없음/타인 소유 → 404 NOTIFICATION_NOT_FOUND")
+    void readNotification_notFound_404(String label) throws Exception {
+        UUID notificationId = UUID.randomUUID();
+        when(notificationService.read(eq(userId), any(UUID.class)))
+                .thenThrow(new NotificationNotFoundException());
+
+        mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notificationId)
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.code").value("NOTIFICATION_NOT_FOUND"));
+    }
+
+    static Stream<Arguments> notFoundScenarios() {
+        return Stream.of(
+                Arguments.of("존재하지 않는 알림"),
+                Arguments.of("타인 소유 알림")
+        );
+    }
+
+    @Test
+    @DisplayName("읽음 처리 성공 - 200 UPDATED, notificationId 문자열, isRead=true")
+    void readNotification_성공_200UPDATED() throws Exception {
+        UUID notificationId = UUID.randomUUID();
+        when(notificationService.read(userId, notificationId))
+                .thenReturn(new ReadNotificationResult(notificationId, true));
+
+        mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notificationId)
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("UPDATED"))
+                .andExpect(jsonPath("$.data.notificationId").value(notificationId.toString()))
+                .andExpect(jsonPath("$.data.isRead").value(true));
+    }
+
+    @Test
+    @DisplayName("읽음 처리 - X-User-Id 헤더 누락 시 401 COMMON-002")
+    void readNotification_헤더누락_401() throws Exception {
+        UUID notificationId = UUID.randomUUID();
+
+        mockMvc.perform(patch("/api/v1/notifications/{notificationId}/read", notificationId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
+
+    // ── POST /notifications/read-by-room ─────────────────────────────────────
+
+    @Test
+    @DisplayName("방 단위 읽음 처리 성공 - 200 UPDATED, roomId·updatedCount 반환")
+    void readByRoom_성공_200UPDATED() throws Exception {
+        when(notificationService.readByRoom(userId, "room_3f6e"))
+                .thenReturn(new ReadByRoomResult("room_3f6e", 3));
+
+        mockMvc.perform(post("/api/v1/notifications/read-by-room")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roomId\":\"room_3f6e\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.message").value("UPDATED"))
+                .andExpect(jsonPath("$.data.roomId").value("room_3f6e"))
+                .andExpect(jsonPath("$.data.updatedCount").value(3));
+    }
+
+    @Test
+    @DisplayName("roomId 누락 시 400, code=VALIDATION_ERROR")
+    void readByRoom_roomId누락_400VALIDATION_ERROR() throws Exception {
+        mockMvc.perform(post("/api/v1/notifications/read-by-room")
+                        .header("X-User-Id", userId.toString())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    @DisplayName("X-User-Id 헤더 누락 시 401, code=COMMON-002")
+    void readByRoom_헤더누락_401() throws Exception {
+        mockMvc.perform(post("/api/v1/notifications/read-by-room")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roomId\":\"room_3f6e\"}"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
     }
 }

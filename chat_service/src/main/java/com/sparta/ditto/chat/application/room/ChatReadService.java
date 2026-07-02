@@ -34,8 +34,10 @@ public class ChatReadService {
 
         chatParticipantValidator.ensureRoomActive(command.roomId());
 
+        // 같은 사용자의 동시 읽음 요청이 lastRead를 뒤로 되돌리지 않도록,
+        // participant row에 쓰기 락을 걸어 읽음 처리를 직렬화한다.
         ChatRoomParticipant participant = chatRoomParticipantPort
-                .findActiveParticipant(
+                .findActiveParticipantForUpdate(
                         command.roomId(),
                         command.requesterId()
                 )
@@ -43,16 +45,25 @@ public class ChatReadService {
 
         Instant readAt = Instant.now();
         if (shouldUpdateReadPosition(participant, command)) {
-            participant.updateLastRead(command.lastReadMessageId(), readAt);
+            // 읽은 위치 갱신과 unread_count 초기화를 하나의 atomic update로 처리한다.
+            // 엔티티 dirty-checking으로 하면 조회 시점 스냅샷을 기준으로 써버려,
+            // 그 사이 도착한 메시지가 올린 unread 증가를 덮어쓰는 lost update가 생긴다.
+            chatRoomParticipantPort.markReadAndResetUnread(
+                    command.roomId(),
+                    command.requesterId(),
+                    command.lastReadMessageId(),
+                    readAt
+            );
             log.debug("Chat read position updated. userId={}, roomId={}, messageId={}",
                     command.requesterId(), command.roomId(), command.lastReadMessageId());
-        } else {
-            log.debug("Chat read position ignored because requested message is not newer. "
-                            + "userId={}, roomId={}, requestedMessageId={}, currentMessageId={}",
-                    command.requesterId(), command.roomId(),
-                    command.lastReadMessageId(), participant.getLastReadMessageId());
+            return ChatReadResult.of(command.roomId(), command.lastReadMessageId(), readAt);
         }
 
+        // 오래된 읽음 요청: 이미 더 최신 위치를 읽은 상태이므로 위치도 unread도 건드리지 않는다.
+        log.debug("Chat read position ignored because requested message is not newer. "
+                        + "userId={}, roomId={}, requestedMessageId={}, currentMessageId={}",
+                command.requesterId(), command.roomId(),
+                command.lastReadMessageId(), participant.getLastReadMessageId());
         return ChatReadResult.of(
                 command.roomId(),
                 participant.getLastReadMessageId(),
