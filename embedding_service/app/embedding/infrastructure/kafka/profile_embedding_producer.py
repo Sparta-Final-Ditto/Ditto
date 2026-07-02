@@ -3,7 +3,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from aiokafka import AIOKafkaProducer
+from aiokafka import AIOKafkaConsumer, AIOKafkaProducer
 from uuid6 import uuid7
 
 from app.config.settings import settings
@@ -72,6 +72,7 @@ class ProfileEmbeddingProducer:
             )
         except Exception as e:
             logger.error(f"[ProfileEmbeddingProducer] PROFILE_EMBEDDING_UPDATED 발행 실패: user_id={user_id}, error={e}")
+            await cls._send_to_dlq(settings.KAFKA_TOPIC_PROFILE_EMBEDDING_UPDATED, str(user_id), message, str(e))
 
     @classmethod
     async def publish_bulk_completed(
@@ -99,3 +100,64 @@ class ProfileEmbeddingProducer:
             logger.info(f"[ProfileEmbeddingProducer] PROFILE_EMBEDDING_BULK_COMPLETED 발행 완료: batch_type={batch_type}")
         except Exception as e:
             logger.error(f"[ProfileEmbeddingProducer] PROFILE_EMBEDDING_BULK_COMPLETED 발행 실패: {e}")
+            await cls._send_to_dlq(settings.KAFKA_TOPIC_PROFILE_EMBEDDING_BULK_COMPLETED, None, message, str(e))
+
+    @classmethod
+    async def _send_to_dlq(cls, topic: str, key: str | None, message: dict, error: str) -> None:
+        """발행 실패 메시지를 profile-embedding-dlq에 적재 — 다음 일배치에서 재처리."""
+        if cls._producer is None:
+            return
+        dlq_payload = {
+            "topic": topic,
+            "key": key,
+            "message": message,
+            "error": error,
+            "failed_at": datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            await cls._producer.send_and_wait(settings.KAFKA_TOPIC_PROFILE_EMBEDDING_DLQ, dlq_payload)
+            logger.info(f"[ProfileEmbeddingProducer] DLQ 적재 완료: original_topic={topic}")
+        except Exception as e:
+            logger.error(f"[ProfileEmbeddingProducer] DLQ 적재도 실패 (메시지 유실): {e}")
+
+
+async def reprocess_profile_embedding_dlq() -> int:
+    """profile-embedding-dlq에 쌓인 발행 실패 메시지를 원래 토픽으로 재발행한다."""
+    if ProfileEmbeddingProducer._producer is None:
+        logger.warning("[ProfileEmbeddingProducer] 프로듀서 미초기화 — DLQ 재처리 건너뜀")
+        return 0
+
+    consumer = AIOKafkaConsumer(
+        settings.KAFKA_TOPIC_PROFILE_EMBEDDING_DLQ,
+        bootstrap_servers=settings.KAFKA_BOOTSTRAP_SERVERS,
+        group_id=f"{settings.KAFKA_CONSUMER_GROUP}-profile-embedding-dlq-reprocess",
+        auto_offset_reset="earliest",
+        enable_auto_commit=False,
+    )
+    await consumer.start()
+    count = 0
+    try:
+        while True:
+            records = await consumer.getmany(timeout_ms=3000, max_records=100)
+            if not records:
+                break
+            for msgs in records.values():
+                for msg in msgs:
+                    if msg.value is None:
+                        continue
+                    try:
+                        dlq_msg = json.loads(msg.value.decode("utf-8"))
+                        topic = dlq_msg["topic"]
+                        key = dlq_msg.get("key")
+                        message = dlq_msg["message"]
+                        await ProfileEmbeddingProducer._producer.send_and_wait(
+                            topic, message, key=key.encode("utf-8") if key else None
+                        )
+                        count += 1
+                    except Exception as e:
+                        logger.error(f"[ProfileEmbeddingProducer] DLQ 재처리 실패: {e}")
+            await consumer.commit()
+    finally:
+        await consumer.stop()
+
+    return count

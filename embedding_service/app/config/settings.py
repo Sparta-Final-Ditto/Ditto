@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     KAFKA_CONSUMER_GROUP: str = "embedding-service-group"
     KAFKA_TOPIC_PROFILE_EMBEDDING_UPDATED: str = "profile-embedding-updated"
     KAFKA_TOPIC_PROFILE_EMBEDDING_BULK_COMPLETED: str = "profile-embedding-bulk-completed"
+    KAFKA_TOPIC_PROFILE_EMBEDDING_DLQ: str = "profile-embedding-dlq"
     PROFILE_SYNC_BULK_THRESHOLD: int = 1000
 
     class Config:

@@ -9,7 +9,10 @@ from app.config.settings import settings
 from app.common.db.database import AsyncSessionLocal
 from app.embedding.domain.algorithm.ema_calculator import update_profile
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
-from app.embedding.infrastructure.kafka.profile_embedding_producer import ProfileEmbeddingProducer
+from app.embedding.infrastructure.kafka.profile_embedding_producer import (
+    ProfileEmbeddingProducer,
+    reprocess_profile_embedding_dlq,
+)
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.infrastructure.repository.pg_post_embedding_repository import PgPostEmbeddingRepository
 from app.embedding.infrastructure.repository.pg_user_profile_repository import PgUserProfileRepository
@@ -71,6 +74,10 @@ async def run_batch() -> None:
     dlq_count = await _reprocess_dlq()
     if dlq_count:
         logger.info(f"[Batch] DLQ 재처리: {dlq_count}건")
+
+    profile_dlq_count = await reprocess_profile_embedding_dlq()
+    if profile_dlq_count:
+        logger.info(f"[Batch] profile-embedding DLQ 재처리: {profile_dlq_count}건")
 
     updated_profiles: list[tuple[UUID, list[float], int, bool]] = []
 
