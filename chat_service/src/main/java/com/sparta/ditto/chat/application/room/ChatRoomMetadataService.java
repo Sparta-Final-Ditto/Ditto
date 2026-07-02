@@ -41,8 +41,8 @@ public class ChatRoomMetadataService {
             throw new ChatRoomInactiveException();
         }
 
-        // TODO: 재처리/비동기 흐름이 들어오면 오래된 메시지가 최신 메시지를 덮지 않도록
-        // createdAt + messageId 복합 기준으로 역전 방어를 추가한다.
+        // 오래된 메시지가 최신 lastMessage를 덮지 않게 하는 역전 방어는
+        // ChatRoom.updateLastMessage 도메인 메서드에 있다(createdAt + messageId 기준).
         chatRoom.updateLastMessage(messageId, messageCreatedAt);
         log.debug("Chat room last message updated. roomId={}, messageId={}, messageCreatedAt={}",
                 roomId, messageId, messageCreatedAt);
