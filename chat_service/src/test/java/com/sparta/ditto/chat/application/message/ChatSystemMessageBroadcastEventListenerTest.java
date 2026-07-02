@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+
 import com.sparta.ditto.chat.application.event.ChatSystemMessageBroadcastRequestedEvent;
 import com.sparta.ditto.chat.application.message.dto.SentMessage;
 import com.sparta.ditto.chat.application.message.port.ChatMessagePublisher;
