@@ -1,0 +1,92 @@
+[
+  {
+    "id": 1,
+    "description": "여행+사진 유저 → 여행 관련 후보가 상위에 나와야 함",
+    "queryUser": {
+      "userId": "user-travel-photo",
+      "tags": ["여행", "사진"],
+      "vector": [0.8, 0.6, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0]
+    },
+    "candidates": [
+      {"userId": "candidate-travel", "tags": ["여행", "배낭여행"], "vector": [0.9, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-photo", "tags": ["사진", "카메라"], "vector": [0.7, 0.7, 0.2, 0.0, 0.0, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-coding", "tags": ["코딩", "개발"], "vector": [0.0, 0.0, 0.0, 0.9, 0.8, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-music", "tags": ["음악", "기타"], "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.7, 0.0]},
+      {"userId": "candidate-travel-food", "tags": ["여행", "맛집"], "vector": [0.85, 0.4, 0.3, 0.0, 0.0, 0.0, 0.0, 0.0]}
+    ],
+    "expectedTopK": ["candidate-travel", "candidate-travel-food", "candidate-photo"],
+    "K": 3
+  },
+  {
+    "id": 2,
+    "description": "운동+헬스 유저 → 운동 관련 후보가 상위에 나와야 함",
+    "queryUser": {
+      "userId": "user-fitness",
+      "tags": ["운동", "헬스"],
+      "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.8]
+    },
+    "candidates": [
+      {"userId": "candidate-gym", "tags": ["헬스", "다이어트"], "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.85, 0.9]},
+      {"userId": "candidate-yoga", "tags": ["요가", "명상"], "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.1, 0.6, 0.5]},
+      {"userId": "candidate-reading", "tags": ["독서", "카페"], "vector": [0.3, 0.0, 0.7, 0.6, 0.0, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-run", "tags": ["운동", "마라톤"], "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.95, 0.7]},
+      {"userId": "candidate-game", "tags": ["게임", "LOL"], "vector": [0.0, 0.0, 0.0, 0.0, 0.9, 0.8, 0.0, 0.0]}
+    ],
+    "expectedTopK": ["candidate-run", "candidate-gym", "candidate-yoga"],
+    "K": 3
+  },
+  {
+    "id": 3,
+    "description": "독서+카페 유저 → 문화 관련 후보가 상위에 나와야 함",
+    "queryUser": {
+      "userId": "user-book-cafe",
+      "tags": ["독서", "카페"],
+      "vector": [0.3, 0.0, 0.8, 0.7, 0.0, 0.0, 0.0, 0.0]
+    },
+    "candidates": [
+      {"userId": "candidate-book", "tags": ["독서", "글쓰기"], "vector": [0.2, 0.0, 0.9, 0.6, 0.0, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-cafe", "tags": ["카페", "디저트"], "vector": [0.3, 0.1, 0.7, 0.8, 0.0, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-sport", "tags": ["축구", "농구"], "vector": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8, 0.9]},
+      {"userId": "candidate-movie", "tags": ["영화", "넷플릭스"], "vector": [0.1, 0.0, 0.6, 0.5, 0.3, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-cook", "tags": ["요리", "베이킹"], "vector": [0.0, 0.0, 0.1, 0.3, 0.0, 0.0, 0.5, 0.0]}
+    ],
+    "expectedTopK": ["candidate-book", "candidate-cafe", "candidate-movie"],
+    "K": 3
+  },
+  {
+    "id": 4,
+    "description": "게임+애니 유저 → 서브컬처 관련 후보가 상위에 나와야 함",
+    "queryUser": {
+      "userId": "user-game-anime",
+      "tags": ["게임", "애니"],
+      "vector": [0.0, 0.0, 0.0, 0.0, 0.9, 0.85, 0.0, 0.0]
+    },
+    "candidates": [
+      {"userId": "candidate-lol", "tags": ["게임", "LOL"], "vector": [0.0, 0.0, 0.0, 0.0, 0.95, 0.7, 0.0, 0.0]},
+      {"userId": "candidate-anime", "tags": ["애니", "만화"], "vector": [0.0, 0.0, 0.0, 0.0, 0.8, 0.9, 0.0, 0.0]},
+      {"userId": "candidate-travel2", "tags": ["여행", "사진"], "vector": [0.9, 0.7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-cosplay", "tags": ["코스프레", "애니"], "vector": [0.0, 0.0, 0.0, 0.1, 0.7, 0.85, 0.0, 0.0]},
+      {"userId": "candidate-dance", "tags": ["댄스", "K-POP"], "vector": [0.0, 0.0, 0.0, 0.0, 0.3, 0.2, 0.4, 0.3]}
+    ],
+    "expectedTopK": ["candidate-lol", "candidate-anime", "candidate-cosplay"],
+    "K": 3
+  },
+  {
+    "id": 5,
+    "description": "요리+맛집 유저 → 음식 관련 후보가 상위에 나와야 함",
+    "queryUser": {
+      "userId": "user-food",
+      "tags": ["요리", "맛집"],
+      "vector": [0.2, 0.0, 0.0, 0.3, 0.0, 0.0, 0.8, 0.7]
+    },
+    "candidates": [
+      {"userId": "candidate-chef", "tags": ["요리", "베이킹"], "vector": [0.1, 0.0, 0.0, 0.2, 0.0, 0.0, 0.9, 0.8]},
+      {"userId": "candidate-food", "tags": ["맛집", "카페"], "vector": [0.3, 0.0, 0.1, 0.4, 0.0, 0.0, 0.75, 0.6]},
+      {"userId": "candidate-dev", "tags": ["개발", "AI"], "vector": [0.0, 0.0, 0.0, 0.9, 0.8, 0.0, 0.0, 0.0]},
+      {"userId": "candidate-wine", "tags": ["와인", "맛집"], "vector": [0.1, 0.0, 0.0, 0.2, 0.0, 0.0, 0.7, 0.65]},
+      {"userId": "candidate-pet", "tags": ["반려동물", "강아지"], "vector": [0.0, 0.3, 0.0, 0.0, 0.0, 0.8, 0.0, 0.0]}
+    ],
+    "expectedTopK": ["candidate-chef", "candidate-food", "candidate-wine"],
+    "K": 3
+  }
+]
