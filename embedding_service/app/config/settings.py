@@ -12,6 +12,9 @@ class Settings(BaseSettings):
     KAFKA_TOPIC_USER_EVENTS: str = "USER_REGISTERED"
     KAFKA_TOPIC_DLQ: str = "post-events-dlq"
     KAFKA_CONSUMER_GROUP: str = "embedding-service-group"
+    KAFKA_TOPIC_PROFILE_EMBEDDING_UPDATED: str = "profile-embedding-updated"
+    KAFKA_TOPIC_PROFILE_EMBEDDING_BULK_COMPLETED: str = "profile-embedding-bulk-completed"
+    PROFILE_SYNC_BULK_THRESHOLD: int = 1000
 
     class Config:
         env_file = ".env"

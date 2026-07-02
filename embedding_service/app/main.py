@@ -26,6 +26,7 @@ from app.common.middleware.logging_middleware import logging_middleware
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.common.kafka.dlq_producer import DlqProducer
 from app.embedding.infrastructure.kafka.post_consumer import PostConsumer
+from app.embedding.infrastructure.kafka.profile_embedding_producer import ProfileEmbeddingProducer
 from app.embedding.infrastructure.kafka.user_consumer import UserRegisteredConsumer
 from app.embedding.infrastructure.batch.batch_embedding import run_batch, run_monthly_batch
 from app.embedding.presentation.router.embedding_router import router as embedding_router
@@ -56,6 +57,7 @@ TAGS_METADATA = [
 async def lifespan(_: FastAPI):
     ModelLoader.load()
     await DlqProducer.start()
+    await ProfileEmbeddingProducer.start()
     consumer_task = asyncio.create_task(PostConsumer().start())
     user_consumer_task = asyncio.create_task(UserRegisteredConsumer().start())
 
@@ -69,6 +71,7 @@ async def lifespan(_: FastAPI):
     consumer_task.cancel()
     user_consumer_task.cancel()
     await DlqProducer.stop()
+    await ProfileEmbeddingProducer.stop()
     scheduler.shutdown(wait=False)
 
 
