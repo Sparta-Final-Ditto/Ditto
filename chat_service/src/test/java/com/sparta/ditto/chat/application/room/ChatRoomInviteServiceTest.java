@@ -10,6 +10,7 @@ import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+
 import com.sparta.ditto.chat.application.room.dto.command.ChatRoomInviteCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatRoomInviteResult;
 import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;

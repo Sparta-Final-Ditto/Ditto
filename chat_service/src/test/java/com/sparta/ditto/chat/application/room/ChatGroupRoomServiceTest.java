@@ -2,26 +2,23 @@ package com.sparta.ditto.chat.application.room;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import com.sparta.ditto.chat.application.message.ChatMessageSendService;
+
 import com.sparta.ditto.chat.application.room.dto.command.ChatGroupRoomCreateCommand;
 import com.sparta.ditto.chat.application.room.dto.result.ChatGroupRoomResult;
-import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
-import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
 import com.sparta.ditto.chat.application.room.port.ChatSenderProfile;
 import com.sparta.ditto.chat.application.room.port.ChatUserProfilePort;
 import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
 import com.sparta.ditto.chat.domain.exception.ChatBlockedUserException;
 import com.sparta.ditto.chat.domain.exception.ChatErrorCode;
-import com.sparta.ditto.chat.domain.message.MessageType;
-import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
-import com.sparta.ditto.chat.domain.participant.ParticipantRole;
-import com.sparta.ditto.chat.domain.room.ChatRoom;
 import com.sparta.ditto.chat.domain.room.RoomStatus;
 import com.sparta.ditto.chat.domain.room.RoomType;
 import com.sparta.ditto.common.exception.BusinessException;
@@ -31,6 +28,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 
 @DisplayName("ChatGroupRoomService 테스트")
 class ChatGroupRoomServiceTest {
@@ -45,79 +44,52 @@ class ChatGroupRoomServiceTest {
             UUID.fromString("00000000-0000-0000-0000-000000000200");
     private static final String ROOM_NAME = "스터디 그룹";
 
-    private ChatRoomPort chatRoomPort;
-    private ChatRoomParticipantPort chatRoomParticipantPort;
     private ChatUserValidationPort chatUserValidationPort;
-    private ChatMessageSendService chatMessageSendService;
     private ChatUserProfilePort chatUserProfilePort;
+    private ChatGroupRoomRegistrar groupRoomRegistrar;
     private ChatGroupRoomService chatGroupRoomService;
 
     @BeforeEach
     void setUp() {
-        chatRoomPort = mock(ChatRoomPort.class);
-        chatRoomParticipantPort = mock(ChatRoomParticipantPort.class);
         chatUserValidationPort = mock(ChatUserValidationPort.class);
-        chatMessageSendService = mock(ChatMessageSendService.class);
         chatUserProfilePort = mock(ChatUserProfilePort.class);
-        // 그룹방 생성 성공 경로에서 생성자 닉네임 조회를 위해 기본 stub을 둔다.
+        groupRoomRegistrar = mock(ChatGroupRoomRegistrar.class);
         given(chatUserProfilePort.findProfile(REQUESTER_ID))
                 .willReturn(new ChatSenderProfile("방장", null));
+        given(groupRoomRegistrar.create(any(), any(), anyList(), anyString()))
+                .willReturn(ChatGroupRoomResult.of(
+                        ROOM_ID, RoomType.GROUP, ROOM_NAME, RoomStatus.ACTIVE));
         chatGroupRoomService = new ChatGroupRoomService(
-                chatRoomPort,
-                chatRoomParticipantPort,
                 chatUserValidationPort,
-                chatMessageSendService,
-                chatUserProfilePort
+                chatUserProfilePort,
+                groupRoomRegistrar
         );
     }
 
     @Test
-    @DisplayName("그룹 채팅방 생성 시 방과 OWNER/MEMBER 참여자를 저장한다")
-    void createGroupRoom_should_create_room_and_participants() {
-        // given
-        ChatRoom savedRoom = savedGroupRoom();
-        given(chatRoomPort.save(any(ChatRoom.class))).willReturn(savedRoom);
-
+    @DisplayName("검증·닉네임 조회를 먼저 끝낸 뒤 registrar에 저장을 위임한다")
+    void createGroupRoom_should_validate_then_delegate() {
         // when
         ChatGroupRoomResult result = chatGroupRoomService.createGroupRoom(command());
 
         // then
         assertThat(result.roomId()).isEqualTo(ROOM_ID);
-        assertThat(result.roomType()).isEqualTo(RoomType.GROUP);
-        assertThat(result.roomName()).isEqualTo(ROOM_NAME);
-        assertThat(result.status()).isEqualTo(RoomStatus.ACTIVE);
-        verify(chatUserValidationPort).validateGroupChatParticipants(
-                REQUESTER_ID,
-                List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID)
-        );
 
-        ArgumentCaptor<List<ChatRoomParticipant>> captor = ArgumentCaptor.captor();
-        verify(chatRoomParticipantPort).saveAll(captor.capture());
-        List<ChatRoomParticipant> participants = captor.getValue();
-
-        assertThat(participants).hasSize(3);
-        assertThat(participants)
-                .extracting(ChatRoomParticipant::getUserId)
-                .containsExactly(REQUESTER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID);
-        assertThat(participants)
-                .extracting(ChatRoomParticipant::getRole)
-                .containsExactly(
-                        ParticipantRole.OWNER,
-                        ParticipantRole.MEMBER,
-                        ParticipantRole.MEMBER
-                );
-
-        // 생성 안내 시스템 메시지(SYSTEM_JOIN)를 저장한다.
-        verify(chatMessageSendService).saveSystemMessage(
-                eq(ROOM_ID), eq(REQUESTER_ID), eq(MessageType.SYSTEM_JOIN), anyString());
+        // 외부 호출(검증→닉네임)이 저장(registrar)보다 먼저 실행되어야 한다.
+        InOrder order = Mockito.inOrder(
+                chatUserValidationPort, chatUserProfilePort, groupRoomRegistrar);
+        order.verify(chatUserValidationPort).validateGroupChatParticipants(
+                REQUESTER_ID, List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID));
+        order.verify(chatUserProfilePort).findProfile(REQUESTER_ID);
+        order.verify(groupRoomRegistrar).create(
+                eq(ROOM_NAME), eq(REQUESTER_ID),
+                eq(List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID)), eq("방장"));
     }
 
     @Test
-    @DisplayName("요청자와 중복 참여자는 MEMBER 목록에서 제외한다")
+    @DisplayName("요청자와 중복 참여자는 MEMBER 목록에서 제외하고 위임한다")
     void createGroupRoom_should_remove_requester_and_duplicate_members() {
         // given
-        ChatRoom savedRoom = savedGroupRoom();
-        given(chatRoomPort.save(any(ChatRoom.class))).willReturn(savedRoom);
         ChatGroupRoomCreateCommand command = ChatGroupRoomCreateCommand.of(
                 REQUESTER_ID,
                 List.of(REQUESTER_ID, MEMBER_USER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID),
@@ -128,30 +100,27 @@ class ChatGroupRoomServiceTest {
         chatGroupRoomService.createGroupRoom(command);
 
         // then
-        ArgumentCaptor<List<ChatRoomParticipant>> captor = ArgumentCaptor.captor();
-        verify(chatRoomParticipantPort).saveAll(captor.capture());
-
-        assertThat(captor.getValue())
-                .extracting(ChatRoomParticipant::getUserId)
-                .containsExactly(REQUESTER_ID, MEMBER_USER_ID, SECOND_MEMBER_USER_ID);
+        ArgumentCaptor<List<UUID>> membersCaptor = ArgumentCaptor.captor();
+        verify(groupRoomRegistrar).create(
+                eq(ROOM_NAME), eq(REQUESTER_ID), membersCaptor.capture(), eq("방장"));
+        assertThat(membersCaptor.getValue())
+                .containsExactly(MEMBER_USER_ID, SECOND_MEMBER_USER_ID);
     }
 
     @Test
-    @DisplayName("user-service 검증에서 차단 관계가 확인되면 그룹방을 생성하지 않는다")
-    void createGroupRoom_should_reject_blocked_user_before_room_creation() {
+    @DisplayName("차단 관계가 확인되면 닉네임 조회·저장을 하지 않는다")
+    void createGroupRoom_should_reject_blocked_user_before_persist() {
         // given
         doThrow(new ChatBlockedUserException())
                 .when(chatUserValidationPort)
                 .validateGroupChatParticipants(
-                        REQUESTER_ID,
-                        List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID)
-                );
+                        REQUESTER_ID, List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID));
 
         // when & then
         assertThatThrownBy(() -> chatGroupRoomService.createGroupRoom(command()))
                 .isInstanceOf(ChatBlockedUserException.class);
-        verify(chatRoomPort, never()).save(any(ChatRoom.class));
-        verify(chatRoomParticipantPort, never()).saveAll(any());
+        verify(chatUserProfilePort, never()).findProfile(any());
+        verify(groupRoomRegistrar, never()).create(any(), any(), anyList(), anyString());
     }
 
     @Test
@@ -159,27 +128,21 @@ class ChatGroupRoomServiceTest {
     void createGroupRoom_should_reject_less_than_three_participants() {
         // given
         ChatGroupRoomCreateCommand command = ChatGroupRoomCreateCommand.of(
-                REQUESTER_ID,
-                List.of(REQUESTER_ID),
-                ROOM_NAME
-        );
+                REQUESTER_ID, List.of(REQUESTER_ID), ROOM_NAME);
 
         // when & then
         assertThatThrownBy(() -> chatGroupRoomService.createGroupRoom(command))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(ChatErrorCode.CHAT_INVALID_GROUP_PARTICIPANTS));
+        verify(groupRoomRegistrar, never()).create(any(), any(), anyList(), anyString());
     }
 
     @Test
     @DisplayName("그룹방 이름은 비어 있을 수 없다")
     void createGroupRoomCommand_should_reject_blank_room_name() {
-        // when & then
         assertThatThrownBy(() -> ChatGroupRoomCreateCommand.of(
-                REQUESTER_ID,
-                List.of(MEMBER_USER_ID),
-                " "
-        ))
+                REQUESTER_ID, List.of(MEMBER_USER_ID), " "))
                 .isInstanceOf(BusinessException.class);
     }
 
@@ -189,14 +152,5 @@ class ChatGroupRoomServiceTest {
                 List.of(MEMBER_USER_ID, SECOND_MEMBER_USER_ID),
                 ROOM_NAME
         );
-    }
-
-    private ChatRoom savedGroupRoom() {
-        ChatRoom chatRoom = mock(ChatRoom.class);
-        given(chatRoom.getId()).willReturn(ROOM_ID);
-        given(chatRoom.getRoomType()).willReturn(RoomType.GROUP);
-        given(chatRoom.getRoomName()).willReturn(ROOM_NAME);
-        given(chatRoom.getStatus()).willReturn(RoomStatus.ACTIVE);
-        return chatRoom;
     }
 }
