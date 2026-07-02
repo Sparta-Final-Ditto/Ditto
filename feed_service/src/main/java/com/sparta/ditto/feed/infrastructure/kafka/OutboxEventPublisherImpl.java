@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.feed.application.port.OutboxEventPublisher;
 import com.sparta.ditto.feed.domain.entity.OutboxEvent;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
@@ -39,7 +40,8 @@ public class OutboxEventPublisherImpl implements OutboxEventPublisher {
                     event.getCreatedAt().toString(),
                     payloadNode
             ));
-            kafkaTemplate.send(event.getTopic(), event.getAggregateId().toString(), message).get();
+            kafkaTemplate.send(event.getTopic(), event.getAggregateId().toString(), message)
+                    .get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             throw new RuntimeException("Kafka 발행 실패: topic=" + event.getTopic(), e);
         }
