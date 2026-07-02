@@ -48,12 +48,20 @@ public class ChatReadService {
             // 읽은 위치 갱신과 unread_count 초기화를 하나의 atomic update로 처리한다.
             // 엔티티 dirty-checking으로 하면 조회 시점 스냅샷을 기준으로 써버려,
             // 그 사이 도착한 메시지가 올린 unread 증가를 덮어쓰는 lost update가 생긴다.
-            chatRoomParticipantPort.markReadAndResetUnread(
+            int updated = chatRoomParticipantPort.markReadAndResetUnread(
                     command.roomId(),
                     command.requesterId(),
                     command.lastReadMessageId(),
                     readAt
             );
+            if (updated == 0) {
+                // 바로 위 findActiveParticipantForUpdate가 같은 트랜잭션에서 이 row에 쓰기 락을 잡으므로
+                // 실제로는 거의 도달하지 않는다(락 획득 전 leave가 커밋됐다면 위에서 이미 예외로 빠짐).
+                // 이중 방어(belt-and-suspenders)로, 도달 시 성공 응답 대신 참여자 없음으로 처리한다.
+                log.warn("Chat read update affected 0 rows. userId={}, roomId={}, messageId={}",
+                        command.requesterId(), command.roomId(), command.lastReadMessageId());
+                throw new ChatNotParticipantException();
+            }
             log.debug("Chat read position updated. userId={}, roomId={}, messageId={}",
                     command.requesterId(), command.roomId(), command.lastReadMessageId());
             return ChatReadResult.of(command.roomId(), command.lastReadMessageId(), readAt);
@@ -84,11 +92,11 @@ public class ChatReadService {
             return true;
         }
 
-        ChatReadMessagePort.ReadMessage currentMessage = findMessage(
-                command.roomId(),
-                currentMessageId
-        );
-        return isAfter(currentMessage, requestedMessage);
+        // 저장된 과거 읽음 위치가 삭제/만료로 더 이상 없으면 위치 비교가 불가능하다.
+        // 이는 요청 자체의 오류가 아니므로 갱신을 허용한다. (요청 메시지 없음만 404로 유지)
+        return chatReadMessagePort.findReadMessage(command.roomId(), currentMessageId)
+                .map(currentMessage -> isAfter(currentMessage, requestedMessage))
+                .orElse(true);
     }
 
     private ChatReadMessagePort.ReadMessage findMessage(UUID roomId, String messageId) {

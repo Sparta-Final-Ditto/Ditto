@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -63,6 +64,10 @@ class ChatReadServiceTest {
                 chatRoomParticipantPort,
                 chatReadMessagePort
         );
+        // 읽음 갱신은 기본 1건 성공으로 둔다(반환 0이면 서비스가 참여자 없음 예외를 던지므로).
+        lenient().when(chatRoomParticipantPort
+                        .markReadAndResetUnread(any(), any(), any(), any()))
+                .thenReturn(1);
     }
 
     @Test
@@ -124,6 +129,42 @@ class ChatReadServiceTest {
                 .markReadAndResetUnread(any(), any(), any(), any());
         assertThat(participant.getUnreadCount()).isEqualTo(5L);
         assertThat(result.lastReadMessageId()).isEqualTo(CURRENT_MESSAGE_ID);
+    }
+
+    @Test
+    @DisplayName("저장된 과거 읽음 메시지가 삭제/만료돼도 정상 갱신한다")
+    void updateReadState_current_message_missing_still_updates() {
+        // given
+        ChatRoomParticipant participant = participant();
+        participant.updateLastRead(CURRENT_MESSAGE_ID, Instant.now());
+        givenParticipant(participant);
+        // 저장돼 있던 과거 읽음 메시지가 Mongo에 더 이상 없음(삭제/만료)
+        given(chatReadMessagePort.findReadMessage(ROOM_ID, CURRENT_MESSAGE_ID))
+                .willReturn(Optional.empty());
+        givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
+
+        // when
+        ChatReadResult result = chatReadService.updateReadState(command(NEXT_MESSAGE_ID));
+
+        // then: 과거 위치 부재는 오류가 아니라 "비교 불가" → 갱신 허용
+        verify(chatRoomParticipantPort).markReadAndResetUnread(
+                eq(ROOM_ID), eq(REQUESTER_ID), eq(NEXT_MESSAGE_ID), any(Instant.class));
+        assertThat(result.lastReadMessageId()).isEqualTo(NEXT_MESSAGE_ID);
+    }
+
+    @Test
+    @DisplayName("읽음 갱신이 0건이면(참여자 소멸) 참여자 없음 예외를 던진다")
+    void updateReadState_zero_updated_throws() {
+        // given
+        ChatRoomParticipant participant = participant();
+        givenParticipant(participant);
+        givenMessage(NEXT_MESSAGE_ID, NEXT_MESSAGE_CREATED_AT);
+        given(chatRoomParticipantPort.markReadAndResetUnread(any(), any(), any(), any()))
+                .willReturn(0);
+
+        // when & then
+        assertThatThrownBy(() -> chatReadService.updateReadState(command(NEXT_MESSAGE_ID)))
+                .isInstanceOf(ChatNotParticipantException.class);
     }
 
     @Test
