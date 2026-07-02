@@ -67,6 +67,9 @@ class NotificationIdempotencyTest {
     private NotificationEventHandler handler;
 
     @Autowired
+    private NotificationRepositoryImpl repositoryImpl;
+
+    @Autowired
     private NotificationJpaRepository jpaRepository;
 
     private static final UUID OWNER_ID   = UUID.randomUUID();
@@ -178,6 +181,24 @@ class NotificationIdempotencyTest {
                 .doesNotThrowAnyException();
 
         assertThat(jpaRepository.count()).isEqualTo(1L);
+    }
+
+    // ── 2-1. UNIQUE가 아닌 무결성 위반(NOT NULL 등)은 skip하지 않고 재throw ────
+    // save()의 catch가 DataIntegrityViolationException을 통째로 "중복 skip"으로
+    // 오분류하면 안 된다. UNIQUE 위반이 아니면 그대로 전파해 Consumer 재시도를 태워야 한다.
+
+    @Test
+    @DisplayName("message=null(NOT NULL 위반)은 중복이 아니므로 skip되지 않고 DataIntegrityViolationException을 전파한다")
+    void save_nonUniqueViolation_isRethrownNotSkipped() {
+        // message 컬럼은 NOT NULL — UNIQUE 제약과 무관한 무결성 위반
+        Notification invalid = Notification.create(RECEIVER_1, SENDER_ID,
+                NotificationType.CHAT_MESSAGE, TargetType.CHAT_MESSAGE, MSG_ID_1, null, null);
+
+        assertThatThrownBy(() -> repositoryImpl.save(invalid))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        // 저장된 것도, 중복으로 조용히 넘어간 것도 없어야 한다
+        assertThat(jpaRepository.count()).isEqualTo(0L);
     }
 
     // ── 3. actor_id는 UNIQUE 키 외: 다른 actor(→ 다른 target_id)는 별건 저장 ────

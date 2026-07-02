@@ -281,6 +281,11 @@ class NotificationEventHandlerTest {
                                 PostNotificationCommand.of(
                                         "POST_LIKED", null, POST_ID, ACTOR_ID, ACTOR_NICKNAME, OWNER_ID))),
                 Arguments.of(
+                        "POST_LIKED postId=null",
+                        (Consumer<NotificationEventHandler>) h -> h.handlePostEvent(
+                                PostNotificationCommand.of(
+                                        "POST_LIKED", LIKE_ID, null, ACTOR_ID, ACTOR_NICKNAME, OWNER_ID))),
+                Arguments.of(
                         "POST_LIKED ownerId=null",
                         (Consumer<NotificationEventHandler>) h -> h.handlePostEvent(
                                 PostNotificationCommand.of(
@@ -294,7 +299,26 @@ class NotificationEventHandlerTest {
                         "POST_COMMENTED actorId=null",
                         (Consumer<NotificationEventHandler>) h -> h.handlePostEvent(
                                 PostNotificationCommand.of(
-                                        "POST_COMMENTED", COMMENT_ID, POST_ID, null, ACTOR_NICKNAME, OWNER_ID)))
+                                        "POST_COMMENTED", COMMENT_ID, POST_ID, null, ACTOR_NICKNAME, OWNER_ID))),
+                // ④ chat 필수 필드 null
+                Arguments.of(
+                        "chat messageId=null",
+                        (Consumer<NotificationEventHandler>) h -> h.handleChatMessage(
+                                ChatNotificationCommand.of(
+                                        null, SENDER_ID, SENDER_NICKNAME, null, ROOM_ID,
+                                        List.of(RECEIVER_1), "안녕하세요"))),
+                Arguments.of(
+                        "chat roomId=null",
+                        (Consumer<NotificationEventHandler>) h -> h.handleChatMessage(
+                                ChatNotificationCommand.of(
+                                        MESSAGE_ID, SENDER_ID, SENDER_NICKNAME, null, null,
+                                        List.of(RECEIVER_1), "안녕하세요"))),
+                Arguments.of(
+                        "chat senderNickname=null",
+                        (Consumer<NotificationEventHandler>) h -> h.handleChatMessage(
+                                ChatNotificationCommand.of(
+                                        MESSAGE_ID, SENDER_ID, null, null, ROOM_ID,
+                                        List.of(RECEIVER_1), "안녕하세요")))
         );
     }
 

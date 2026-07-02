@@ -50,6 +50,15 @@ public class NotificationEventHandler {
         if (cmd.receiverIds() == null) {
             throw new IllegalArgumentException("receiverIds는 null일 수 없습니다.");
         }
+        if (cmd.messageId() == null) {
+            throw new IllegalArgumentException("messageId는 null일 수 없습니다.");
+        }
+        if (cmd.roomId() == null) {
+            throw new IllegalArgumentException("roomId는 null일 수 없습니다.");
+        }
+        if (cmd.senderNickname() == null) {
+            throw new IllegalArgumentException("senderNickname은 null일 수 없습니다.");
+        }
         if (cmd.preview() == null || cmd.preview().isBlank()) {
             throw new IllegalArgumentException("preview는 null/blank일 수 없습니다.");
         }
@@ -79,6 +88,9 @@ public class NotificationEventHandler {
         }
         if (cmd.targetId() == null) {
             throw new IllegalArgumentException("targetId는 null일 수 없습니다.");
+        }
+        if (cmd.postId() == null) {
+            throw new IllegalArgumentException("postId는 null일 수 없습니다.");
         }
     }
 }
