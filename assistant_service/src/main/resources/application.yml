@@ -1,0 +1,45 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: assistant-service
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_CHAT_MODEL:llama3.2}
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
+    openai:
+      api-key: ${LLM_API_KEY:}
+      base-url: ${LLM_API_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+      chat:
+        options:
+          model: ${LLM_API_MODEL:gemini-2.5-flash}
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+assistant:
+  llm:
+    provider: ${ASSISTANT_LLM_PROVIDER:ollama}   # ollama | api
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
