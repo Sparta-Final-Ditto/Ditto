@@ -78,6 +78,9 @@ public class Notification extends BaseEntity {
             String message,
             String metaData
     ) {
+        if (actorId == null) {
+            throw new IllegalArgumentException("actorId는 null일 수 없습니다.");
+        }
         Notification notification = new Notification();
         notification.receiverId = receiverId;
         notification.actorId = actorId;
