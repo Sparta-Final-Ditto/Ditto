@@ -407,4 +407,81 @@ class MatchServiceTest {
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EXPLANATION_GENERATION_FAILED));
     }
+
+    @Test
+    @DisplayName("createMatch - active 유저 목록 조회 실패 시 EMBEDDING_SERVICE_UNAVAILABLE 예외")
+    void createMatch_activeUsersFails_throwsException() {
+        UUID userId = UUID.randomUUID();
+        float[] vector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(userServiceClient.getFollowings(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(userServiceClient.getBlockedUsers(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(embeddingServiceClient.getActiveUserIds())
+                .willThrow(new RuntimeException("connection refused"));
+
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    @DisplayName("createMatch - 배치 벡터 조회 실패 시 EMBEDDING_SERVICE_UNAVAILABLE 예외")
+    void createMatch_batchProfilesFails_throwsException() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] vector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+        ActiveUserIdsDto activeIds = new ActiveUserIdsDto(List.of(candidateId), 1);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(userServiceClient.getFollowings(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(userServiceClient.getBlockedUsers(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(embeddingServiceClient.getActiveUserIds())
+                .willReturn(ApiResponse.success(activeIds));
+        given(embeddingServiceClient.getProfilesBatch(any()))
+                .willThrow(new RuntimeException("connection refused"));
+
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
+    }
+
+    @Test
+    @DisplayName("createMatch - 차단 유저 조회 실패 시 USER_SERVICE_UNAVAILABLE 예외")
+    void createMatch_blockedUsersFails_throwsException() {
+        UUID userId = UUID.randomUUID();
+        float[] vector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(userServiceClient.getFollowings(userId))
+                .willReturn(ApiResponse.success(List.of()));
+        given(userServiceClient.getBlockedUsers(userId))
+                .willThrow(new RuntimeException("connection refused"));
+
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(MatchErrorCode.USER_SERVICE_UNAVAILABLE));
+    }
 }
