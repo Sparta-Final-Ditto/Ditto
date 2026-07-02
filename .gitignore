@@ -61,3 +61,7 @@ dist/
 !**/.env.example
 .env.local
 .env.prod
+
+### JMeter ###
+jmeter.log
+*.jtl
