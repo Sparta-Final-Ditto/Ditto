@@ -4,10 +4,16 @@ server:
 spring:
   application:
     name: assistant-service
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5435/ditto_assistant}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
@@ -24,7 +30,7 @@ spring:
       embedding:
         model: ${OLLAMA_EMBEDDING_MODEL:nomic-embed-text}
     openai:
-      api-key: ${LLM_API_KEY:}
+      api-key: ${LLM_API_KEY:local-dev-dummy-key}
       base-url: ${LLM_API_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
       chat:
         options:
