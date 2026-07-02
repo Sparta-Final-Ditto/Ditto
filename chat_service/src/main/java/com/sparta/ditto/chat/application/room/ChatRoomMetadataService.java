@@ -34,7 +34,9 @@ public class ChatRoomMetadataService {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
 
-        ChatRoom chatRoom = chatRoomPort.findById(roomId)
+        // 같은 방 lastMessage를 동시에 갱신하는 트랜잭션 간 lost update를 막기 위해
+        // 방 row에 쓰기 락을 걸어 갱신을 직렬화한다(도메인의 역전 방어 비교와 함께 동작).
+        ChatRoom chatRoom = chatRoomPort.findByIdForUpdate(roomId)
                 .orElseThrow(ChatRoomNotFoundException::new);
 
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
