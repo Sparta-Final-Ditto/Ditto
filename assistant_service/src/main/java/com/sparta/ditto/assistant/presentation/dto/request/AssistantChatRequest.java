@@ -1,4 +1,9 @@
 package com.sparta.ditto.assistant.presentation.dto.request;
 
-public class AssistantChatRequest {
+import jakarta.validation.constraints.NotBlank;
+
+public record AssistantChatRequest(
+        @NotBlank(message = "질문을 입력해주세요.")
+        String question
+) {
 }
