@@ -144,7 +144,7 @@ class ChatReadServiceTest {
     @DisplayName("현재 참여자가 아니면 읽음 상태를 갱신할 수 없다")
     void updateReadState_fail_not_participant() {
         // given
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, REQUESTER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, REQUESTER_ID))
                 .willReturn(Optional.empty());
 
         // when & then
@@ -171,7 +171,7 @@ class ChatReadServiceTest {
     }
 
     private void givenParticipant(ChatRoomParticipant participant) {
-        given(chatRoomParticipantPort.findActiveParticipant(ROOM_ID, REQUESTER_ID))
+        given(chatRoomParticipantPort.findActiveParticipantForUpdate(ROOM_ID, REQUESTER_ID))
                 .willReturn(Optional.of(participant));
     }
 

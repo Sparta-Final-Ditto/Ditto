@@ -34,8 +34,10 @@ public class ChatReadService {
 
         chatParticipantValidator.ensureRoomActive(command.roomId());
 
+        // 같은 사용자의 동시 읽음 요청이 lastRead를 뒤로 되돌리지 않도록,
+        // participant row에 쓰기 락을 걸어 읽음 처리를 직렬화한다.
         ChatRoomParticipant participant = chatRoomParticipantPort
-                .findActiveParticipant(
+                .findActiveParticipantForUpdate(
                         command.roomId(),
                         command.requesterId()
                 )
