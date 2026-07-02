@@ -33,6 +33,8 @@ class ChatRoomParticipantInviteRegistrarTest {
             UUID.fromString("00000000-0000-0000-0000-000000000003");
     private static final UUID ROOM_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000200");
+    private static final UUID OTHER_TARGET_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000004");
     private static final String LAST_MESSAGE_ID = "msg-100";
     private static final Instant LAST_MESSAGE_AT = Instant.parse("2026-06-29T00:00:00Z");
     private static final String NICKNAME = "초대대상";
@@ -129,6 +131,28 @@ class ChatRoomParticipantInviteRegistrarTest {
                 inviteRegistrar.register(roomWithLastMessage(), List.of(invitedTarget())))
                 .isInstanceOf(ChatAlreadyParticipantException.class);
         verify(chatRoomParticipantPort, never()).save(any());
+        verify(chatMessageSendService, never())
+                .saveSystemMessage(any(), any(), any(), anyString());
+    }
+
+    @Test
+    @DisplayName("여러 명 초대 중 한 명이라도 이미 활성 참여자면 시스템 메시지를 저장하지 않는다")
+    void register_should_not_save_system_message_when_any_target_already_participant() {
+        // given
+        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, OTHER_TARGET_ID))
+                .willReturn(Optional.empty());
+        ChatRoomParticipant activeParticipant =
+                ChatRoomParticipant.join(ROOM_ID, TARGET_ID, ParticipantRole.MEMBER);
+        given(chatRoomParticipantPort.findByRoomIdAndUserId(ROOM_ID, TARGET_ID))
+                .willReturn(Optional.of(activeParticipant));
+
+        // when & then
+        assertThatThrownBy(() -> inviteRegistrar.register(
+                roomWithLastMessage(),
+                List.of(new InvitedTarget(OTHER_TARGET_ID, "신규"), invitedTarget())))
+                .isInstanceOf(ChatAlreadyParticipantException.class);
+
+        // 참여자 검증 단계에서 실패했으므로 시스템 메시지는 한 건도 저장되지 않아야 한다.
         verify(chatMessageSendService, never())
                 .saveSystemMessage(any(), any(), any(), anyString());
     }

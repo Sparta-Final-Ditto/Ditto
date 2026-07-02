@@ -25,14 +25,25 @@ public class ChatRoomParticipantInviteRegistrar {
 
     @Transactional
     public void register(ChatRoom chatRoom, List<InvitedTarget> targets) {
+        // 1단계: 모든 대상의 참여자 등록·검증을 먼저 끝낸다.
+        // 중간에 예외(이미 활성 참여자 등)가 나면 시스템 메시지(MongoDB) 저장 전에 롤백된다.
         for (InvitedTarget target : targets) {
-            inviteParticipant(chatRoom, target);
+            registerParticipant(chatRoom, target.userId());
+        }
+
+        // 2단계: 참여자 등록이 모두 성공한 뒤에만 초대 안내 시스템 메시지를 저장한다.
+        for (InvitedTarget target : targets) {
+            chatMessageSendService.saveSystemMessage(
+                    chatRoom.getId(),
+                    target.userId(),
+                    MessageType.SYSTEM_INVITE,
+                    String.format(SYSTEM_INVITE_CONTENT_FORMAT, target.nickname())
+            );
         }
     }
 
-    private void inviteParticipant(ChatRoom chatRoom, InvitedTarget target) {
+    private void registerParticipant(ChatRoom chatRoom, UUID targetUserId) {
         UUID roomId = chatRoom.getId();
-        UUID targetUserId = target.userId();
         Optional<ChatRoomParticipant> existing =
                 chatRoomParticipantPort.findByRoomIdAndUserId(roomId, targetUserId);
 
@@ -51,14 +62,6 @@ public class ChatRoomParticipantInviteRegistrar {
 
         markReadUpToCurrentMessage(participant, chatRoom);
         chatRoomParticipantPort.save(participant);
-
-        // 초대 안내 시스템 메시지 저장
-        chatMessageSendService.saveSystemMessage(
-                roomId,
-                targetUserId,
-                MessageType.SYSTEM_INVITE,
-                String.format(SYSTEM_INVITE_CONTENT_FORMAT, target.nickname())
-        );
     }
 
     private void markReadUpToCurrentMessage(ChatRoomParticipant participant, ChatRoom chatRoom) {
