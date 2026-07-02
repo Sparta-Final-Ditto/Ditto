@@ -7,6 +7,7 @@ public record PostCommentedEvent(
         UUID postId,
         UUID commentId,
         UUID commenterId,
+        String actorNickname,
         UUID ownerId,
         Instant commentedAt
 ) {}
