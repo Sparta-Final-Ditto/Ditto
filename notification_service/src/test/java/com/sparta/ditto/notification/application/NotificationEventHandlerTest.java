@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.dto.ChatNotificationCommand;
 import com.sparta.ditto.notification.application.dto.PostNotificationCommand;
+import com.sparta.ditto.notification.application.port.MetaDataPort;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.repository.NotificationRepository;
 import com.sparta.ditto.notification.domain.type.NotificationType;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -57,8 +60,25 @@ class NotificationEventHandlerTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private MetaDataPort metaDataPort;
+
     @InjectMocks
     private NotificationEventHandler handler;
+
+    @BeforeEach
+    void setUpMetaDataStubs() {
+        lenient().when(metaDataPort.buildPostMetaData(POST_ID))
+                 .thenReturn("{\"postId\":\"" + POST_ID + "\"}");
+        lenient().when(metaDataPort.buildChatMetaData(ROOM_ID, SENDER_NICKNAME, null))
+                 .thenReturn("{\"roomId\":\"" + ROOM_ID
+                         + "\",\"senderNickname\":\"" + SENDER_NICKNAME
+                         + "\",\"senderProfileImageUrl\":null}");
+        lenient().when(metaDataPort.buildChatMetaData(ROOM_ID, SENDER_NICKNAME, SENDER_PROFILE_URL))
+                 .thenReturn("{\"roomId\":\"" + ROOM_ID
+                         + "\",\"senderNickname\":\"" + SENDER_NICKNAME
+                         + "\",\"senderProfileImageUrl\":\"" + SENDER_PROFILE_URL + "\"}");
+    }
 
     // ── post-events LIKE/COMMENT 알림 생성 ────────────────────────────────────
 

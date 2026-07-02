@@ -1,15 +1,12 @@
 package com.sparta.ditto.notification.application;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.dto.ChatNotificationCommand;
 import com.sparta.ditto.notification.application.dto.PostNotificationCommand;
+import com.sparta.ditto.notification.application.port.MetaDataPort;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.repository.NotificationRepository;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +17,10 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class NotificationEventHandler {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final Set<String> SUBSCRIBED_POST_TYPES = Set.of("POST_LIKED", "POST_COMMENTED");
 
     private final NotificationRepository notificationRepository;
+    private final MetaDataPort metaDataPort;
 
     @Transactional
     public void handlePostEvent(PostNotificationCommand cmd) {
@@ -44,7 +41,7 @@ public class NotificationEventHandler {
 
         Notification notification = Notification.create(
                 cmd.ownerId(), cmd.actorId(), type, targetType,
-                cmd.targetId(), message, buildPostMetaData(cmd.postId()));
+                cmd.targetId(), message, metaDataPort.buildPostMetaData(cmd.postId()));
         notificationRepository.save(notification);
     }
 
@@ -60,7 +57,8 @@ public class NotificationEventHandler {
             return;
         }
 
-        String metaData = buildChatMetaData(cmd.roomId(), cmd.senderNickname(), cmd.senderProfileImageUrl());
+        String metaData = metaDataPort.buildChatMetaData(
+                cmd.roomId(), cmd.senderNickname(), cmd.senderProfileImageUrl());
         for (UUID receiverId : cmd.receiverIds()) {
             Notification notification = Notification.create(
                     receiverId, cmd.senderId(), NotificationType.CHAT_MESSAGE, TargetType.CHAT_MESSAGE,
@@ -81,28 +79,6 @@ public class NotificationEventHandler {
         }
         if (cmd.targetId() == null) {
             throw new IllegalArgumentException("targetId는 null일 수 없습니다.");
-        }
-    }
-
-    private static String buildPostMetaData(String postId) {
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("postId", postId);
-        return toJson(meta);
-    }
-
-    private static String buildChatMetaData(String roomId, String senderNickname, String senderProfileImageUrl) {
-        Map<String, Object> meta = new LinkedHashMap<>();
-        meta.put("roomId", roomId);
-        meta.put("senderNickname", senderNickname);
-        meta.put("senderProfileImageUrl", senderProfileImageUrl);
-        return toJson(meta);
-    }
-
-    private static String toJson(Map<String, Object> map) {
-        try {
-            return OBJECT_MAPPER.writeValueAsString(map);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("메타데이터 직렬화 실패", e);
         }
     }
 }
