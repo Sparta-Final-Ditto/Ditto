@@ -1,7 +1,7 @@
 import asyncio
-import uuid as _uuid
 import numpy as np
 from uuid import UUID
+from uuid6 import uuid7
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
@@ -141,7 +141,7 @@ async def embed_and_store_test(
     body: EmbedAndStoreRequest,
     svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[EmbedAndStoreResponse]:
-    post_id = _uuid.uuid4()
+    post_id = uuid7()
     await svc.embed_and_store(post_id, body.user_id, body.content, body.hashtags)
     profile = await svc.profile_repo.find_by_user_id(body.user_id)
     return ApiResponse.success(
