@@ -9,7 +9,6 @@ import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
 import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
-import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import com.sparta.ditto.match.infrastructure.redis.MatchCacheService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingBitmapService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingLockService;
@@ -28,7 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,9 +42,9 @@ class MatchServiceTest {
     @Mock private MatchCacheService matchCacheService;
     @Mock private MatchingStatsService matchingStatsService;
     @Mock private EmbeddingServiceClient embeddingServiceClient;
-    @Mock private UserServiceClient userServiceClient;
     @Mock private CosineSimilarityCalculator cosineSimilarityCalculator;
     @Mock private MatchExplanationService matchExplanationService;
+    @Mock private HybridCandidateSearchService hybridCandidateSearchService;
 
     @InjectMocks
     private MatchService matchService;
@@ -101,24 +103,45 @@ class MatchServiceTest {
     }
 
     @Test
-    @DisplayName("user_service 호출 실패 시 USER_SERVICE_UNAVAILABLE 예외가 발생한다")
-    void createMatch_userServiceFails_throwsException() {
+    @DisplayName("HNSW 검색 결과가 있으면 해당 후보로 매칭하고 fallback은 실행하지 않는다")
+    void createMatch_hnswHasResults_matchesFromHnsw() {
         UUID userId = UUID.randomUUID();
-        float[] vector = {0.1f, 0.2f, 0.3f};
+        UUID candidateId = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
         UserProfileEmbeddingDto myProfile =
-                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(candidateId, 0.87f);
 
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
                 .willReturn(ApiResponse.success(myProfile));
-        given(userServiceClient.getFollowings(userId))
-                .willThrow(new RuntimeException("connection refused"));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행", "커피"));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(MatchErrorCode.USER_SERVICE_UNAVAILABLE));
+        given(hybridCandidateSearchService.searchCandidates(
+                eq(userId), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("커피", "영화"));
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("공통 관심사: 커피");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+
+        assertThat(result).isNotNull();
+        assertThat(result.matchedUserId()).isEqualTo(candidateId);
+        assertThat(result.similarityScore()).isEqualTo(0.87f);
+        assertThat(result.status()).isEqualTo(MatchStatus.PENDING);
+        assertThat(result.explanation()).isEqualTo("공통 관심사: 커피");
+
+        // HNSW가 성공했으니 fallback(임베딩 서비스, 유저 서비스 exclude 조회)은 절대 호출되면 안 됨
+        verify(embeddingServiceClient, never()).getActiveUserIds();
+        verify(embeddingServiceClient, never()).getProfilesBatch(any());
+        verify(hybridCandidateSearchService, never()).buildExcludeIds(any());
     }
 
     @Test
@@ -134,10 +157,14 @@ class MatchServiceTest {
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
                 .willReturn(ApiResponse.success(myProfile));
-        given(userServiceClient.getFollowings(userId))
-                .willReturn(ApiResponse.success(List.of()));
-        given(userServiceClient.getBlockedUsers(userId))
-                .willReturn(ApiResponse.success(List.of()));
+
+        // HNSW 결과 없음 → fallback(3B) 경로로 진입
+        given(hybridCandidateSearchService.searchCandidates(
+                any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(new LinkedHashMap<>());
+        given(hybridCandidateSearchService.buildExcludeIds(userId))
+                .willReturn(Set.of());
+
         given(embeddingServiceClient.getActiveUserIds())
                 .willReturn(ApiResponse.success(activeIds));
 
@@ -398,7 +425,7 @@ class MatchServiceTest {
 
         given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
         given(matchCacheService.getUserTags(any())).willReturn(Set.of());
-        // float 파라미터는 anyFloat() 사용
+        // float 파라미터는 anyFloat() 사용 (any()는 primitive에 못 씀 → InvalidUseOfMatchersException)
         given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
                 .willThrow(new RuntimeException("LLM 실패"));
 
@@ -407,6 +434,8 @@ class MatchServiceTest {
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EXPLANATION_GENERATION_FAILED));
     }
+
+    // ── createMatch fallback(3B) 세부 예외 ──────────────────────────────────
 
     @Test
     @DisplayName("createMatch - active 유저 목록 조회 실패 시 EMBEDDING_SERVICE_UNAVAILABLE 예외")
@@ -420,10 +449,13 @@ class MatchServiceTest {
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
                 .willReturn(ApiResponse.success(myProfile));
-        given(userServiceClient.getFollowings(userId))
-                .willReturn(ApiResponse.success(List.of()));
-        given(userServiceClient.getBlockedUsers(userId))
-                .willReturn(ApiResponse.success(List.of()));
+
+        given(hybridCandidateSearchService.searchCandidates(
+                any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(new LinkedHashMap<>());
+        given(hybridCandidateSearchService.buildExcludeIds(userId))
+                .willReturn(Set.of());
+
         given(embeddingServiceClient.getActiveUserIds())
                 .willThrow(new RuntimeException("connection refused"));
 
@@ -447,10 +479,13 @@ class MatchServiceTest {
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
                 .willReturn(ApiResponse.success(myProfile));
-        given(userServiceClient.getFollowings(userId))
-                .willReturn(ApiResponse.success(List.of()));
-        given(userServiceClient.getBlockedUsers(userId))
-                .willReturn(ApiResponse.success(List.of()));
+
+        given(hybridCandidateSearchService.searchCandidates(
+                any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(new LinkedHashMap<>());
+        given(hybridCandidateSearchService.buildExcludeIds(userId))
+                .willReturn(Set.of());
+
         given(embeddingServiceClient.getActiveUserIds())
                 .willReturn(ApiResponse.success(activeIds));
         given(embeddingServiceClient.getProfilesBatch(any()))
@@ -460,28 +495,5 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
-    }
-
-    @Test
-    @DisplayName("createMatch - 차단 유저 조회 실패 시 USER_SERVICE_UNAVAILABLE 예외")
-    void createMatch_blockedUsersFails_throwsException() {
-        UUID userId = UUID.randomUUID();
-        float[] vector = {0.1f, 0.2f, 0.3f};
-        UserProfileEmbeddingDto myProfile =
-                new UserProfileEmbeddingDto(userId, vector, null, true, 5);
-
-        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
-        given(matchingLockService.acquireLock(userId)).willReturn(true);
-        given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
-        given(userServiceClient.getFollowings(userId))
-                .willReturn(ApiResponse.success(List.of()));
-        given(userServiceClient.getBlockedUsers(userId))
-                .willThrow(new RuntimeException("connection refused"));
-
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
-                .isInstanceOf(BusinessException.class)
-                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
-                        .isEqualTo(MatchErrorCode.USER_SERVICE_UNAVAILABLE));
     }
 }
