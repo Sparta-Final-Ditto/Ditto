@@ -145,6 +145,184 @@ class MatchServiceTest {
     }
 
     @Test
+    @DisplayName("HNSW 결과가 여러 개면 finalScore가 가장 높은 후보를 선택한다")
+    void createMatch_hnswMultipleResults_picksHighestFinalScore() {
+        UUID userId = UUID.randomUUID();
+        UUID lowScoreCandidate = UUID.randomUUID();
+        UUID highScoreCandidate = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+
+        // LinkedHashMap 순서상 낮은 점수 후보가 먼저 오도록 구성 (순서와 무관하게 최고점 선택되는지 검증)
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(lowScoreCandidate, 0.3f);
+        hnswResults.put(highScoreCandidate, 0.9f);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(lowScoreCandidate)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(highScoreCandidate)).willReturn(Set.of());
+
+        given(hybridCandidateSearchService.searchCandidates(
+                eq(userId), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("설명");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+
+        // 태그가 없어 tagScore는 0 → finalScore = cosineScore * 0.5 이므로 0.9인 쪽이 최종 승자
+        assertThat(result.matchedUserId()).isEqualTo(highScoreCandidate);
+        assertThat(result.similarityScore()).isEqualTo(0.9f);
+    }
+
+    @Test
+    @DisplayName("HNSW 결과 없어 fallback으로 여러 후보 중 finalScore가 가장 높은 후보를 선택한다")
+    void createMatch_fallbackMultipleCandidates_picksHighestFinalScore() {
+        UUID userId = UUID.randomUUID();
+        UUID lowScoreCandidate = UUID.randomUUID();
+        UUID highScoreCandidate = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        float[] lowVector = {0.9f, 0.0f, 0.0f};
+        float[] highVector = {0.1f, 0.2f, 0.3f};
+
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+        UserProfileEmbeddingDto lowCandidateProfile =
+                new UserProfileEmbeddingDto(lowScoreCandidate, lowVector, null, true, 5);
+        UserProfileEmbeddingDto highCandidateProfile =
+                new UserProfileEmbeddingDto(highScoreCandidate, highVector, null, true, 5);
+
+        ActiveUserIdsDto activeIds =
+                new ActiveUserIdsDto(List.of(lowScoreCandidate, highScoreCandidate), 2);
+        ProfileBatchResponseDto batchResponse =
+                new ProfileBatchResponseDto(List.of(lowCandidateProfile, highCandidateProfile));
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(lowScoreCandidate)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(highScoreCandidate)).willReturn(Set.of());
+
+        // HNSW 결과 없음 → fallback
+        given(hybridCandidateSearchService.searchCandidates(
+                any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(new LinkedHashMap<>());
+        given(hybridCandidateSearchService.buildExcludeIds(userId))
+                .willReturn(Set.of());
+
+        given(embeddingServiceClient.getActiveUserIds())
+                .willReturn(ApiResponse.success(activeIds));
+        given(embeddingServiceClient.getProfilesBatch(any()))
+                .willReturn(ApiResponse.success(batchResponse));
+
+        given(cosineSimilarityCalculator.calculate(myVector, lowVector)).willReturn(0.2f);
+        given(cosineSimilarityCalculator.calculate(myVector, highVector)).willReturn(0.95f);
+
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("설명");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+
+        assertThat(result.matchedUserId()).isEqualTo(highScoreCandidate);
+        assertThat(result.similarityScore()).isEqualTo(0.95f);
+    }
+
+    @Test
+    @DisplayName("HNSW 결과 없어도 fallback(Feign)으로 정상 매칭된다")
+    void createMatch_fallbackSuccess_matchesViaFeign() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        float[] candidateVector = {0.15f, 0.25f, 0.35f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+        UserProfileEmbeddingDto candidateProfile =
+                new UserProfileEmbeddingDto(candidateId, candidateVector, null, true, 3);
+        ActiveUserIdsDto activeIds = new ActiveUserIdsDto(List.of(candidateId), 1);
+        ProfileBatchResponseDto batchResponse =
+                new ProfileBatchResponseDto(List.of(candidateProfile));
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행", "커피"));
+
+        // HNSW 결과 없음 → fallback 진입
+        given(hybridCandidateSearchService.searchCandidates(
+                any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(new LinkedHashMap<>());
+        given(hybridCandidateSearchService.buildExcludeIds(userId))
+                .willReturn(Set.of());
+
+        given(embeddingServiceClient.getActiveUserIds())
+                .willReturn(ApiResponse.success(activeIds));
+        given(embeddingServiceClient.getProfilesBatch(any()))
+                .willReturn(ApiResponse.success(batchResponse));
+        given(cosineSimilarityCalculator.calculate(any(), any())).willReturn(0.6f);
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("커피", "영화"));
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("공통 관심사: 커피");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+
+        assertThat(result).isNotNull();
+        assertThat(result.matchedUserId()).isEqualTo(candidateId);
+        assertThat(result.similarityScore()).isEqualTo(0.6f);
+        assertThat(result.explanation()).isEqualTo("공통 관심사: 커피");
+
+        verify(matchCacheService).cacheMatchResult(eq(userId), any());
+        verify(matchingBitmapService).markAsMatched(userId);
+    }
+
+    @Test
+    @DisplayName("매칭 확정 후 설명 생성 실패 시 EXPLANATION_GENERATION_FAILED 예외가 발생한다")
+    void createMatch_explanationGenerationFails_throwsException() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(candidateId, 0.9f);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행"));
+        given(hybridCandidateSearchService.searchCandidates(
+                any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("여행"));
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willThrow(new RuntimeException("LLM 실패"));
+
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
+                        .isEqualTo(MatchErrorCode.EXPLANATION_GENERATION_FAILED));
+
+        // 예외가 나도 락은 반드시 해제되어야 함
+        verify(matchingLockService).releaseLock(userId);
+    }
+
+    @Test
     @DisplayName("후보가 없으면 NO_MATCHING_CANDIDATE 예외가 발생한다")
     void createMatch_noCandidates_throwsException() {
         UUID userId = UUID.randomUUID();
@@ -382,6 +560,27 @@ class MatchServiceTest {
     }
 
     // ── getExplanation ──────────────────────────────────────
+
+    @Test
+    @DisplayName("매칭 설명 조회 - 성공 시 공통 태그 기반 설명을 반환한다")
+    void getExplanation_success_returnsExplanation() {
+        UUID userId = UUID.randomUUID();
+        UUID matchedUserId = UUID.randomUUID();
+        UUID matchId = UUID.randomUUID();
+        MatchingHistory history = MatchingHistory.of(
+                userId, matchedUserId, 0.8f, 0.75f, "NONE", false);
+
+        given(matchingHistoryRepository.findById(matchId)).willReturn(Optional.of(history));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of("커피", "영화"));
+        given(matchCacheService.getUserTags(matchedUserId)).willReturn(Set.of("커피", "등산"));
+        given(matchExplanationService.generateExplanation(
+                eq(userId), eq(matchedUserId), eq(List.of("커피")), eq(0.75f)))
+                .willReturn("두 분 다 커피를 좋아하시네요!");
+
+        String result = matchService.getExplanation(userId, matchId);
+
+        assertThat(result).isEqualTo("두 분 다 커피를 좋아하시네요!");
+    }
 
     @Test
     @DisplayName("매칭 설명 조회 - 내 매칭이 아니면 MATCH_NOT_FOUND 예외가 발생한다")
