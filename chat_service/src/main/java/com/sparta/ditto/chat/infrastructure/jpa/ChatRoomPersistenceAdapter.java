@@ -21,6 +21,11 @@ public class ChatRoomPersistenceAdapter implements ChatRoomPort {
     }
 
     @Override
+    public Optional<ChatRoom> findByIdForUpdate(UUID roomId) {
+        return chatRoomRepository.findByIdForUpdate(roomId);
+    }
+
+    @Override
     public boolean existsById(UUID roomId) {
         return chatRoomRepository.existsById(roomId);
     }

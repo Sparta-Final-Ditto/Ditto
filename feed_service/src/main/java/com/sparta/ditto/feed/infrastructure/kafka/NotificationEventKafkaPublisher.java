@@ -26,7 +26,10 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
 
     @Override
     public void publishPostLiked(PostLikedEvent event) {
-        record Payload(String likeId, String postId, String userId, String ownerId, String likedAt) {}
+        record Payload(
+                String likeId, String postId, String userId,
+                String actorNickname, String ownerId, String likedAt
+        ) {}
 
         record Envelope(String eventId, String eventType, String occurredAt, Payload payload) {}
 
@@ -39,6 +42,7 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
                             event.likeId().toString(),
                             event.postId().toString(),
                             event.likerId().toString(),
+                            event.actorNickname(),
                             event.ownerId().toString(),
                             event.likedAt().toString()
                     )
@@ -58,7 +62,8 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
     @Override
     public void publishPostCommented(PostCommentedEvent event) {
         record Payload(
-                String postId, String commentId, String userId, String ownerId, String commentedAt
+                String postId, String commentId, String userId,
+                String actorNickname, String ownerId, String commentedAt
         ) {}
 
         record Envelope(String eventId, String eventType, String occurredAt, Payload payload) {}
@@ -72,6 +77,7 @@ public class NotificationEventKafkaPublisher implements NotificationEventPublish
                             event.postId().toString(),
                             event.commentId().toString(),
                             event.commenterId().toString(),
+                            event.actorNickname(),
                             event.ownerId().toString(),
                             event.commentedAt().toString()
                     )
