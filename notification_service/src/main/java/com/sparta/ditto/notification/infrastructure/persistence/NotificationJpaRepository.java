@@ -16,6 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 public interface NotificationJpaRepository extends JpaRepository<Notification, UUID> {
 
+    boolean existsByTypeAndTargetIdAndReceiverId(
+            NotificationType type, String targetId, UUID receiverId);
+
     Optional<Notification> findByIdAndReceiverIdAndDeletedAtIsNull(UUID id, UUID receiverId);
 
     @Query(value = """
