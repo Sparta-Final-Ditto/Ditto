@@ -63,6 +63,60 @@ class ChatRoomTest {
     }
 
     @Test
+    @DisplayName("역전 방어 - 더 오래된 메시지는 lastMessage를 되돌리지 않는다")
+    void updateLastMessage_ignores_older() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant newer = Instant.parse("2026-06-18T10:00:00Z");
+        Instant older = Instant.parse("2026-06-18T09:00:00Z");
+        chatRoom.updateLastMessage(MESSAGE_ID, newer);
+
+        // when: 더 오래된 메시지로 갱신 시도
+        chatRoom.updateLastMessage("018f7b7a-0000-7c22-9f1b-2a3c4d5e6f00", older);
+
+        // then: 최신 값 유지
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(MESSAGE_ID);
+        assertThat(chatRoom.getLastMessageAt()).isEqualTo(newer);
+    }
+
+    @Test
+    @DisplayName("역전 방어 - 더 최신 메시지는 lastMessage를 갱신한다")
+    void updateLastMessage_updates_newer() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant older = Instant.parse("2026-06-18T09:00:00Z");
+        Instant newer = Instant.parse("2026-06-18T10:00:00Z");
+        String newerId = "018f7b7a-9999-7c22-9f1b-2a3c4d5e6f99";
+        chatRoom.updateLastMessage(MESSAGE_ID, older);
+
+        // when
+        chatRoom.updateLastMessage(newerId, newer);
+
+        // then
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(newerId);
+        assertThat(chatRoom.getLastMessageAt()).isEqualTo(newer);
+    }
+
+    @Test
+    @DisplayName("역전 방어 - createdAt이 같으면 messageId가 더 클 때만 갱신한다")
+    void updateLastMessage_tie_break_by_message_id() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant sameTime = Instant.parse("2026-06-18T10:00:00Z");
+        String smaller = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f00";
+        String larger = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f99";
+        chatRoom.updateLastMessage(MESSAGE_ID, sameTime); // ...6f70
+
+        // when & then: 같은 시각 + 더 작은 messageId → 무시
+        chatRoom.updateLastMessage(smaller, sameTime);
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(MESSAGE_ID);
+
+        // when & then: 같은 시각 + 더 큰 messageId → 갱신
+        chatRoom.updateLastMessage(larger, sameTime);
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(larger);
+    }
+
+    @Test
     @DisplayName("실패 - 마지막 메시지 ID는 비어 있을 수 없다")
     void updateLastMessage_fail_blank_message_id() {
         // given

@@ -56,10 +56,9 @@ class EmbeddingService:
                     vector=profile_vector,
                     record_count=new_count,
                     active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
-                    last_processed_record_id=post_id,
+                    last_processed_record_id=existing.last_processed_record_id,
                 )
             else:
-                # 첫 게시글: 배치 전까지 임시 벡터로 프로필 생성
                 await self.profile_repo.upsert(
                     user_id=user_id,
                     vector=vector,
