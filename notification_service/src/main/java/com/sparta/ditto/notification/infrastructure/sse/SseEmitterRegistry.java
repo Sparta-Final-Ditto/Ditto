@@ -1,6 +1,7 @@
 package com.sparta.ditto.notification.infrastructure.sse;
 
 import com.sparta.ditto.notification.application.port.SseConnectionPort;
+import jakarta.annotation.PreDestroy;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,5 +43,18 @@ public class SseEmitterRegistry implements SseConnectionPort {
 
     public int connectionCount() {
         return emitters.size();
+    }
+
+    /** 서비스 종료 시 모든 emitter를 complete() 처리하고 레지스트리를 비운다. */
+    @PreDestroy
+    public void shutdown() {
+        emitters.values().forEach(list -> list.forEach(emitter -> {
+            try {
+                emitter.complete();
+            } catch (RuntimeException ignored) {
+                // 이미 완료/실패한 emitter는 무시
+            }
+        }));
+        emitters.clear();
     }
 }
