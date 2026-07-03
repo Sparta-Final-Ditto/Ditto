@@ -9,15 +9,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 /**
- * SSE 실시간 전송 전용 비동기 executor 설정. 느리거나 실패하는 클라이언트 전송이 Kafka
- * 컨슈머 스레드/처리량에 영향을 주지 않도록 소형 bounded 풀로 격리한다. 큐가 포화되면
- * 전송을 버리고(discard) 로그만 남긴다.
+ * SSE 실시간 전송 전용 비동기 executor 및 스케줄링 설정. 느리거나 실패하는 클라이언트 전송이
+ * Kafka 컨슈머 스레드/처리량에 영향을 주지 않도록 소형 bounded 풀로 격리한다. 큐가 포화되면
+ * 전송을 버리고(discard) 로그만 남긴다. heartbeat 스케줄러 구동을 위해 스케줄링도 활성화한다.
  */
 @Configuration
 @EnableAsync
+@EnableScheduling
 public class AsyncConfig implements AsyncConfigurer {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncConfig.class);

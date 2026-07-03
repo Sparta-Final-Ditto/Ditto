@@ -2,6 +2,7 @@ package com.sparta.ditto.notification.infrastructure.sse;
 
 import com.sparta.ditto.notification.application.dto.NotificationPushPayload;
 import com.sparta.ditto.notification.application.port.NotificationPushPort;
+import com.sparta.ditto.notification.application.port.SseHeartbeatPort;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  */
 @Component
 @RequiredArgsConstructor
-public class SseNotificationPushAdapter implements NotificationPushPort {
+public class SseNotificationPushAdapter implements NotificationPushPort, SseHeartbeatPort {
 
     private static final Logger log = LoggerFactory.getLogger(SseNotificationPushAdapter.class);
 
@@ -37,6 +38,7 @@ public class SseNotificationPushAdapter implements NotificationPushPort {
     }
 
     /** heartbeat를 전체 연결에 전송하며, 전송 실패한 죽은 연결을 청소한다. */
+    @Override
     public void broadcastHeartbeat() {
         for (Map.Entry<UUID, List<SseEmitter>> entry : registry.asMap().entrySet()) {
             UUID userId = entry.getKey();
