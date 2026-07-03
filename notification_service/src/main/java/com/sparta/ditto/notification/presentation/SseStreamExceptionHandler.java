@@ -2,6 +2,8 @@ package com.sparta.ditto.notification.presentation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
@@ -12,6 +14,7 @@ import org.springframework.web.context.request.async.AsyncRequestTimeoutExceptio
  * GlobalExceptionHandler가 스트림에 JSON 에러를 쓰지 않도록 여기서 본문 없이 흡수한다
  * (반환 없음 → 응답 본문 미기록, debug 로그만).
  */
+@Order(Ordered.HIGHEST_PRECEDENCE)
 @RestControllerAdvice
 public class SseStreamExceptionHandler {
 
