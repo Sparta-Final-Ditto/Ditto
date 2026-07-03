@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -9,7 +10,6 @@ import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
 @Configuration
-@RequiredArgsConstructor
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
@@ -27,13 +27,26 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     private final StompChannelInterceptor stompChannelInterceptor;
     private final ChatHandshakeInterceptor chatHandshakeInterceptor;
     private final ChatHandshakeHandler chatHandshakeHandler;
+    // 환경별 허용 origin 목록(콤마 구분). 로컬은 기본값, 배포는 CHAT_ALLOWED_ORIGINS로 주입.
+    private final List<String> allowedOrigins;
+
+    public WebSocketConfig(
+            StompChannelInterceptor stompChannelInterceptor,
+            ChatHandshakeInterceptor chatHandshakeInterceptor,
+            ChatHandshakeHandler chatHandshakeHandler,
+            @Value("${chat.websocket.allowed-origins}") List<String> allowedOrigins) {
+        this.stompChannelInterceptor = stompChannelInterceptor;
+        this.chatHandshakeInterceptor = chatHandshakeInterceptor;
+        this.chatHandshakeHandler = chatHandshakeHandler;
+        this.allowedOrigins = allowedOrigins;
+    }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws-chat")
                 .setHandshakeHandler(chatHandshakeHandler)
                 .addInterceptors(chatHandshakeInterceptor)
-                .setAllowedOriginPatterns("*"); // TODO: 운영 단계에서 허용 origin 제한
+                .setAllowedOriginPatterns(allowedOrigins.toArray(new String[0]));
     }
 
     @Override
