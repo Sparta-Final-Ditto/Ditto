@@ -2,6 +2,7 @@ package com.sparta.ditto.notification.presentation.controller;
 
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.notification.application.NotificationService;
+import com.sparta.ditto.notification.application.SseService;
 import com.sparta.ditto.notification.application.dto.NotificationItemResult;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
 import com.sparta.ditto.notification.application.dto.ReadByRoomResult;
@@ -19,6 +20,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Instant;
 import java.util.List;
@@ -26,14 +28,18 @@ import java.util.UUID;
 import java.util.stream.Stream;
 
 import org.springframework.http.MediaType;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(NotificationController.class)
@@ -46,7 +52,39 @@ class NotificationControllerTest {
     @MockBean
     private NotificationService notificationService;
 
+    @MockBean
+    private SseService sseService;
+
     private final UUID userId = UUID.randomUUID();
+
+    // ── GET /notifications/stream (SSE 연결) ─────────────────────────────────
+
+    @Test
+    @DisplayName("스트림 연결 - X-User-Id 있으면 200 OK + Content-Type text/event-stream")
+    void stream_withUserId_200EventStream() throws Exception {
+        SseEmitter emitter = new SseEmitter();
+        when(sseService.connect(userId)).thenReturn(emitter);
+
+        MvcResult result = mockMvc.perform(get("/api/v1/notifications/stream")
+                        .header("X-User-Id", userId.toString()))
+                .andExpect(status().isOk())
+                .andExpect(request().asyncStarted())
+                .andReturn();
+
+        emitter.complete();
+        mockMvc.perform(asyncDispatch(result))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_EVENT_STREAM));
+    }
+
+    @Test
+    @DisplayName("스트림 연결 - X-User-Id 헤더 누락 시 401, code=COMMON-002")
+    void stream_missingHeader_401() throws Exception {
+        mockMvc.perform(get("/api/v1/notifications/stream"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.code").value("COMMON-002"));
+    }
 
     @Test
     @DisplayName("빈 목록도 200 OK, message=SUCCESS, notifications=[], hasNext=false, nextCursor 미포함")
