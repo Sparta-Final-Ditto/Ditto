@@ -21,7 +21,6 @@ dependencies {
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:4.2.1'
 
     // Spring AI
-    implementation 'org.springframework.ai:spring-ai-openai-spring-boot-starter:1.0.0-M6'
     implementation 'org.springframework.ai:spring-ai-pgvector-store-spring-boot-starter:1.0.0-M6'
 
     // Spring AI Ollama
