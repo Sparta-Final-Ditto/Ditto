@@ -160,8 +160,13 @@ class ChatRoomLastMessageConcurrencyTest {
 
         String finalMsgId = jdbc.queryForObject(
                 "SELECT last_message_id FROM chat_rooms WHERE id = ?", String.class, roomId);
+        OffsetDateTime finalAt = jdbc.queryForObject(
+                "SELECT last_message_at FROM chat_rooms WHERE id = ?", OffsetDateTime.class, roomId);
         assertThat(finalMsgId)
                 .as("동시 갱신이 몰려도 최종 값은 가장 최신 메시지여야 한다")
                 .isEqualTo(maxMsgId);
+        assertThat(finalAt.toInstant())
+                .as("최종 lastMessageAt 도 가장 최신 시각이어야 한다")
+                .isEqualTo(base.plusSeconds((threadCount - 1) * 60L));
     }
 }
