@@ -4,6 +4,8 @@ import com.sparta.ditto.feed.domain.entity.OutboxEvent;
 import com.sparta.ditto.feed.domain.repository.OutboxEventRepository;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
@@ -17,6 +19,11 @@ public class OutboxEventRepositoryImpl implements OutboxEventRepository {
     @Override
     public OutboxEvent save(OutboxEvent event) {
         return jpaRepository.save(event);
+    }
+
+    @Override
+    public Optional<OutboxEvent> findById(UUID id) {
+        return jpaRepository.findById(id);
     }
 
     @Override
