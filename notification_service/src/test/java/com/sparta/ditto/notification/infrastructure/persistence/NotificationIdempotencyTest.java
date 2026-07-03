@@ -1,12 +1,14 @@
 package com.sparta.ditto.notification.infrastructure.persistence;
 
 import com.sparta.ditto.notification.application.NotificationEventHandler;
+import com.sparta.ditto.notification.application.NotificationRecorder;
 import com.sparta.ditto.notification.infrastructure.messaging.MetaDataAdapter;
 import com.sparta.ditto.notification.application.dto.ChatNotificationCommand;
 import com.sparta.ditto.notification.application.dto.PostNotificationCommand;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
+import com.sparta.ditto.notification.support.AbstractPostgresContainerTest;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -23,26 +25,21 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @DataJpaTest
-@Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import({NotificationRepositoryImpl.class, NotificationEventHandler.class, MetaDataAdapter.class})
+@Import({NotificationRepositoryImpl.class, NotificationEventHandler.class, NotificationRecorder.class,
+        MetaDataAdapter.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("동일 이벤트 중복 수신 멱등성 — UNIQUE 제약 존재 + 핸들러 레벨 skip")
-class NotificationIdempotencyTest {
+class NotificationIdempotencyTest extends AbstractPostgresContainerTest {
 
     @TestConfiguration
     @EnableJpaAuditing
@@ -51,16 +48,6 @@ class NotificationIdempotencyTest {
         AuditorAware<UUID> auditorAwareImpl() {
             return Optional::empty;
         }
-    }
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     @Autowired
