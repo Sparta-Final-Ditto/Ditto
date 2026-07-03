@@ -9,6 +9,7 @@ import com.sparta.ditto.notification.infrastructure.config.AsyncConfig;
 import com.sparta.ditto.notification.infrastructure.messaging.MetaDataAdapter;
 import com.sparta.ditto.notification.infrastructure.persistence.NotificationJpaRepository;
 import com.sparta.ditto.notification.infrastructure.persistence.NotificationRepositoryImpl;
+import com.sparta.ditto.notification.support.AbstractPostgresContainerTest;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
@@ -27,18 +28,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({NotificationRepositoryImpl.class, NotificationRecorder.class, NotificationPushListener.class,
@@ -46,7 +41,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         NotificationPushAfterCommitIntegrationTest.RecordingPushConfig.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 @DisplayName("저장 커밋 후 AFTER_COMMIT push 호출 + 전송 실패 시 저장 격리")
-class NotificationPushAfterCommitIntegrationTest {
+class NotificationPushAfterCommitIntegrationTest extends AbstractPostgresContainerTest {
 
     @TestConfiguration
     @EnableJpaAuditing
@@ -77,16 +72,6 @@ class NotificationPushAfterCommitIntegrationTest {
                 throw new RuntimeException("push failed");
             }
         }
-    }
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     @Autowired
