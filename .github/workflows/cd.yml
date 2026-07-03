@@ -27,6 +27,8 @@ jobs:
             image: ditto/chat-service
           - module: notification_service
             image: ditto/notification-service
+          - module: assistant_service
+            image: ditto/assistant-service
 
     steps:
       - uses: actions/checkout@v4

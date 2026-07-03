@@ -35,6 +35,10 @@ spring:
               uri: ${NOTIFICATION_SERVICE_URL}
               predicates:
                 - Path=/api/v1/notifications/**
+            - id: assistant-service
+              uri: ${ASSISTANT_SERVICE_URL}
+              predicates:
+                - Path=/api/v1/assistant/**
 
 jwt:
   secret: ${JWT_SECRET}

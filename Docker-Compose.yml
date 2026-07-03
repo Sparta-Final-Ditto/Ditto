@@ -84,12 +84,14 @@ services:
       MATCH_SERVICE_URL: http://match-service:8083
       CHAT_SERVICE_URL: http://chat-service:8084
       NOTIFICATION_SERVICE_URL: http://notification-service:8085
+      ASSISTANT_SERVICE_URL: http://assistant-service:8086
     depends_on:
       - user-service
       - feed-service
       - match-service
       - chat-service
       - notification-service
+      - assistant-service
 
   user-service:
     profiles: [app]
@@ -216,6 +218,24 @@ services:
       - "8090:8090"
     environment:
       DB_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/ditto_embedding
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  assistant-service:
+    profiles: [app]
+    build:
+      context: .
+      dockerfile: assistant_service/Dockerfile
+    container_name: ditto-assistant-service
+    ports:
+      - "8086:8086"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/ditto_assistant
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      ASSISTANT_LLM_PROVIDER: ${ASSISTANT_LLM_PROVIDER}
+      LLM_API_KEY: ${LLM_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy
