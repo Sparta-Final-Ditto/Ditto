@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.ollama.OllamaChatModel;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -27,7 +28,7 @@ public class LlmClientConfig {
     public ChatClient ollamaChatClient(OllamaChatModel chatModel, VectorStore vectorStore) {
         return ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(new QuestionAnswerAdvisor(vectorStore))
+                .defaultAdvisors(questionAnswerAdvisor(vectorStore))
                 .build();
     }
 
@@ -36,7 +37,17 @@ public class LlmClientConfig {
     public ChatClient apiChatClient(OpenAiChatModel chatModel, VectorStore vectorStore) {
         return ChatClient.builder(chatModel)
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(new QuestionAnswerAdvisor(vectorStore))
+                .defaultAdvisors(questionAnswerAdvisor(vectorStore))
+                .build();
+    }
+
+    private QuestionAnswerAdvisor questionAnswerAdvisor(VectorStore vectorStore) {
+        SearchRequest searchRequest = SearchRequest.builder()
+                .topK(5)
+                .similarityThreshold(0.5)
+                .build();
+        return QuestionAnswerAdvisor.builder(vectorStore)
+                .searchRequest(searchRequest)
                 .build();
     }
 }
