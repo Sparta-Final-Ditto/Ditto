@@ -1,6 +1,7 @@
 package com.sparta.ditto.chat.presentation.websocket;
 
 import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.ChannelRegistration;
@@ -9,6 +10,7 @@ import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBr
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
+@Slf4j
 @Configuration
 @EnableWebSocketMessageBroker
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
@@ -39,6 +41,10 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         this.chatHandshakeInterceptor = chatHandshakeInterceptor;
         this.chatHandshakeHandler = chatHandshakeHandler;
         this.allowedOrigins = allowedOrigins;
+        if (allowedOrigins.isEmpty()) {
+            log.warn("chat.websocket.allowed-origins가 비어 있어 모든 브라우저 origin의 "
+                    + "WebSocket 핸드셰이크가 차단됩니다. 환경변수 CHAT_ALLOWED_ORIGINS를 확인하세요.");
+        }
     }
 
     @Override
