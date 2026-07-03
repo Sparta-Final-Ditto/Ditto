@@ -43,8 +43,8 @@ public class LlmClientConfig {
 
     private QuestionAnswerAdvisor questionAnswerAdvisor(VectorStore vectorStore) {
         SearchRequest searchRequest = SearchRequest.builder()
-                .topK(5)
-                .similarityThreshold(0.5)
+                .topK(2)
+                .similarityThreshold(0.75)
                 .build();
         return QuestionAnswerAdvisor.builder(vectorStore)
                 .searchRequest(searchRequest)
