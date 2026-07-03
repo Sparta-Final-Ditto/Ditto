@@ -19,6 +19,7 @@ spring:
     vectorstore:
       pgvector:
         initialize-schema: true
+        dimensions: 768   # nomic-embed-text 임베딩 차원
   flyway:
     enabled: true
     locations: classpath:db/migration
