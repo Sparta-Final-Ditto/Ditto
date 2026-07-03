@@ -20,7 +20,8 @@ public class AssistantDocumentChunker {
                 "version", FAQ_VERSION
         );
         // FAQ 원본 id로부터 UUID를 만들어 재적재 시 upsert
-        String documentId = UUID.nameUUIDFromBytes(item.id().getBytes(StandardCharsets.UTF_8)).toString();
+        String documentId = UUID.nameUUIDFromBytes(item.id().getBytes(StandardCharsets.UTF_8))
+                .toString();
         return new Document(documentId, content, metadata);
     }
 }

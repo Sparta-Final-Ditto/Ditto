@@ -48,7 +48,8 @@ public class AssistantChatService {
                 .toList();
 
         chatLogRepository.save(AssistantChatLog.of(
-                command.userId(), command.question(), answer, matchedDocumentIds, similarityScores));
+                command.userId(), command.question(), answer,
+                matchedDocumentIds, similarityScores));
 
         return new AssistantAnswerResult(answer, sources);
     }
