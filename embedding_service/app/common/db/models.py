@@ -4,6 +4,7 @@ from sqlalchemy import BigInteger, Boolean, Date, DateTime, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 from pgvector.sqlalchemy import Vector
+from uuid6 import uuid7
 from app.common.db.base_entity import BaseEntity
 from app.common.db.database import Base
 
@@ -22,7 +23,7 @@ class UserPostEmbedding(Base, BaseEntity):
 class UserProfileEmbedding(Base, BaseEntity):
     __tablename__ = "user_profile_embeddings"
 
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid7)
     vector: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
     record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

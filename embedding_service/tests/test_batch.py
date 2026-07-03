@@ -27,6 +27,8 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.mock_post_repo = AsyncMock()
+        # DB 실측 record_count
+        self.mock_post_repo.count_done_by_user_id.return_value = 0
         self.mock_profile_repo = AsyncMock()
 
         mock_db = MagicMock()
@@ -37,16 +39,23 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         p_post = patch(f"{_BATCH_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
         p_profile = patch(f"{_BATCH_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
         p_dlq = patch(f"{_BATCH_MODULE}._reprocess_dlq", new=AsyncMock(return_value=0))
+        p_profile_dlq = patch(f"{_BATCH_MODULE}.reprocess_profile_embedding_dlq", new=AsyncMock(return_value=0))
+        p_producer = patch(f"{_BATCH_MODULE}.ProfileEmbeddingProducer", autospec=True)
+
+        self.mock_producer = p_producer.start()
 
         self.addCleanup(p_session.stop)
         self.addCleanup(p_post.stop)
         self.addCleanup(p_profile.stop)
         self.addCleanup(p_dlq.stop)
+        self.addCleanup(p_profile_dlq.stop)
+        self.addCleanup(p_producer.stop)
 
         p_session.start()
         p_post.start()
         p_profile.start()
         p_dlq.start()
+        p_profile_dlq.start()
 
     # ── 전체 재계산 경로 (last_processed_record_id=None) ─────────────────────
 
@@ -88,6 +97,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
         self.mock_post_repo.find_done_vectors_after.return_value = make_records(min_count)
+        self.mock_post_repo.count_done_by_user_id.return_value = min_count
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
@@ -102,6 +112,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
         self.mock_post_repo.find_done_vectors_after.return_value = make_records(min_count - 1)
+        self.mock_post_repo.count_done_by_user_id.return_value = min_count - 1
         self.mock_profile_repo.find_by_user_id.return_value = make_profile()
 
         await run_batch()
@@ -165,6 +176,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
         self.mock_post_repo.find_done_vectors_after.return_value = records
+        self.mock_post_repo.count_done_by_user_id.return_value = 3
         self.mock_profile_repo.find_by_user_id.return_value = None  # 프로필 없음
 
         await run_batch()
@@ -199,8 +211,7 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
                          self.mock_post_repo.find_done_vectors_after.call_args.args[1],
                          last_post_id)
 
-    async def test_incremental_record_count_adds_to_existing(self):
-        """증분 경로: record_count = 기존 + 신규 건수."""
+    async def test_incremental_record_count_uses_db_authoritative_count(self):
         last_post_id = uuid.uuid4()
         profile = make_profile(record_count=5, last_processed_record_id=last_post_id)
         new_records = make_records(3)
@@ -208,12 +219,13 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
         self.mock_post_repo.reset_failed_to_done.return_value = 0
         self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
         self.mock_post_repo.find_done_vectors_after.return_value = new_records
+        self.mock_post_repo.count_done_by_user_id.return_value = 9
         self.mock_profile_repo.find_by_user_id.return_value = profile
 
         await run_batch()
 
         kw = self.mock_profile_repo.upsert.call_args.kwargs
-        self.assertEqual(kw["record_count"], 8)  # 5 + 3
+        self.assertEqual(kw["record_count"], 9)
 
     async def test_incremental_no_new_vectors_skips_upsert(self):
         """증분 경로: 신규 벡터 없음 → upsert 미호출."""
@@ -244,6 +256,63 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
 
         kw = self.mock_profile_repo.upsert.call_args.kwargs
         self.assertEqual(kw["last_processed_record_id"], new_records[-1][0])
+
+    # ── 이벤트 발행 (profile-embedding-updated / bulk-completed) ───────────────
+
+    async def test_publishes_delta_event_when_under_threshold(self):
+        """변경 인원이 threshold 이하 — 유저별 PROFILE_EMBEDDING_UPDATED 발행, bulk는 미발행."""
+        user_id = uuid.uuid4()
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [user_id]
+        self.mock_post_repo.find_done_vectors_after.return_value = make_records(2)
+        self.mock_post_repo.count_done_by_user_id.return_value = 2
+        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
+
+        await run_batch()
+
+        self.mock_producer.publish_profile_updated.assert_awaited_once()
+        args = self.mock_producer.publish_profile_updated.call_args.args
+        self.assertEqual(args[0], user_id)
+        self.mock_producer.publish_bulk_completed.assert_not_awaited()
+
+    async def test_publishes_bulk_completed_when_over_threshold(self):
+        """변경 인원이 threshold 초과 — BULK_COMPLETED만 발행, 개별 delta는 미발행."""
+        user_a, user_b = uuid.uuid4(), uuid.uuid4()
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [user_a, user_b]
+        self.mock_post_repo.find_done_vectors_after.return_value = make_records(1)
+        self.mock_post_repo.count_done_by_user_id.return_value = 1
+        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
+
+        with patch.object(settings, "PROFILE_SYNC_BULK_THRESHOLD", 1):
+            await run_batch()
+
+        self.mock_producer.publish_bulk_completed.assert_awaited_once()
+        kw = self.mock_producer.publish_bulk_completed.call_args.kwargs
+        self.assertEqual(kw["batch_type"], "DAILY")
+        self.assertEqual(kw["total_updated"], 2)
+        self.mock_producer.publish_profile_updated.assert_not_awaited()
+
+    async def test_no_event_published_when_nothing_changed(self):
+        """변경 인원 0명 — 어떤 이벤트도 발행하지 않는다."""
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = [uuid.uuid4()]
+        self.mock_post_repo.find_done_vectors_after.return_value = []
+        self.mock_profile_repo.find_by_user_id.return_value = make_profile()
+
+        await run_batch()
+
+        self.mock_producer.publish_profile_updated.assert_not_awaited()
+        self.mock_producer.publish_bulk_completed.assert_not_awaited()
+
+    async def test_profile_embedding_dlq_reprocessed_before_processing(self):
+        """profile-embedding DLQ 재처리가 배치 시작 시 호출된다 (post-events-dlq와 동일한 패턴)."""
+        self.mock_post_repo.reset_failed_to_done.return_value = 0
+        self.mock_post_repo.find_all_user_ids_with_done_embeddings.return_value = []
+
+        with patch(f"{_BATCH_MODULE}.reprocess_profile_embedding_dlq", new=AsyncMock(return_value=3)) as mocked:
+            await run_batch()
+            mocked.assert_awaited_once()
 
 
 if __name__ == "__main__":
