@@ -5,6 +5,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
@@ -14,13 +15,17 @@ import org.springframework.web.socket.config.annotation.StompWebSocketEndpointRe
 @DisplayName("WebSocketConfig 테스트")
 class WebSocketConfigTest {
 
+    private static final List<String> ALLOWED_ORIGINS =
+            List.of("http://localhost:3000", "http://localhost:5173");
+
     private final WebSocketConfig config = new WebSocketConfig(
             mock(StompChannelInterceptor.class),
             mock(ChatHandshakeInterceptor.class),
-            mock(ChatHandshakeHandler.class));
+            mock(ChatHandshakeHandler.class),
+            ALLOWED_ORIGINS);
 
     @Test
-    @DisplayName("STOMP 엔드포인트(/ws-chat)를 등록한다")
+    @DisplayName("STOMP 엔드포인트(/ws-chat)를 설정된 origin으로만 등록한다")
     void register_stomp_endpoints() {
         // given
         StompEndpointRegistry registry = mock(StompEndpointRegistry.class);
@@ -35,7 +40,8 @@ class WebSocketConfigTest {
 
         // then
         verify(registry).addEndpoint("/ws-chat");
-        verify(registration).setAllowedOriginPatterns("*");
+        verify(registration)
+                .setAllowedOriginPatterns("http://localhost:3000", "http://localhost:5173");
     }
 
     @Test

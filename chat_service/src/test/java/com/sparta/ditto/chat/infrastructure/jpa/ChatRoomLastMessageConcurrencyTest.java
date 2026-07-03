@@ -110,9 +110,11 @@ class ChatRoomLastMessageConcurrencyTest {
                 olderTask.get(10, TimeUnit.SECONDS);
 
                 String finalMsgId = jdbc.queryForObject(
-                        "SELECT last_message_id FROM chat_rooms WHERE id = ?", String.class, roomId);
+                        "SELECT last_message_id FROM chat_rooms WHERE id = ?",
+                        String.class, roomId);
                 OffsetDateTime finalAt = jdbc.queryForObject(
-                        "SELECT last_message_at FROM chat_rooms WHERE id = ?", OffsetDateTime.class, roomId);
+                        "SELECT last_message_at FROM chat_rooms WHERE id = ?",
+                        OffsetDateTime.class, roomId);
 
                 assertThat(finalMsgId)
                         .as("반복 %d회차: 더 최신 메시지가 lastMessage로 남아야 한다", i)
@@ -159,9 +161,12 @@ class ChatRoomLastMessageConcurrencyTest {
         }
 
         String finalMsgId = jdbc.queryForObject(
-                "SELECT last_message_id FROM chat_rooms WHERE id = ?", String.class, roomId);
+                "SELECT last_message_id FROM chat_rooms WHERE id = ?",
+                String.class, roomId);
         OffsetDateTime finalAt = jdbc.queryForObject(
-                "SELECT last_message_at FROM chat_rooms WHERE id = ?", OffsetDateTime.class, roomId);
+                "SELECT last_message_at FROM chat_rooms WHERE id = ?",
+                OffsetDateTime.class, roomId);
+
         assertThat(finalMsgId)
                 .as("동시 갱신이 몰려도 최종 값은 가장 최신 메시지여야 한다")
                 .isEqualTo(maxMsgId);
