@@ -3,6 +3,7 @@ package com.sparta.ditto.feed.application.service;
 import com.sparta.ditto.feed.application.port.out.UserBlockPort;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,5 +33,20 @@ public class BlockCheckService {
     @SuppressWarnings("unused")
     private boolean failOpen(UUID requesterId, UUID targetUserId, Throwable t) {
         return false;
+    }
+
+    /**
+     * 피드 단방향 필터용: 요청자가 차단한 사용자 ID 목록을 조회한다.
+     * fallback은 fail-open: 조회 실패(타임아웃/5xx/서킷 OPEN) 시 빈 목록을 반환한다.
+     */
+    @CircuitBreaker(name = "userServiceClient", fallbackMethod = "emptyBlockedList")
+    @Retry(name = "userServiceClient")
+    public List<UUID> blockedUserIds(UUID requesterId) {
+        return userBlockPort.findBlockedUserIds(requesterId);
+    }
+
+    @SuppressWarnings("unused")
+    private List<UUID> emptyBlockedList(UUID requesterId, Throwable t) {
+        return List.of();
     }
 }

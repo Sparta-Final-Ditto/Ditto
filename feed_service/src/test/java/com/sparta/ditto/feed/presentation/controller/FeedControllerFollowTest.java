@@ -11,7 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
-import com.sparta.ditto.feed.application.service.FeedService;
+import com.sparta.ditto.feed.application.facade.FeedFacade;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
 import java.util.List;
 import java.util.UUID;
@@ -34,14 +34,14 @@ class FeedControllerFollowTest {
     private UploadUrlService uploadUrlService;
 
     @MockBean
-    private FeedService feedService;
+    private FeedFacade feedFacade;
 
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
     @Test
     @DisplayName("004-1 Controller: 정상 요청 → 200 OK, message=SUCCESS, data.feeds 배열 반환")
     void getFollowFeed_정상요청_200() throws Exception {
-        when(feedService.getFollowFeed(any(GetFollowFeedQuery.class)))
+        when(feedFacade.getFollowFeed(any(GetFollowFeedQuery.class)))
                 .thenReturn(new FeedResult(List.of(), null, false));
 
         mockMvc.perform(get("/api/v1/feeds/follow")
@@ -61,16 +61,16 @@ class FeedControllerFollowTest {
     }
 
     @Test
-    @DisplayName("size 파라미터 누락 → 기본값 20으로 FeedService.getFollowFeed 호출")
+    @DisplayName("size 파라미터 누락 → 기본값 20으로 FeedFacade.getFollowFeed 호출")
     void getFollowFeed_size누락_기본값20() throws Exception {
-        when(feedService.getFollowFeed(any(GetFollowFeedQuery.class)))
+        when(feedFacade.getFollowFeed(any(GetFollowFeedQuery.class)))
                 .thenReturn(new FeedResult(List.of(), null, false));
 
         mockMvc.perform(get("/api/v1/feeds/follow")
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isOk());
 
-        verify(feedService).getFollowFeed(argThat(q -> q.size() == 20));
+        verify(feedFacade).getFollowFeed(argThat(q -> q.size() == 20));
     }
 
     @Test

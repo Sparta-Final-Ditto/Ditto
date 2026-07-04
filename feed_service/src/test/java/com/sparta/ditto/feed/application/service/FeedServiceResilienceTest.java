@@ -71,7 +71,7 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
         given(matchServicePort.getRecommendations(any(), anyInt()))
                 .willThrow(new RuntimeException("Connection timed out"));
 
-        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -97,7 +97,7 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
         given(matchServicePort.getRecommendations(any(), anyInt()))
                 .willThrow(internalServerError);
 
-        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -113,7 +113,7 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
                 .willThrow(new RuntimeException("transient error"))
                 .willReturn(new RecommendationResult(List.of()));
 
-        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         // maxAttempts=2 → 최초 시도(1회) + 재시도(1회) = 총 2회
         verify(matchServicePort, times(2)).getRecommendations(any(), anyInt());
@@ -131,7 +131,7 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
         // minimum-number-of-calls=3, failure-rate-threshold=50%
         // 3회 모두 실패(Retry 포함 각 2회 시도 후 CB 1회 실패 카운트) → 100% > 50% → OPEN
         for (int i = 0; i < 3; i++) {
-            feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+            feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
         }
 
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.OPEN);
@@ -148,7 +148,7 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
 
         // 3회 실패 → OPEN
         for (int i = 0; i < 3; i++) {
-            feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+            feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
         }
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.OPEN);
 
@@ -162,8 +162,8 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
                 .until(() -> cb.getState() == CircuitBreaker.State.HALF_OPEN);
 
         // permitted-number-of-calls-in-half-open-state=2 → 2회 성공 후 CLOSED
-        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
-        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
+        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
