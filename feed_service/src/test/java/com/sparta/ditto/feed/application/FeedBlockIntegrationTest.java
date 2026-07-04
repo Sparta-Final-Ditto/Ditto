@@ -28,24 +28,28 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * 피드 3종(랜덤/팔로우/매칭) 차단 필터 배선 통합 테스트.
  *
- * <p>차단 목록 조회({@link UserBlockPort#findBlockedUserIds})와 외부 피드 소스
- * ({@link FollowServicePort}/{@link MatchServicePort})를 {@code @MockitoBean}으로 통제한다.
- * DB에는 다른 테스트가 커밋한 게시글이 남을 수 있으므로, 노출/제외는 총 개수가 아니라
- * postId의 포함/미포함(hasItem/not)으로 단언한다.</p>
+ * <p>차단 목록 조회({@link UserBlockPort#findBlockedUserIds})와 외부 피드 소스를
+ * {@code @MockitoBean}으로 통제한다. DB에 다른 테스트가 커밋한 게시글이 남을 수 있으므로,
+ * 노출/제외는 총 개수가 아니라 postId 포함/미포함(hasItem/not)으로 단언한다.</p>
  */
 class FeedBlockIntegrationTest extends AbstractIntegrationTest {
 
     private static final Instant BASE = Instant.parse("2026-06-16T00:00:00Z");
+    private static final String FEED_IDS = "$.data.feeds[*].postId";
 
     @MockitoBean
     private UserBlockPort userBlockPort;
@@ -64,11 +68,13 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
 
     private final UUID me = UUID.randomUUID();
 
+    private enum Feed { RANDOM, FOLLOW, MATCH }
+
     private Post savedPublicPost(UUID author, Instant createdAt) {
         Post post = new Post(author, "작성자", "내용", "강남구",
                 37.5, 127.0, Visibility.PUBLIC, true);
-        ReflectionTestUtils.setField(post, "createdAt", createdAt);
-        ReflectionTestUtils.setField(post, "updatedAt", createdAt);
+        org.springframework.test.util.ReflectionTestUtils.setField(post, "createdAt", createdAt);
+        org.springframework.test.util.ReflectionTestUtils.setField(post, "updatedAt", createdAt);
         return postRepository.save(post);
     }
 
@@ -81,46 +87,43 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
                         .headers(Collections.emptyMap()).build());
     }
 
-    // ── 팔로우 피드 (004-8, 004-13) ───────────────────────────────────────────
+    // ── 004-8: 팔로우 피드 차단 제외 + 빈 목록 전체노출 (차단 조회 요청당 1회) ───────
 
-    @Test
-    @DisplayName("팔로우 피드: 내가 차단한 작성자 글 제외, 차단 조회는 요청당 1회")
-    void followFeed_excludesBlocked_lookupOnce() throws Exception {
+    static Stream<Arguments> followBlockCases() {
+        return Stream.of(
+                Arguments.of("004-8 차단 제외 (내가 차단한 작성자 글 미노출)", true, false),
+                Arguments.of("004-8 차단 목록 빈 경우 전체노출", false, true)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("followBlockCases")
+    @DisplayName("팔로우 피드: 차단 제외/빈 목록 + 차단 조회 요청당 1회")
+    void followFeed_blockFilter(
+            String desc, boolean applyBlock, boolean otherVisible) throws Exception {
         UUID authorA = UUID.randomUUID();
         UUID authorB = UUID.randomUUID();
         Post pa = savedPublicPost(authorA, BASE.plusSeconds(20));
         Post pb = savedPublicPost(authorB, BASE.plusSeconds(10));
         given(followServicePort.getFollowingIds(me))
                 .willReturn(new FollowingResult(List.of(authorA, authorB)));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of(authorB));
+        given(userBlockPort.findBlockedUserIds(me))
+                .willReturn(applyBlock ? List.of(authorB) : List.of());
 
-        mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
+        var result = mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(pa.getId().toString())))
-                .andExpect(jsonPath("$.data.feeds[*].postId", not(hasItem(pb.getId().toString()))));
+                .andExpect(jsonPath(FEED_IDS, hasItem(pa.getId().toString())));
+        if (otherVisible) {
+            result.andExpect(jsonPath(FEED_IDS, hasItem(pb.getId().toString())));
+        } else {
+            result.andExpect(jsonPath(FEED_IDS, not(hasItem(pb.getId().toString()))));
+        }
 
         verify(userBlockPort, times(1)).findBlockedUserIds(me);
     }
 
     @Test
-    @DisplayName("팔로우 피드: 차단 목록이 비면 팔로잉 글 전체 노출")
-    void followFeed_emptyBlocked_showsAll() throws Exception {
-        UUID authorA = UUID.randomUUID();
-        UUID authorB = UUID.randomUUID();
-        Post pa = savedPublicPost(authorA, BASE.plusSeconds(20));
-        Post pb = savedPublicPost(authorB, BASE.plusSeconds(10));
-        given(followServicePort.getFollowingIds(me))
-                .willReturn(new FollowingResult(List.of(authorA, authorB)));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of());
-
-        mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(pa.getId().toString())))
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(pb.getId().toString())));
-    }
-
-    @Test
-    @DisplayName("팔로우 피드: 팔로잉 전원이 차단 대상 → 빈 피드(hasNext=false)")
+    @DisplayName("004-13: 팔로잉 전원이 차단 대상 → 빈 피드(hasNext=false)")
     void followFeed_allFollowingBlocked_empty() throws Exception {
         UUID authorA = UUID.randomUUID();
         savedPublicPost(authorA, BASE.plusSeconds(20));
@@ -134,10 +137,10 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.data.hasNext").value(false));
     }
 
-    // ── 매칭 피드 (005-6) ──────────────────────────────────────────────────────
+    // ── 005-6: 매칭 피드 차단 제외 + 추천 전원 차단 시 빈 피드 ─────────────────────
 
     @Test
-    @DisplayName("매칭 피드: 내가 차단한 추천 작성자 글 제외")
+    @DisplayName("005-6: 매칭 피드 — 내가 차단한 추천 작성자 글 제외")
     void matchFeed_excludesBlocked() throws Exception {
         UUID authorA = UUID.randomUUID();
         UUID authorB = UUID.randomUUID();
@@ -149,12 +152,12 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/feeds/match").header("X-User-Id", me))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(pa.getId().toString())))
-                .andExpect(jsonPath("$.data.feeds[*].postId", not(hasItem(pb.getId().toString()))));
+                .andExpect(jsonPath(FEED_IDS, hasItem(pa.getId().toString())))
+                .andExpect(jsonPath(FEED_IDS, not(hasItem(pb.getId().toString()))));
     }
 
     @Test
-    @DisplayName("매칭 피드: 추천 전원이 차단 대상 → 빈 피드")
+    @DisplayName("005-6: 추천 전원이 차단 대상 → 빈 피드")
     void matchFeed_allRecommendedBlocked_empty() throws Exception {
         UUID authorA = UUID.randomUUID();
         savedPublicPost(authorA, BASE.plusSeconds(20));
@@ -167,10 +170,10 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.data.feeds.length()").value(0));
     }
 
-    // ── 랜덤 피드 배선 ─────────────────────────────────────────────────────────
+    // ── 003-6: 랜덤 피드 배선 (차단 목록이 excludeUserIds 쿼리로 전달) ──────────────
 
     @Test
-    @DisplayName("랜덤 피드: 차단 목록이 excludeUserIds 쿼리로 전달되어 제외된다")
+    @DisplayName("003-6: 랜덤 피드 — 차단 목록이 excludeUserIds 쿼리로 전달되어 제외")
     void randomFeed_wiresBlockedToExcludeQuery() throws Exception {
         UUID blockedAuthor = UUID.randomUUID();
         UUID normalAuthor = UUID.randomUUID();
@@ -180,50 +183,40 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/v1/feeds/random").header("X-User-Id", me))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(visiblePost.getId().toString())))
-                .andExpect(jsonPath("$.data.feeds[*].postId", not(hasItem(blockedPost.getId().toString()))));
+                .andExpect(jsonPath(FEED_IDS, hasItem(visiblePost.getId().toString())))
+                .andExpect(jsonPath(FEED_IDS, not(hasItem(blockedPost.getId().toString()))));
     }
 
     // ── fail-open: 차단 조회 실패 시 3종 모두 필터 없이 정상 노출 ─────────────────
+    //   3종은 모두 BlockCheckService.blockedUserIds의 단일 fallback(빈 목록)을 거치는
+    //   같은 코드 경로이므로, 피드 유형만 파라미터로 바꿔 대표 검증한다.
 
-    @Test
-    @DisplayName("fail-open: 차단 조회 예외 시 랜덤 피드 정상 노출")
-    void failOpen_randomFeed() throws Exception {
+    @ParameterizedTest(name = "fail-open {0}")
+    @EnumSource(Feed.class)
+    @DisplayName("차단 조회 예외 시 피드 3종 모두 fail-open으로 정상 노출")
+    void failOpen_allFeeds(Feed feed) throws Exception {
         UUID author = UUID.randomUUID();
         Post post = savedPublicPost(author, BASE.plusSeconds(20));
         given(userBlockPort.findBlockedUserIds(me)).willThrow(feignServerError());
 
-        mockMvc.perform(get("/api/v1/feeds/random").header("X-User-Id", me))
+        String path;
+        switch (feed) {
+            case FOLLOW -> {
+                given(followServicePort.getFollowingIds(me))
+                        .willReturn(new FollowingResult(List.of(author)));
+                path = "/follow";
+            }
+            case MATCH -> {
+                given(matchServicePort.getRecommendations(eq(me), any(Integer.class)))
+                        .willReturn(new RecommendationResult(List.of(author)));
+                path = "/match";
+            }
+            default -> path = "/random";
+        }
+
+        mockMvc.perform(get("/api/v1/feeds" + path).header("X-User-Id", me))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(post.getId().toString())));
-    }
-
-    @Test
-    @DisplayName("fail-open: 차단 조회 예외 시 팔로우 피드 정상 노출")
-    void failOpen_followFeed() throws Exception {
-        UUID authorA = UUID.randomUUID();
-        Post pa = savedPublicPost(authorA, BASE.plusSeconds(20));
-        given(followServicePort.getFollowingIds(me))
-                .willReturn(new FollowingResult(List.of(authorA)));
-        given(userBlockPort.findBlockedUserIds(me)).willThrow(feignServerError());
-
-        mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(pa.getId().toString())));
-    }
-
-    @Test
-    @DisplayName("fail-open: 차단 조회 예외 시 매칭 피드 정상 노출")
-    void failOpen_matchFeed() throws Exception {
-        UUID authorA = UUID.randomUUID();
-        Post pa = savedPublicPost(authorA, BASE.plusSeconds(20));
-        given(matchServicePort.getRecommendations(eq(me), any(Integer.class)))
-                .willReturn(new RecommendationResult(List.of(authorA)));
-        given(userBlockPort.findBlockedUserIds(me)).willThrow(feignServerError());
-
-        mockMvc.perform(get("/api/v1/feeds/match").header("X-User-Id", me))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(pa.getId().toString())));
+                .andExpect(jsonPath(FEED_IDS, hasItem(post.getId().toString())));
     }
 
     // ── 회귀 구분: 피드 소스 장애 fallback(→랜덤) vs 차단 조회 fallback(→피드 유지) ──
@@ -233,13 +226,12 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
     void followSourceDown_fallsBackToRandom() throws Exception {
         UUID nonFollowed = UUID.randomUUID();
         Post randomOnly = savedPublicPost(nonFollowed, BASE.plusSeconds(20));
-        given(followServicePort.getFollowingIds(me)).willThrow(new RuntimeException("user-service down"));
+        given(followServicePort.getFollowingIds(me)).willThrow(new RuntimeException("down"));
         given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of());
 
-        // 팔로우하지 않은 작성자의 글이 노출되면 = 랜덤 피드로 우회된 것
         mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(randomOnly.getId().toString())));
+                .andExpect(jsonPath(FEED_IDS, hasItem(randomOnly.getId().toString())));
     }
 
     @Test
@@ -253,10 +245,9 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
                 .willReturn(new FollowingResult(List.of(authorA)));
         given(userBlockPort.findBlockedUserIds(me)).willThrow(feignServerError());
 
-        // 팔로잉 글은 노출되고, 비팔로잉 글은 노출되지 않음 = 랜덤 우회가 아니라 팔로우 피드 유지
         mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.feeds[*].postId", hasItem(followed.getId().toString())))
-                .andExpect(jsonPath("$.data.feeds[*].postId", not(hasItem(nonFollowedPost.getId().toString()))));
+                .andExpect(jsonPath(FEED_IDS, hasItem(followed.getId().toString())))
+                .andExpect(jsonPath(FEED_IDS, not(hasItem(nonFollowedPost.getId().toString()))));
     }
 }

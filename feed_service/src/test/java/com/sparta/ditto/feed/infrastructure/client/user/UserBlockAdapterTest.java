@@ -17,10 +17,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -28,10 +32,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 /**
  * UserBlockAdapter 단위 테스트 (UserServiceClient Feign mock 격리, Spring 컨텍스트 없음).
  *
- * <p>차단 검증은 user-service 기존 internal API {@code POST /api/v1/internal/users/chat-validation}
- * (checkBlock=true)을 재사용한다. 양방향 판정은 user-service가 하고, feed는 결과만 받는다.
- * 이 어댑터는 403 + code "BLOCK-004"만 "차단"으로 판정(true)하고, 그 외 오류는 삼키지 않고
- * 그대로 전파한다.</p>
+ * <p>차단 검증은 user-service 기존 internal API {@code chat-validation}(checkBlock=true)을,
+ * 피드 차단 목록은 {@code me/blocks}를 재사용한다. 이 어댑터는 403 + code "BLOCK-004"만
+ * "차단"으로 판정(true)하고, 그 외 오류는 삼키지 않고 그대로 전파한다.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class UserBlockAdapterTest {
@@ -61,56 +64,24 @@ class UserBlockAdapterTest {
         if (body != null) {
             builder.body(body, StandardCharsets.UTF_8);
         }
-        return FeignException.errorStatus("validateChatUsers", builder.build());
+        return FeignException.errorStatus("userService", builder.build());
     }
 
+    // ── 007-4: BLOCK-004 → 차단 판정, 2xx → 통과 + 요청 계약 ─────────────────────
+
     @Test
-    @DisplayName("403 + code \"BLOCK-004\" → 차단 관계로 판정하여 true 반환")
+    @DisplayName("007-4: 403 + code \"BLOCK-004\" → 차단 관계로 판정(true)")
     void isBlocked_true_on403Block004() {
-        willThrow(feignError(403, "{\"status\":403,\"code\":\"BLOCK-004\",\"message\":\"차단된 사용자입니다.\"}"))
+        willThrow(feignError(403, "{\"code\":\"BLOCK-004\"}"))
                 .given(userServiceClient).validateChatUsers(any(ChatUserValidationRequest.class));
 
-        boolean blocked = userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId);
-
-        assertThat(blocked).isTrue();
+        assertThat(userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId)).isTrue();
     }
 
     @Test
-    @DisplayName("그 외 4xx(USER_NOT_FOUND 404) → 차단 오판 없이 예외를 그대로 전파")
-    void propagate_onOther4xx() {
-        willThrow(feignError(404, "{\"status\":404,\"code\":\"USER_NOT_FOUND\",\"message\":\"사용자를 찾을 수 없습니다.\"}"))
-                .given(userServiceClient).validateChatUsers(any(ChatUserValidationRequest.class));
-
-        assertThatThrownBy(() -> userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId))
-                .isInstanceOf(FeignException.class);
-    }
-
-    @Test
-    @DisplayName("403이지만 code가 BLOCK-004가 아니면 차단으로 오판하지 않고 예외를 전파한다")
-    void propagate_on403ButNotBlock004() {
-        willThrow(feignError(403, "{\"status\":403,\"code\":\"SOME_OTHER\",\"message\":\"권한 없음\"}"))
-                .given(userServiceClient).validateChatUsers(any(ChatUserValidationRequest.class));
-
-        assertThatThrownBy(() -> userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId))
-                .isInstanceOf(FeignException.class);
-    }
-
-    @Test
-    @DisplayName("5xx/타임아웃 → 예외를 삼키지 않고 전파 (fail-open은 Application 몫)")
-    void propagate_on5xx() {
-        willThrow(feignError(500, null))
-                .given(userServiceClient).validateChatUsers(any(ChatUserValidationRequest.class));
-
-        assertThatThrownBy(() -> userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId))
-                .isInstanceOf(FeignException.class);
-    }
-
-    @Test
-    @DisplayName("차단 없음(2xx) → false 반환, checkBlock=true·targetUserIds=[작성자]로 호출")
-    void returnsFalse_andSendsBlockCheckRequest() {
-        boolean blocked = userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId);
-
-        assertThat(blocked).isFalse();
+    @DisplayName("007-4: 차단 없음(2xx) → false, checkBlock=true·targetUserIds=[작성자]로 호출")
+    void isBlocked_false_andSendsBlockCheckRequest() {
+        assertThat(userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId)).isFalse();
 
         ArgumentCaptor<ChatUserValidationRequest> captor =
                 ArgumentCaptor.forClass(ChatUserValidationRequest.class);
@@ -121,10 +92,44 @@ class UserBlockAdapterTest {
         assertThat(sent.checkBlock()).isTrue();
     }
 
-    // ── 피드용: 내가 차단한 사용자 ID 목록 조회 (me/blocks) ─────────────────────
+    // ── 예외 전파: validate/list × 404·5xx·403(BLOCK-004 아님) 모두 삼키지 않고 전파 ──
+
+    private enum Op { VALIDATE, LIST }
+
+    static Stream<Arguments> propagationCases() {
+        return Stream.of(
+                Arguments.of("007-4 validate 404(USER_NOT_FOUND) 전파", Op.VALIDATE, 404,
+                        "{\"code\":\"USER_NOT_FOUND\"}"),
+                Arguments.of("007-4 validate 403(BLOCK-004 아님) 전파", Op.VALIDATE, 403,
+                        "{\"code\":\"SOME_OTHER\"}"),
+                Arguments.of("007-9 validate 5xx 전파", Op.VALIDATE, 500, null),
+                Arguments.of("004-8 list 404 전파", Op.LIST, 404, "{\"code\":\"USER_NOT_FOUND\"}"),
+                Arguments.of("004-8 list 5xx 전파", Op.LIST, 500, null)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("propagationCases")
+    @DisplayName("차단 오판 없이 FeignException을 그대로 전파 (fail-open은 Application 몫)")
+    void propagatesFeignError(String desc, Op op, int status, String body) {
+        FeignException error = feignError(status, body);
+        if (op == Op.VALIDATE) {
+            willThrow(error).given(userServiceClient)
+                    .validateChatUsers(any(ChatUserValidationRequest.class));
+            assertThatThrownBy(
+                    () -> userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId))
+                    .isInstanceOf(FeignException.class);
+        } else {
+            given(userServiceClient.getMyBlocks(requesterId)).willThrow(error);
+            assertThatThrownBy(() -> userBlockAdapter.findBlockedUserIds(requesterId))
+                    .isInstanceOf(FeignException.class);
+        }
+    }
+
+    // ── 004-8/005-6/003-14/004-13: me/blocks 목록 조회 ─────────────────────────
 
     @Test
-    @DisplayName("me/blocks 응답에서 data[].id만 UUID 목록으로 추출 (nickname 등 무시)")
+    @DisplayName("004-8/005-6: me/blocks 응답에서 data[].id만 UUID 목록으로 추출")
     void findBlockedUserIds_extractsIdsOnly() {
         UUID blockedA = UUID.randomUUID();
         UUID blockedB = UUID.randomUUID();
@@ -133,13 +138,12 @@ class UserBlockAdapterTest {
                         List.of(new BlockedUsersResponse.BlockedUser(blockedA),
                                 new BlockedUsersResponse.BlockedUser(blockedB))));
 
-        List<UUID> ids = userBlockAdapter.findBlockedUserIds(requesterId);
-
-        assertThat(ids).containsExactly(blockedA, blockedB);
+        assertThat(userBlockAdapter.findBlockedUserIds(requesterId))
+                .containsExactly(blockedA, blockedB);
     }
 
     @Test
-    @DisplayName("data가 빈 배열이면 빈 목록 반환")
+    @DisplayName("003-14/004-13: data가 빈 배열이면 빈 목록 반환")
     void findBlockedUserIds_emptyData() {
         given(userServiceClient.getMyBlocks(requesterId))
                 .willReturn(new BlockedUsersResponse(200, "SUCCESS", List.of()));
@@ -148,16 +152,7 @@ class UserBlockAdapterTest {
     }
 
     @Test
-    @DisplayName("Feign 예외(타임아웃/5xx)는 삼키지 않고 전파")
-    void findBlockedUserIds_propagatesFeignError() {
-        given(userServiceClient.getMyBlocks(requesterId)).willThrow(feignError(500, null));
-
-        assertThatThrownBy(() -> userBlockAdapter.findBlockedUserIds(requesterId))
-                .isInstanceOf(FeignException.class);
-    }
-
-    @Test
-    @DisplayName("X-User-Id로 요청자 ID가 전달된다")
+    @DisplayName("004-8: X-User-Id로 요청자 ID가 전달된다")
     void findBlockedUserIds_sendsRequesterId() {
         given(userServiceClient.getMyBlocks(requesterId))
                 .willReturn(new BlockedUsersResponse(200, "SUCCESS", List.of()));

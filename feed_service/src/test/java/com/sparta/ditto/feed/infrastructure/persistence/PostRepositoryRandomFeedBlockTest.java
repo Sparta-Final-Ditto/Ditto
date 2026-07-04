@@ -1,7 +1,6 @@
 package com.sparta.ditto.feed.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
@@ -13,6 +12,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -49,7 +50,7 @@ class PostRepositoryRandomFeedBlockTest extends PostgresTestContainerSupport {
     }
 
     @Test
-    @DisplayName("내가 차단한 작성자의 게시글은 제외되고, 차단 아닌 글만 최신순으로 조회된다")
+    @DisplayName("003-6: 내가 차단한 작성자 글은 제외되고, 차단 아닌 글만 최신순으로 조회된다")
     void excludesBlockedAuthorsPosts() {
         UUID blockedA = UUID.randomUUID();
         UUID blockedB = UUID.randomUUID();
@@ -64,14 +65,14 @@ class PostRepositoryRandomFeedBlockTest extends PostgresTestContainerSupport {
         List<Post> result = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
                 List.of(Visibility.PUBLIC), List.of(blockedA, blockedB), null, null, 10);
 
-        // 차단 작성자 글 제외 + PUBLIC만 + created_at DESC 정렬 유지
         assertThat(result).extracting(Post::getId)
                 .containsExactly(visible2.getId(), visible1.getId());
     }
 
-    @Test
-    @DisplayName("excludeUserIds가 빈 목록이면 필터 없는 조회와 동일하게 전체가 노출된다")
-    void emptyExcludeList_returnsAll() {
+    @ParameterizedTest(name = "003-14: excludeUserIds={0} → 필터 없이 전체 노출")
+    @NullAndEmptySource
+    @DisplayName("003-14: excludeUserIds가 null/빈 목록이면 NOT IN 빈 컬렉션 오류 없이 전체 노출")
+    void nullOrEmptyExclude_returnsAll(List<UUID> excludeUserIds) {
         UUID authorA = UUID.randomUUID();
         UUID authorB = UUID.randomUUID();
         savePost(authorA, Visibility.PUBLIC, BASE.plusSeconds(10));
@@ -79,42 +80,28 @@ class PostRepositoryRandomFeedBlockTest extends PostgresTestContainerSupport {
 
         List<Post> unfiltered = postRepository.findFeedByVisibilityWithCursor(
                 List.of(Visibility.PUBLIC), null, null, 10);
-        List<Post> withEmptyExclude = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
-                List.of(Visibility.PUBLIC), List.of(), null, null, 10);
+        List<Post> result = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                List.of(Visibility.PUBLIC), excludeUserIds, null, null, 10);
 
-        assertThat(withEmptyExclude).extracting(Post::getId)
+        assertThat(result).extracting(Post::getId)
                 .containsExactlyElementsOf(unfiltered.stream().map(Post::getId).toList());
-        assertThat(withEmptyExclude).hasSize(2);
+        assertThat(result).hasSize(2);
     }
 
     @Test
-    @DisplayName("excludeUserIds가 null이어도 NOT IN 빈 컬렉션 오류 없이 전체가 노출된다")
-    void nullExcludeList_noEmptyInError_returnsAll() {
-        UUID author = UUID.randomUUID();
-        savePost(author, Visibility.PUBLIC, BASE.plusSeconds(10));
-
-        assertThatCode(() ->
-                assertThat(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
-                        List.of(Visibility.PUBLIC), null, null, null, 10)).hasSize(1))
-                .doesNotThrowAnyException();
-    }
-
-    @Test
-    @DisplayName("커서 경계에 차단 글이 걸려도 조회 전 제외되어 노출 글만 연속 페이징된다")
+    @DisplayName("003-6 경계: 커서 경계에 차단 글이 걸려도 조회 전 제외되어 노출 글만 연속 페이징")
     void cursorSkipsBlockedAtBoundary() {
         UUID normal = UUID.randomUUID();
         UUID blocked = UUID.randomUUID();
         Post t1 = savePost(normal, Visibility.PUBLIC, BASE.plus(1, ChronoUnit.HOURS));
         Post t2 = savePost(normal, Visibility.PUBLIC, BASE.plus(2, ChronoUnit.HOURS));
-        savePost(blocked, Visibility.PUBLIC, BASE.plus(3, ChronoUnit.HOURS)); // t3: 차단, 경계에 위치
+        savePost(blocked, Visibility.PUBLIC, BASE.plus(3, ChronoUnit.HOURS)); // t3: 차단, 경계 위치
         Post t4 = savePost(normal, Visibility.PUBLIC, BASE.plus(4, ChronoUnit.HOURS));
 
-        // 첫 페이지 2건: t4, (t3 제외) t2
         List<Post> firstPage = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
                 List.of(Visibility.PUBLIC), List.of(blocked), null, null, 2);
         assertThat(firstPage).extracting(Post::getId).containsExactly(t4.getId(), t2.getId());
 
-        // 노출된 마지막 글(t2)을 커서로 다음 페이지 → t1 (겹침/누락 없음)
         Post cursor = firstPage.get(1);
         List<Post> secondPage = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
                 List.of(Visibility.PUBLIC), List.of(blocked),
