@@ -86,6 +86,16 @@ class UserBlockAdapterTest {
     }
 
     @Test
+    @DisplayName("403이지만 code가 BLOCK-004가 아니면 차단으로 오판하지 않고 예외를 전파한다")
+    void propagate_on403ButNotBlock004() {
+        willThrow(feignError(403, "{\"status\":403,\"code\":\"SOME_OTHER\",\"message\":\"권한 없음\"}"))
+                .given(userServiceClient).validateChatUsers(any(ChatUserValidationRequest.class));
+
+        assertThatThrownBy(() -> userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId))
+                .isInstanceOf(FeignException.class);
+    }
+
+    @Test
     @DisplayName("5xx/타임아웃 → 예외를 삼키지 않고 전파 (fail-open은 Application 몫)")
     void propagate_on5xx() {
         willThrow(feignError(500, null))

@@ -1,5 +1,8 @@
 package com.sparta.ditto.feed.support;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import org.junit.jupiter.api.BeforeEach;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.ReactiveRedisConnectionFactory;
@@ -30,4 +33,18 @@ public abstract class AbstractIntegrationTest extends PostgresTestContainerSuppo
 
     @MockitoBean
     protected ReactiveRedisConnectionFactory reactiveRedisConnectionFactory;
+
+    @Autowired
+    private CircuitBreakerRegistry circuitBreakerRegistry;
+
+    /**
+     * 서킷 상태는 레지스트리(싱글턴 빈)에 남아 테스트 간 누수된다.
+     * fail-open 테스트가 userServiceClient/matchServiceClient 서킷을 OPEN 시키면
+     * 이후 테스트가 오염되므로, 각 테스트 전에 CLOSED로 리셋한다.
+     */
+    @BeforeEach
+    void resetCircuitBreakers() {
+        circuitBreakerRegistry.circuitBreaker("userServiceClient").reset();
+        circuitBreakerRegistry.circuitBreaker("matchServiceClient").reset();
+    }
 }

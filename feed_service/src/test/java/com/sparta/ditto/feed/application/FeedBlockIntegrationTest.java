@@ -23,13 +23,11 @@ import com.sparta.ditto.feed.support.AbstractIntegrationTest;
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,21 +62,7 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private PostRepository postRepository;
 
-    @Autowired
-    private CircuitBreakerRegistry circuitBreakerRegistry;
-
     private final UUID me = UUID.randomUUID();
-
-    /**
-     * 서킷 상태는 레지스트리(싱글턴 빈)에 남아 테스트 간 누수된다.
-     * fail-open 테스트가 userServiceClient/matchServiceClient 서킷을 OPEN 시키면
-     * 이후 테스트가 오염되므로, 각 테스트 전에 CLOSED로 리셋한다.
-     */
-    @BeforeEach
-    void resetCircuitBreakers() {
-        circuitBreakerRegistry.circuitBreaker("userServiceClient").reset();
-        circuitBreakerRegistry.circuitBreaker("matchServiceClient").reset();
-    }
 
     private Post savedPublicPost(UUID author, Instant createdAt) {
         Post post = new Post(author, "작성자", "내용", "강남구",
