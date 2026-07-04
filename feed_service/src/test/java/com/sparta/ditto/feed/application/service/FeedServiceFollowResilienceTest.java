@@ -29,22 +29,22 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
 
 /**
  * 팔로우 피드 Resilience4j CB/Retry AOP 동작 통합 테스트.
- * FollowServicePort를 @MockBean으로 격리하고, Spring 프록시를 통해 CB·Retry AOP가
+ * FollowServicePort를 @MockitoBean으로 격리하고, Spring 프록시를 통해 CB·Retry AOP가
  * 실제로 동작하는지 CircuitBreakerRegistry 상태와 호출 횟수로 검증한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
 class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
 
-    @MockBean
+    @MockitoBean
     private MatchServicePort matchServicePort;
 
-    @MockBean
+    @MockitoBean
     private FollowServicePort followServicePort;
 
     @Autowired
