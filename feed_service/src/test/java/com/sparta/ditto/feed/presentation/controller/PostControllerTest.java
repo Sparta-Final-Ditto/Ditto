@@ -10,6 +10,7 @@ import com.sparta.ditto.feed.application.dto.result.PostResult.MediaFileResult;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest;
 import com.sparta.ditto.feed.presentation.dto.request.CreatePostRequest.MediaFileRequest;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.ForbiddenException;
@@ -49,6 +50,9 @@ class PostControllerTest {
 
     @MockBean
     private PostCreateFacade postCreateFacade;
+
+    @MockBean
+    private PostInteractionFacade postInteractionFacade;
 
     @MockBean
     private PostInteractionService postInteractionService;
@@ -101,7 +105,7 @@ class PostControllerTest {
     @DisplayName("존재하지 않는 게시글 좋아요 → 404, POST_NOT_FOUND")
     void addLike_게시글없음_404_POST_NOT_FOUND() throws Exception {
         // given
-        when(postInteractionService.addLike(any(UUID.class), any(UUID.class), anyString()))
+        when(postInteractionFacade.addLike(any(UUID.class), any(UUID.class), anyString()))
                 .thenThrow(new PostNotFoundException());
 
         // when & then
@@ -194,7 +198,7 @@ class PostControllerTest {
                 true,
                 Instant.now()
         );
-        when(postInteractionService.createComment(any(UUID.class), anyString(), any(UUID.class), any(CreateCommentCommand.class)))
+        when(postInteractionFacade.createComment(any(UUID.class), anyString(), any(UUID.class), any(CreateCommentCommand.class)))
                 .thenReturn(commentResult);
 
         mockMvc.perform(post("/api/v1/posts/{postId}/comments", postId)
@@ -251,7 +255,7 @@ class PostControllerTest {
     @Test
     @DisplayName("없는 postId → 404, POST_NOT_FOUND")
     void createComment_없는postId_404_POST_NOT_FOUND() throws Exception {
-        when(postInteractionService.createComment(
+        when(postInteractionFacade.createComment(
                 any(UUID.class), anyString(), any(UUID.class), any()))
                 .thenThrow(new PostNotFoundException());
 

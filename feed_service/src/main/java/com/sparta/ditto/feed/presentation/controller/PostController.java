@@ -16,6 +16,7 @@ import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.dto.result.UpdatePostDisplayResult;
 import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
@@ -56,6 +57,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostController {
 
     private final PostCreateFacade postCreateFacade;
+    private final PostInteractionFacade postInteractionFacade;
     private final PostInteractionService postInteractionService;
     private final PostService postService;
 
@@ -127,7 +129,7 @@ public class PostController {
             @RequestHeader("X-User-Nickname") String nickname,
             @PathVariable UUID postId
     ) {
-        LikeResult result = postInteractionService.addLike(userId, postId, nickname);
+        LikeResult result = postInteractionFacade.addLike(userId, postId, nickname);
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
@@ -238,7 +240,7 @@ public class PostController {
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        CommentResult result = postInteractionService.createComment(
+        CommentResult result = postInteractionFacade.createComment(
                 userId, nickname, postId, new CreateCommentCommand(request.content()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(CommentResponse.from(result)));

@@ -2,6 +2,7 @@ package com.sparta.ditto.feed.presentation.controller;
 
 import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.CommentNotFoundException;
@@ -32,6 +33,9 @@ class PostControllerDeleteCommentTest {
 
     @MockBean
     private PostCreateFacade postCreateFacade;
+
+    @MockBean
+    private PostInteractionFacade postInteractionFacade;
 
     @MockBean
     private PostInteractionService postInteractionService;

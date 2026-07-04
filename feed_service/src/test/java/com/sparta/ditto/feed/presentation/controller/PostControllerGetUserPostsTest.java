@@ -12,6 +12,7 @@ import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
 import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import java.util.List;
@@ -40,6 +41,9 @@ class PostControllerGetUserPostsTest {
 
     @MockBean
     private PostCreateFacade postCreateFacade;
+
+    @MockBean
+    private PostInteractionFacade postInteractionFacade;
 
     @MockBean
     private PostInteractionService postInteractionService;
