@@ -44,10 +44,12 @@ public class FaqDocumentLoader implements ApplicationRunner {
         log.info("FAQ/정책 문서 {}건을 벡터 저장소에 적재했습니다.", documents.size());
     }
 
-    private List<Document> loadDocuments(String locationPattern, String sourceType) throws IOException {
+    private List<Document> loadDocuments(String locationPattern, String sourceType)
+            throws IOException {
         List<Document> documents = new ArrayList<>();
         for (Resource resource : resourcePatternResolver.getResources(locationPattern)) {
-            String markdown = StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
+            String markdown = StreamUtils.copyToString(
+                    resource.getInputStream(), StandardCharsets.UTF_8);
             List<FaqItem> items = faqMarkdownParser.parse(markdown);
             items.forEach(item -> documents.add(chunker.chunk(item, sourceType)));
         }
