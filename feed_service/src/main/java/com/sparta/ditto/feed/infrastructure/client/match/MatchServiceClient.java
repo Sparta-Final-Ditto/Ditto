@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 @FeignClient(name = "match-service", url = "${app.matching-service.base-url}")
 public interface MatchServiceClient {
 
-    @GetMapping("/api/v1/internal/recommendations")
+    @GetMapping("/api/v1/matching/recommendations")
     RecommendationResponse getRecommendations(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestParam(defaultValue = "50") int limit
