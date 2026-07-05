@@ -67,22 +67,22 @@ Q: 매칭 상대에서 자동으로 제외되는 사람이 있나요?
 Expected: policy-match-003
 Note: -
 
-## golden-011: POLICY-match
+## golden-011: TRAP
 
 Q: 매칭할 때 위치나 성별로 필터링하면 실제로 적용되나요?
-Expected: policy-match-005
-Note: 미반영 기능 — 오답 유도 가능
+Expected: NONE
+Note: 문서에 없는 기능
 
 ## golden-012: POLICY-match
 
 Q: 매칭이 잡히면 바로 확정인가요, 수락해야 하나요?
-Expected: policy-match-006
+Expected: policy-match-005
 Note: -
 
 ## golden-013: POLICY-match
 
 Q: 매칭 추천 이유는 볼 때마다 같은 내용인가요?
-Expected: policy-match-009
+Expected: policy-match-008
 Note: -
 
 ## golden-014: POLICY-feed

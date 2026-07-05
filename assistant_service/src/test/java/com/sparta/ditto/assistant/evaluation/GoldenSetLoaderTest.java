@@ -39,8 +39,8 @@ class GoldenSetLoaderTest {
     }
 
     @Test
-    @DisplayName("실제 evaluation/golden-set.md는 정확히 30문항, 그중 3건이 trap이다")
-    void parse_realGoldenSetFile_has30ItemsWith3Traps() throws IOException {
+    @DisplayName("실제 evaluation/golden-set.md는 정확히 30문항, 그중 4건이 trap이다")
+    void parse_realGoldenSetFile_has30ItemsWith4Traps() throws IOException {
         String markdown = StreamUtils.copyToString(
                 new ClassPathResource("evaluation/golden-set.md").getInputStream(),
                 StandardCharsets.UTF_8);
@@ -48,7 +48,7 @@ class GoldenSetLoaderTest {
         List<GoldenSetItem> items = GoldenSetLoader.parse(markdown);
 
         assertThat(items).hasSize(30);
-        assertThat(items.stream().filter(GoldenSetItem::isTrap)).hasSize(3);
+        assertThat(items.stream().filter(GoldenSetItem::isTrap)).hasSize(4);
         assertThat(items.stream().map(GoldenSetItem::id)).doesNotHaveDuplicates();
     }
 }
