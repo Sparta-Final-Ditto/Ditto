@@ -6,7 +6,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
-/** FAQ 마크다운을 FaqItem 목록으로 파싱 */
+/** FAQ/정책 마크다운을 FaqItem 목록으로 파싱 */
 @Component
 public class FaqMarkdownParser {
 

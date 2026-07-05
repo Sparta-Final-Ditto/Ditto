@@ -17,7 +17,7 @@ class AssistantDocumentChunkerTest {
     void chunk_buildsDocumentWithQaContentAndMetadata() {
         FaqItem item = new FaqItem("faq-001", "회원가입 방법", "회원가입은 어떻게 하나요?", "이메일로 가입합니다.");
 
-        Document document = chunker.chunk(item);
+        Document document = chunker.chunk(item, "FAQ");
 
         assertThat(document.getText()).isEqualTo("Q: 회원가입은 어떻게 하나요?\nA: 이메일로 가입합니다.");
         assertThat(document.getMetadata())
@@ -33,10 +33,20 @@ class AssistantDocumentChunkerTest {
         String expectedId =
                 UUID.nameUUIDFromBytes("faq-001".getBytes(StandardCharsets.UTF_8)).toString();
 
-        Document first = chunker.chunk(item);
-        Document second = chunker.chunk(item);
+        Document first = chunker.chunk(item, "FAQ");
+        Document second = chunker.chunk(item, "FAQ");
 
         assertThat(first.getId()).isEqualTo(expectedId);
         assertThat(second.getId()).isEqualTo(first.getId());
+    }
+
+    @Test
+    @DisplayName("chunk()는 전달된 sourceType을 메타데이터에 그대로 반영한다")
+    void chunk_usesGivenSourceType() {
+        FaqItem item = new FaqItem("policy-user-001", "회원가입 정책", "질문", "답변");
+
+        Document document = chunker.chunk(item, "POLICY");
+
+        assertThat(document.getMetadata()).containsEntry("sourceType", "POLICY");
     }
 }

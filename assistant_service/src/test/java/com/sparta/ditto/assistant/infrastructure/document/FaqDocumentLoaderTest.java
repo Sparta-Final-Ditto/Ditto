@@ -24,7 +24,7 @@ class FaqDocumentLoaderTest {
     private final FaqMarkdownParser faqMarkdownParser = new FaqMarkdownParser();
 
     @Test
-    @DisplayName("run()은 faq.md의 모든 항목을 청킹해 VectorStore에 적재한다")
+    @DisplayName("run()은 faq/*.md, policy/*.md의 모든 항목을 청킹해 VectorStore에 적재한다")
     void run_loadsAllFaqEntriesIntoVectorStore() throws Exception {
         FaqDocumentLoader loader = new FaqDocumentLoader(vectorStore, chunker, faqMarkdownParser);
 
