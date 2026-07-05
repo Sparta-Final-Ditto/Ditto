@@ -29,6 +29,7 @@ public class OutboxPublishScheduler {
 
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
+    private final OutboxTransactionalWorker worker;
 
     @Value("${app.outbox.publish.batch-size}")
     private int publishBatchSize;
@@ -36,19 +37,26 @@ public class OutboxPublishScheduler {
     @Value("${app.outbox.replay.batch-size}")
     private int replayBatchSize;
 
+    /**
+     * PENDING 이벤트를 조회해 Kafka로 발행한다.
+     *
+     * <p>메서드 자체에는 트랜잭션을 두지 않는다. 조회와 발행 결과 반영은 각각
+     * {@link OutboxTransactionalWorker}의 짧은 트랜잭션으로 위임하고, Kafka 발행은
+     * 트랜잭션 밖에서 수행하여 외부 I/O 지연이 DB 커넥션·락 점유로 전파되지 않도록 한다.
+     */
     @Scheduled(fixedDelayString = "${app.outbox.publish.interval-ms}")
-    @Transactional
     public void publishPendingEvents() {
-        List<OutboxEvent> pending = outboxEventRepository.findPendingForUpdate(
-                OutboxStatus.PENDING, publishBatchSize);
+        List<OutboxEvent> pending = worker.loadPending(publishBatchSize);
         for (OutboxEvent event : pending) {
+            boolean success;
             try {
                 outboxEventPublisher.publish(event);
-                event.markPublished();
+                success = true;
             } catch (Exception e) {
-                event.incrementRetryCount();
+                LOG.warn("[Outbox] 발행 실패 eventId={}", event.getId(), e);
+                success = false;
             }
-            outboxEventRepository.save(event);
+            worker.markResult(event.getId(), success);
         }
     }
 

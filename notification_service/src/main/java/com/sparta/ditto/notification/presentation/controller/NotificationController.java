@@ -4,6 +4,7 @@ import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.notification.application.NotificationService;
+import com.sparta.ditto.notification.application.SseService;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
 import com.sparta.ditto.notification.application.dto.ReadByRoomResult;
 import com.sparta.ditto.notification.application.dto.ReadNotificationResult;
@@ -28,6 +29,7 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 @Validated
 @RestController
@@ -36,6 +38,17 @@ import org.springframework.web.bind.annotation.RestController;
 public class NotificationController {
 
     private final NotificationService notificationService;
+    private final SseService sseService;
+
+    @GetMapping("/stream")
+    public SseEmitter stream(
+            @RequestHeader(value = "X-User-Id", required = false) UUID userId
+    ) {
+        if (userId == null) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        return sseService.connect(userId);
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<NotificationListResponse>> getNotifications(

@@ -22,4 +22,5 @@ spring:
 
 app:
   sse:
-    heartbeat-interval-ms: 30000
+    heartbeat-interval-ms: ${SSE_HEARTBEAT_INTERVAL_MS:30000}
+    timeout-ms: ${SSE_TIMEOUT_MS:1800000}

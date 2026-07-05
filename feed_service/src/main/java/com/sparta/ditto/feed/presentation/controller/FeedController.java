@@ -7,7 +7,7 @@ import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
 import com.sparta.ditto.feed.application.dto.result.UploadUrlResult;
-import com.sparta.ditto.feed.application.service.FeedService;
+import com.sparta.ditto.feed.application.facade.FeedFacade;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest;
 import com.sparta.ditto.feed.presentation.dto.response.RandomFeedResponse;
@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FeedController {
 
     private final UploadUrlService uploadUrlService;
-    private final FeedService feedService;
+    private final FeedFacade feedFacade;
 
     @PostMapping("/upload-url")
     public ResponseEntity<ApiResponse<UploadUrlResponse>> getUploadUrl(
@@ -59,7 +59,7 @@ public class FeedController {
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursor, size));
+        FeedResult result = feedFacade.getRandomFeed(new GetRandomFeedQuery(userId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
     }
 
@@ -69,7 +69,7 @@ public class FeedController {
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        FeedResult result = feedService.getFollowFeed(new GetFollowFeedQuery(userId, cursor, size));
+        FeedResult result = feedFacade.getFollowFeed(new GetFollowFeedQuery(userId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
     }
 
@@ -79,7 +79,7 @@ public class FeedController {
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, cursor, size));
+        FeedResult result = feedFacade.getMatchFeed(new GetMatchFeedQuery(userId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(RandomFeedResponse.from(result)));
     }
 }

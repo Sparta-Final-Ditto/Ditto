@@ -76,7 +76,7 @@ class FeedServiceFollowLocationTest {
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postWithShowLocation(false)));
 
-        FeedResult result = feedService.getFollowFeed(query);
+        FeedResult result = feedService.getFollowFeed(query, List.of());
 
         assertThat(result.feeds()).hasSize(1);
         assertThat(result.feeds().get(0).neighborhood()).isNull();
@@ -89,7 +89,7 @@ class FeedServiceFollowLocationTest {
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postWithShowLocation(true)));
 
-        FeedResult result = feedService.getFollowFeed(query);
+        FeedResult result = feedService.getFollowFeed(query, List.of());
 
         assertThat(result.feeds()).hasSize(1);
         assertThat(result.feeds().get(0).neighborhood()).isEqualTo("서울 마포구");

@@ -16,6 +16,7 @@ import com.sparta.ditto.feed.domain.type.Visibility;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -38,17 +39,17 @@ public class FeedService {
     private String cloudfrontDomain;
 
     @Transactional(readOnly = true)
-    public FeedResult getRandomFeed(GetRandomFeedQuery query) {
-        return randomFeedCore(query);
+    public FeedResult getRandomFeed(GetRandomFeedQuery query, List<UUID> blockedIds) {
+        return randomFeedCore(query, blockedIds);
     }
 
     @CircuitBreaker(name = "matchServiceClient", fallbackMethod = "fallbackGetMatchFeed")
     @Retry(name = "matchServiceClient")
     @Transactional(readOnly = true)
-    public FeedResult getMatchFeed(GetMatchFeedQuery query) {
+    public FeedResult getMatchFeed(GetMatchFeedQuery query, List<UUID> blockedIds) {
         RecommendationResult recommendations = matchServicePort
                 .getRecommendations(query.userId(), 50);
-        List<UUID> recommendedUserIds = recommendations.recommendedUserIds();
+        List<UUID> recommendedUserIds = prune(recommendations.recommendedUserIds(), blockedIds);
 
         if (recommendedUserIds.isEmpty()) {
             return new FeedResult(List.of(), null, false);
@@ -62,16 +63,18 @@ public class FeedService {
         return buildFeedResult(posts, query.userId(), query.size());
     }
 
-    public FeedResult fallbackGetMatchFeed(GetMatchFeedQuery query, Throwable t) {
-        return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
+    public FeedResult fallbackGetMatchFeed(
+            GetMatchFeedQuery query, List<UUID> blockedIds, Throwable t) {
+        return randomFeedCore(
+                new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()), blockedIds);
     }
 
     @CircuitBreaker(name = "userServiceClient", fallbackMethod = "fallbackGetFollowFeed")
     @Retry(name = "userServiceClient")
     @Transactional(readOnly = true)
-    public FeedResult getFollowFeed(GetFollowFeedQuery query) {
+    public FeedResult getFollowFeed(GetFollowFeedQuery query, List<UUID> blockedIds) {
         FollowingResult following = followServicePort.getFollowingIds(query.userId());
-        List<UUID> followingUserIds = following.followingUserIds();
+        List<UUID> followingUserIds = prune(following.followingUserIds(), blockedIds);
 
         if (followingUserIds.isEmpty()) {
             return new FeedResult(List.of(), null, false);
@@ -86,16 +89,29 @@ public class FeedService {
         return buildFeedResult(posts, query.userId(), query.size());
     }
 
-    public FeedResult fallbackGetFollowFeed(GetFollowFeedQuery query, Throwable t) {
-        return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
+    public FeedResult fallbackGetFollowFeed(
+            GetFollowFeedQuery query, List<UUID> blockedIds, Throwable t) {
+        return randomFeedCore(
+                new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()), blockedIds);
     }
 
-    private FeedResult randomFeedCore(GetRandomFeedQuery query) {
+    private FeedResult randomFeedCore(GetRandomFeedQuery query, List<UUID> blockedIds) {
         CursorContext cursor = resolveCursor(query.cursorPostId());
-        List<Post> posts = postRepository.findFeedByVisibilityWithCursor(
-                List.of(Visibility.PUBLIC),
+        // 빈/null 분기는 RepositoryImpl 책임 — Service는 항상 제외 쿼리로 위임한다.
+        List<Post> posts = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                List.of(Visibility.PUBLIC), blockedIds,
                 cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
         return buildFeedResult(posts, query.userId(), query.size());
+    }
+
+    /** 소스 ID 목록에서 차단 ID를 in-memory 차감(prune)한다. blockedIds가 null/빈이면 원본을 그대로 반환. */
+    private List<UUID> prune(List<UUID> sourceIds, List<UUID> blockedIds) {
+        if (blockedIds == null || blockedIds.isEmpty()) {
+            return sourceIds;
+        }
+        List<UUID> pruned = new ArrayList<>(sourceIds);
+        pruned.removeAll(blockedIds);
+        return pruned;
     }
 
     private CursorContext resolveCursor(UUID cursorPostId) {
