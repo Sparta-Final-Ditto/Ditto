@@ -8,12 +8,14 @@ import com.sparta.ditto.assistant.domain.repository.AssistantChatLogRepository;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.document.Document;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AssistantChatService {
@@ -29,6 +31,7 @@ public class AssistantChatService {
                     .call()
                     .chatClientResponse();
         } catch (Exception e) {
+            log.error("LLM 호출 실패: question={}", command.question(), e);
             throw new LlmResponseFailedException();
         }
 
@@ -40,18 +43,28 @@ public class AssistantChatService {
                         (String) doc.getMetadata().get("title"),
                         (String) doc.getMetadata().get("sourceType")))
                 .toList();
-        List<UUID> matchedDocumentIds = retrievedDocuments.stream()
-                .map(doc -> UUID.fromString(doc.getId()))
-                .toList();
-        List<Float> similarityScores = retrievedDocuments.stream()
-                .map(doc -> doc.getScore() != null ? doc.getScore().floatValue() : null)
-                .toList();
 
-        chatLogRepository.save(AssistantChatLog.of(
-                command.userId(), command.question(), answer,
-                matchedDocumentIds, similarityScores));
+        saveChatLog(command, answer, retrievedDocuments);
 
         return new AssistantAnswerResult(answer, sources);
+    }
+
+    private void saveChatLog(
+            AskAssistantCommand command, String answer, List<Document> retrievedDocuments) {
+        try {
+            List<UUID> matchedDocumentIds = retrievedDocuments.stream()
+                    .map(doc -> UUID.fromString(doc.getId()))
+                    .toList();
+            List<Float> similarityScores = retrievedDocuments.stream()
+                    .map(doc -> doc.getScore() != null ? doc.getScore().floatValue() : null)
+                    .toList();
+
+            chatLogRepository.save(AssistantChatLog.of(
+                    command.userId(), command.question(), answer,
+                    matchedDocumentIds, similarityScores));
+        } catch (Exception e) {
+            log.error("채팅 로그 저장 실패: question={}", command.question(), e);
+        }
     }
 
     @SuppressWarnings("unchecked")
