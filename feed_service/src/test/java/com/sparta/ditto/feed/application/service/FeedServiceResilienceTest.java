@@ -84,7 +84,7 @@ class FeedServiceResilienceTest extends PostgresTestContainerSupport {
     void tc005_4_fallback_on_5xx() {
         UUID userId = UUID.randomUUID();
         Request request = Request.create(
-                Request.HttpMethod.GET, "/api/v1/internal/recommendations",
+                Request.HttpMethod.GET, "/api/v1/matching/recommendations",
                 Collections.emptyMap(), null, StandardCharsets.UTF_8, null);
         FeignException internalServerError = FeignException.errorStatus(
                 "getRecommendations",
