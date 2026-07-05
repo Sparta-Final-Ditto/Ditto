@@ -65,8 +65,7 @@ public class MatchService {
 
             // 2. HNSW 검색 시도 (성별/나이 필터 포함)
             LinkedHashMap<UUID, Float> hnswResults = hybridCandidateSearchService.searchCandidates(
-                    userId, myVector, request.genderFilter(), null, null, 50);
-
+                    userId, myVector, request.genderFilter(), request.minAge(), request.maxAge(), 50);
             UUID bestMatchId = null;
             float bestSimilarityScore = 0f;
             float bestFinalScore = -1f;

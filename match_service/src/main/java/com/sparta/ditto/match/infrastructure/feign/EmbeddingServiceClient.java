@@ -2,6 +2,8 @@ package com.sparta.ditto.match.infrastructure.feign;
 
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.ActiveUserIdsDto;
+import com.sparta.ditto.match.application.dto.EmbedTextRequestDto;
+import com.sparta.ditto.match.application.dto.EmbedTextResponseDto;
 import com.sparta.ditto.match.application.dto.ProfileBatchRequestDto;
 import com.sparta.ditto.match.application.dto.ProfileBatchResponseDto;
 import com.sparta.ditto.match.application.dto.UserProfileEmbeddingDto;
@@ -31,5 +33,11 @@ public interface EmbeddingServiceClient {
     @PostMapping("/api/v1/internal/embedding/profiles/batch")
     ApiResponse<ProfileBatchResponseDto> getProfilesBatch(
             @RequestBody ProfileBatchRequestDto request
+    );
+
+    // 추가 3 - 임의 텍스트 임베딩 (매칭 설명 RAG용)
+    @PostMapping("/api/v1/internal/embedding/embed-text")
+    ApiResponse<EmbedTextResponseDto> embedText(
+            @RequestBody EmbedTextRequestDto request
     );
 }

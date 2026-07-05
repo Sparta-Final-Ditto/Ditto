@@ -68,7 +68,7 @@ class MatchServiceTest {
         UUID userId = UUID.randomUUID();
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(true);
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.ALREADY_MATCHED_TODAY));
@@ -81,7 +81,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(false);
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.ALREADY_MATCHING));
@@ -96,7 +96,7 @@ class MatchServiceTest {
         given(embeddingServiceClient.getUserProfile(userId))
                 .willThrow(new RuntimeException("connection refused"));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
@@ -130,7 +130,7 @@ class MatchServiceTest {
         given(matchingHistoryRepository.save(any()))
                 .willAnswer(inv -> withId(inv.getArgument(0)));
 
-        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null));
 
         assertThat(result).isNotNull();
         assertThat(result.matchedUserId()).isEqualTo(candidateId);
@@ -176,7 +176,7 @@ class MatchServiceTest {
         given(matchingHistoryRepository.save(any()))
                 .willAnswer(inv -> withId(inv.getArgument(0)));
 
-        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null));
 
         // 태그가 없어 tagScore는 0 → finalScore = cosineScore * 0.5 이므로 0.9인 쪽이 최종 승자
         assertThat(result.matchedUserId()).isEqualTo(highScoreCandidate);
@@ -233,7 +233,7 @@ class MatchServiceTest {
         given(matchingHistoryRepository.save(any()))
                 .willAnswer(inv -> withId(inv.getArgument(0)));
 
-        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null));
 
         assertThat(result.matchedUserId()).isEqualTo(highScoreCandidate);
         assertThat(result.similarityScore()).isEqualTo(0.95f);
@@ -278,7 +278,7 @@ class MatchServiceTest {
         given(matchingHistoryRepository.save(any()))
                 .willAnswer(inv -> withId(inv.getArgument(0)));
 
-        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false));
+        MatchResponseDto result = matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null));
 
         assertThat(result).isNotNull();
         assertThat(result.matchedUserId()).isEqualTo(candidateId);
@@ -313,7 +313,7 @@ class MatchServiceTest {
         given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
                 .willThrow(new RuntimeException("LLM 실패"));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EXPLANATION_GENERATION_FAILED));
@@ -346,7 +346,7 @@ class MatchServiceTest {
         given(embeddingServiceClient.getActiveUserIds())
                 .willReturn(ApiResponse.success(activeIds));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.NO_MATCHING_CANDIDATE));
@@ -361,7 +361,7 @@ class MatchServiceTest {
         given(embeddingServiceClient.getUserProfile(userId))
                 .willThrow(new RuntimeException("error"));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class);
 
         verify(matchingLockService).releaseLock(userId);
@@ -658,7 +658,7 @@ class MatchServiceTest {
         given(embeddingServiceClient.getActiveUserIds())
                 .willThrow(new RuntimeException("connection refused"));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
@@ -690,7 +690,7 @@ class MatchServiceTest {
         given(embeddingServiceClient.getProfilesBatch(any()))
                 .willThrow(new RuntimeException("connection refused"));
 
-        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false)))
+        assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
