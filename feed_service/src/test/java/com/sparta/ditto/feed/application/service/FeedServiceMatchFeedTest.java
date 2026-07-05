@@ -81,7 +81,7 @@ class FeedServiceMatchFeedTest {
                 .willReturn(List.of(postIdA));
 
         // when
-        FeedResult result = feedService.getMatchFeed(query);
+        FeedResult result = feedService.getMatchFeed(query, List.of());
 
         // then
         assertThat(result.feeds()).hasSize(2);
@@ -105,7 +105,7 @@ class FeedServiceMatchFeedTest {
                 .willReturn(new RecommendationResult(List.of()));
 
         // when
-        FeedResult result = feedService.getMatchFeed(query);
+        FeedResult result = feedService.getMatchFeed(query, List.of());
 
         // then
         assertThat(result.feeds()).isEmpty();

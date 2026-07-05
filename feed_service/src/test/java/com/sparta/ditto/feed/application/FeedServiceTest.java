@@ -68,12 +68,12 @@ class FeedServiceTest {
     void tc003_1_첫페이지_조회() {
         // given
         List<Post> posts = List.of(createPost(UUID.randomUUID(), true, Visibility.PUBLIC));
-        when(postRepository.findFeedByVisibilityWithCursor(
-                eq(List.of(Visibility.PUBLIC)), eq(null), eq(null), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                eq(List.of(Visibility.PUBLIC)), eq(List.of()), eq(null), eq(null), anyInt()))
                 .thenReturn(posts);
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
         assertThat(result.feeds()).hasSize(1);
@@ -90,32 +90,32 @@ class FeedServiceTest {
         ReflectionTestUtils.setField(cursorPost, "createdAt", cursorAt);
 
         when(postRepository.findById(cursorPostId)).thenReturn(Optional.of(cursorPost));
-        when(postRepository.findFeedByVisibilityWithCursor(
-                eq(List.of(Visibility.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                eq(List.of(Visibility.PUBLIC)), eq(List.of()), eq(cursorAt), eq(cursorPostId), anyInt()))
                 .thenReturn(List.of());
 
         // when
-        feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursorPostId, 20));
+        feedService.getRandomFeed(new GetRandomFeedQuery(userId, cursorPostId, 20), List.of());
 
         // then
-        verify(postRepository).findFeedByVisibilityWithCursor(
-                eq(List.of(Visibility.PUBLIC)), eq(cursorAt), eq(cursorPostId), anyInt());
+        verify(postRepository).findFeedByVisibilityExcludingAuthorsWithCursor(
+                eq(List.of(Visibility.PUBLIC)), eq(List.of()), eq(cursorAt), eq(cursorPostId), anyInt());
     }
 
     @Test
     @DisplayName("003-3/4/5: PUBLIC만 반환 — FOLLOWERS_ONLY·PRIVATE 제외")
     void tc003_3_PUBLIC만_조회() {
         // given
-        when(postRepository.findFeedByVisibilityWithCursor(
-                eq(List.of(Visibility.PUBLIC)), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                eq(List.of(Visibility.PUBLIC)), any(), any(), any(), anyInt()))
                 .thenReturn(List.of());
 
         // when
-        feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
-        verify(postRepository).findFeedByVisibilityWithCursor(
-                eq(List.of(Visibility.PUBLIC)), any(), any(), anyInt());
+        verify(postRepository).findFeedByVisibilityExcludingAuthorsWithCursor(
+                eq(List.of(Visibility.PUBLIC)), any(), any(), any(), anyInt());
     }
 
     @Test
@@ -123,11 +123,11 @@ class FeedServiceTest {
     void tc003_7_showLocation_false_neighborhood_null() {
         // given
         Post post = createPost(UUID.randomUUID(), false, Visibility.PUBLIC);
-        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(any(), any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
         assertThat(result.feeds().get(0).neighborhood()).isNull();
@@ -138,11 +138,11 @@ class FeedServiceTest {
     void tc003_8_showLocation_true_neighborhood_반환() {
         // given
         Post post = createPost(UUID.randomUUID(), true, Visibility.PUBLIC);
-        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(any(), any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
         assertThat(result.feeds().get(0).neighborhood()).isEqualTo("서울 성동구");
@@ -157,11 +157,11 @@ class FeedServiceTest {
         for (int i = 0; i < size + 1; i++) {
             posts.add(createPost(UUID.randomUUID(), true, Visibility.PUBLIC));
         }
-        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(any(), any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, size));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, size), List.of());
 
         // then
         assertThat(result.hasNext()).isTrue();
@@ -174,11 +174,11 @@ class FeedServiceTest {
     void tc003_11_hasNext_false() {
         // given
         List<Post> posts = List.of(createPost(UUID.randomUUID(), true, Visibility.PUBLIC));
-        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(any(), any(), any(), any(), anyInt()))
                 .thenReturn(posts);
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
         assertThat(result.hasNext()).isFalse();
@@ -192,11 +192,11 @@ class FeedServiceTest {
         Post post = createPost(UUID.randomUUID(), true, Visibility.PUBLIC);
         PostMedia media = new PostMedia(post, "feeds/test.mp4", MediaType.VIDEO, 1);
         ReflectionTestUtils.setField(post, "mediaList", List.of(media));
-        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(any(), any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
         FeedItemResult.MediaResult mediaFile = result.feeds().get(0).mediaFiles().get(0);
@@ -223,13 +223,13 @@ class FeedServiceTest {
         // given
         UUID postId = UUID.randomUUID();
         Post post = createPost(postId, true, Visibility.PUBLIC);
-        when(postRepository.findFeedByVisibilityWithCursor(any(), any(), any(), anyInt()))
+        when(postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(any(), any(), any(), any(), anyInt()))
                 .thenReturn(List.of(post));
         when(likeRepository.findPostIdsByUserIdAndPostIdIn(eq(userId), anyList()))
                 .thenReturn(List.of(postId));
 
         // when
-        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20));
+        FeedResult result = feedService.getRandomFeed(new GetRandomFeedQuery(userId, null, 20), List.of());
 
         // then
         assertThat(result.feeds().get(0).isLiked()).isTrue();

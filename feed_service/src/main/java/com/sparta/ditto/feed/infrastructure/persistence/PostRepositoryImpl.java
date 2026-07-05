@@ -70,6 +70,19 @@ public class PostRepositoryImpl implements PostRepository {
     }
 
     @Override
+    public List<Post> findFeedByVisibilityExcludingAuthorsWithCursor(
+            List<Visibility> scopes, List<UUID> excludeUserIds,
+            Instant cursorAt, UUID cursorId, int limit) {
+        // 차단 목록이 비어 있으면(차단 없음/fail-open) NOT IN 빈 컬렉션을 피해 기존 쿼리로 위임한다.
+        if (excludeUserIds == null || excludeUserIds.isEmpty()) {
+            return jpaRepository.findFeedByVisibilityWithCursor(
+                    scopes, cursorAt, cursorId, PageRequest.of(0, limit));
+        }
+        return jpaRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                scopes, excludeUserIds, cursorAt, cursorId, PageRequest.of(0, limit));
+    }
+
+    @Override
     public List<Post> findByUserIdWithCursor(
             UUID userId, Instant cursorAt, UUID cursorId, int limit) {
         return jpaRepository.findByUserIdWithCursor(

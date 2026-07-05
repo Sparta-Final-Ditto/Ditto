@@ -81,7 +81,7 @@ class FeedServiceFollowFeedTest {
                 .willReturn(List.of());
 
         // when
-        FeedResult result = feedService.getFollowFeed(query);
+        FeedResult result = feedService.getFollowFeed(query, List.of());
 
         // then
         assertThat(result.feeds()).hasSize(2);
@@ -101,7 +101,7 @@ class FeedServiceFollowFeedTest {
                 .willReturn(new FollowingResult(List.of()));
 
         // when
-        FeedResult result = feedService.getFollowFeed(query);
+        FeedResult result = feedService.getFollowFeed(query, List.of());
 
         // then
         assertThat(result.feeds()).isEmpty();
