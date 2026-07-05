@@ -40,4 +40,31 @@ class FaqMarkdownParserTest {
 
         assertThat(items).isEmpty();
     }
+
+    @Test
+    @DisplayName("parse()는 여러 줄에 걸친 질문/답변도 하나의 항목으로 파싱한다")
+    void parse_parsesMultilineQuestionAndAnswer() {
+        String markdown = """
+                ## faq-001: 여러 줄 테스트
+
+                Q: 첫 번째 줄 질문입니다
+                이어지는 둘째 줄 질문입니다.
+                A: 첫 번째 줄 답변입니다.
+                이어지는 둘째 줄 답변입니다.
+
+                ## faq-002: 다음 항목
+
+                Q: 다음 질문?
+                A: 다음 답변.
+                """;
+
+        List<FaqItem> items = parser.parse(markdown);
+
+        assertThat(items).hasSize(2);
+        assertThat(items.get(0).question())
+                .isEqualTo("첫 번째 줄 질문입니다\n이어지는 둘째 줄 질문입니다.");
+        assertThat(items.get(0).answer())
+                .isEqualTo("첫 번째 줄 답변입니다.\n이어지는 둘째 줄 답변입니다.");
+        assertThat(items.get(1).id()).isEqualTo("faq-002");
+    }
 }

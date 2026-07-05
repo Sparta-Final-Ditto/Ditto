@@ -5,6 +5,7 @@ import com.sparta.ditto.feed.application.dto.result.PostDetailResult;
 import com.sparta.ditto.feed.application.dto.result.PostDetailResult.CommentItem;
 import com.sparta.ditto.feed.application.dto.result.PostDetailResult.MediaItem;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
@@ -16,7 +17,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,13 +34,16 @@ class PostControllerGetDetailTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private PostCreateFacade postCreateFacade;
 
-    @MockBean
+    @MockitoBean
+    private PostInteractionFacade postInteractionFacade;
+
+    @MockitoBean
     private PostInteractionService postInteractionService;
 
-    @MockBean
+    @MockitoBean
     private PostService postService;
 
     private final UUID authorId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
