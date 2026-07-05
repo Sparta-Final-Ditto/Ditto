@@ -17,6 +17,8 @@ public class AssistantDocumentChunker {
         Map<String, Object> metadata = Map.of(
                 "sourceType", sourceType,
                 "title", item.title(),
+                "itemId", item.id(),
+
                 "version", DOCUMENT_VERSION
         );
         return new Document(toDocumentId(item.id()), content, metadata);
