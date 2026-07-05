@@ -48,6 +48,10 @@ spring:
 assistant:
   llm:
     provider: ${ASSISTANT_LLM_PROVIDER:ollama}   # ollama | api
+  rag:
+    search:
+      top-k: ${RAG_SEARCH_TOP_K:5}
+      similarity-threshold: ${RAG_SEARCH_SIMILARITY_THRESHOLD:0.5}
 
 springdoc:
   swagger-ui:
