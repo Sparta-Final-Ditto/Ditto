@@ -45,7 +45,8 @@ class FaqDocumentLoaderTest {
 
         loader.run(new DefaultApplicationArguments());
 
-        ArgumentCaptor<Filter.Expression> filterCaptor = ArgumentCaptor.forClass(Filter.Expression.class);
+        ArgumentCaptor<Filter.Expression> filterCaptor =
+                ArgumentCaptor.forClass(Filter.Expression.class);
         verify(vectorStore, times(2)).delete(filterCaptor.capture());
         assertThat(filterCaptor.getAllValues())
                 .allSatisfy(expr -> assertThat(expr.type()).isEqualTo(Filter.ExpressionType.AND));
