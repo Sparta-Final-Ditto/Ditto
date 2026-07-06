@@ -42,8 +42,9 @@ cat > /etc/cron.d/ecr-login << 'CRONEOF'
 CRONEOF
 
 # ─── 애플리케이션 디렉토리 ────────────────────────────────────────────────────
-mkdir -p /opt/${project_name}
-chown ubuntu:ubuntu /opt/${project_name}
+# CD 파이프라인(cd.yml)이 SSH 접속 후 'cd ~/ditto'로 이동하므로 경로를 맞춘다
+mkdir -p /home/ubuntu/ditto
+chown ubuntu:ubuntu /home/ubuntu/ditto
 
 cat >> /etc/environment << 'ENVEOF'
 AWS_REGION=${aws_region}
@@ -51,4 +52,4 @@ ECR_REGISTRY=${ecr_registry}
 ENVEOF
 
 echo "=== 앱 서버 초기화 완료 ==="
-echo "docker-compose.yml 을 /opt/${project_name}/ 에 배치 후 'docker compose up -d' 실행"
+echo "docker-compose.yml 을 /home/ubuntu/ditto/ 에 배치 후 'docker compose up -d' 실행"
