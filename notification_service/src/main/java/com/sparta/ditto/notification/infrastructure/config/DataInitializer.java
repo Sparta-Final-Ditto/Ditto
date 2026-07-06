@@ -40,7 +40,7 @@ public class DataInitializer implements CommandLineRunner {
         // COMMENT 알림 (미읽음) — roomUnreadCount 없음
         Notification comment = Notification.create(
                 RECEIVER_ID, ACTOR_B,
-                NotificationType.COMMENT, TargetType.LIKE,
+                NotificationType.COMMENT, TargetType.COMMENT,
                 "post-001",
                 "주원님이 댓글을 남겼습니다.",
                 "{\"postId\":\"post-001\"}"
