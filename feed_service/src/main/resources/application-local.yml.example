@@ -11,6 +11,9 @@ spring:
     hibernate:
       ddl-auto: create-drop
     defer-datasource-initialization: true
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100 # LAZY 컬렉션(mediaList, tags) N+1 방지 — IN 절 일괄 로딩
   sql:
     init:
       mode: always
