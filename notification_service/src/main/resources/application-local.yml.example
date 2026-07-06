@@ -19,6 +19,12 @@ spring:
       group-id: notification-service
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      # consumer record value가 String이므로 DLT 재발행 시 이중 인코딩 방지를 위해 StringSerializer 고정
+      # (실제 직렬화 보장은 KafkaConsumerConfig의 producer factory 빈에서 코드로 강제 — 프로파일 무관)
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
 
 app:
   sse:
