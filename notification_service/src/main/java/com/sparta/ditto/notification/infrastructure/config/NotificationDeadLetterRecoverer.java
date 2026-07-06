@@ -47,6 +47,12 @@ public class NotificationDeadLetterRecoverer implements ConsumerRecordRecoverer 
         // 예외 객체를 마지막 인자로 넘겨 스택트레이스를 보존한다(getMessage()만 남기지 않는다).
         log.error("재시도 소진/not-retryable → DLT 발행: topic={}, partition={}, offset={}",
                 record.topic(), record.partition(), record.offset(), exception);
-        delegate.accept(record, exception);
+        try {
+            delegate.accept(record, exception);
+        } catch (Exception dltPublishFailure) {
+            // DLT 발행 자체 실패(브로커 장애 등) → 유실 허용 fallback: 로그 후 정상 종료(skip)한다(TRD 10장).
+            log.error("DLT 발행 실패 — 유실 허용 skip: topic={}, partition={}, offset={}",
+                    record.topic(), record.partition(), record.offset(), dltPublishFailure);
+        }
     }
 }
