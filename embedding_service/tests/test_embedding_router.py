@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 from app.dependencies import get_embedding_service
-from tests.helpers import FAKE_VECTOR
+from tests.helpers import FAKE_VECTOR, make_profile
 
 _ROUTER_MODULE = "app.embedding.presentation.router.embedding_router"
 
@@ -135,6 +135,59 @@ class TestEmbeddingRouter(unittest.TestCase):
         )
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(resp.json()["data"]["dimension"], 768)
+
+    # ── POST /api/v1/test/embedding/embed-and-store ───────────────────────────
+
+    def test_embed_and_store_returns_201_with_profile_state(self):
+        """embed_and_store 직접 호출 — 201 + 갱신된 프로필 상태(record_count/active) 반환."""
+        self.mock_svc.embed_and_store = AsyncMock(return_value=None)
+        self.mock_svc.get_profile = AsyncMock(return_value=make_profile(record_count=2, active=False))
+        user_id = uuid.uuid4()
+
+        resp = self.client.post(
+            "/api/v1/test/embedding/embed-and-store",
+            json={"user_id": str(user_id), "content": "한강 자전거", "hashtags": ["한강"]},
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()["data"]
+        self.assertEqual(data["user_id"], str(user_id))
+        self.assertEqual(data["record_count"], 2)
+        self.assertFalse(data["active"])
+
+    def test_embed_and_store_missing_profile_defaults_to_zero(self):
+        """embed_and_store 후 프로필 조회 결과가 None — record_count=0, active=False 기본값."""
+        self.mock_svc.embed_and_store = AsyncMock(return_value=None)
+        self.mock_svc.get_profile = AsyncMock(return_value=None)
+
+        resp = self.client.post(
+            "/api/v1/test/embedding/embed-and-store",
+            json={"user_id": str(uuid.uuid4()), "content": "내용", "hashtags": []},
+        )
+
+        self.assertEqual(resp.status_code, 201)
+        data = resp.json()["data"]
+        self.assertEqual(data["record_count"], 0)
+        self.assertFalse(data["active"])
+
+    def test_embed_and_store_calls_service_with_generated_post_id(self):
+        """embed_and_store에 자동 생성된 post_id와 요청 필드가 그대로 전달된다."""
+        self.mock_svc.embed_and_store = AsyncMock(return_value=None)
+        self.mock_svc.get_profile = AsyncMock(return_value=None)
+        user_id = uuid.uuid4()
+
+        resp = self.client.post(
+            "/api/v1/test/embedding/embed-and-store",
+            json={"user_id": str(user_id), "content": "내용", "hashtags": ["태그"]},
+        )
+
+        post_id = uuid.UUID(resp.json()["data"]["post_id"])
+        call_args = self.mock_svc.embed_and_store.call_args.args
+        self.assertEqual(call_args[0], post_id)
+        self.assertEqual(str(call_args[1]), str(user_id))
+        self.assertEqual(call_args[2], "내용")
+        self.assertEqual(call_args[3], ["태그"])
+        self.mock_svc.get_profile.assert_called_once_with(user_id)
 
     # ── Health ─────────────────────────────────────────────────────────────────
 
