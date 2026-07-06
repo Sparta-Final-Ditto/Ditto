@@ -40,3 +40,11 @@ class ProfileBatchItem(BaseModel):
 
 class ProfileBatchResponse(BaseModel):
     profiles: list[ProfileBatchItem]
+
+class EmbedTextRequest(BaseModel):
+    text: str
+
+
+class EmbedTextResponse(BaseModel):
+    vector: list[float]
+    dimension: int
