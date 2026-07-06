@@ -143,14 +143,14 @@ class PostEventConsumerTest {
     // ── 4. JSON 파싱 불가 문자열 → 예외 throw (Consumer 재시도 정책 유도) ─────
 
     @Test
-    @DisplayName("JSON 파싱 불가 문자열 수신 시 예외를 던져 Consumer 재시도 정책을 태운다")
+    @DisplayName("JSON 파싱 불가 문자열 수신 시 예외를 던진다(not-retryable → 재시도 없이 즉시 DLT 전송)")
     void consume_invalidJson_throwsException() {
         assertThatThrownBy(() -> consumer.consume("{not-valid-json"))
                 .isInstanceOf(Exception.class);
     }
 
     @Test
-    @DisplayName("빈 문자열 수신 시 예외를 던져 Consumer 재시도 정책을 태운다")
+    @DisplayName("빈 문자열 수신 시 예외를 던진다(not-retryable → 재시도 없이 즉시 DLT 전송)")
     void consume_emptyString_throwsException() {
         assertThatThrownBy(() -> consumer.consume(""))
                 .isInstanceOf(Exception.class);
