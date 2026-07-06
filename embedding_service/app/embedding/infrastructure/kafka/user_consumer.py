@@ -6,6 +6,7 @@ from app.common.db.database import AsyncSessionLocal
 from app.common.kafka.consumer_base import KafkaConsumerBase
 from app.config.settings import settings
 from app.embedding.application.service.embedding_service import EmbeddingService
+from app.embedding.infrastructure.batch.batch_embedding import BatchEmbeddingRunner
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.infrastructure.repository.pg_post_embedding_repository import PgPostEmbeddingRepository
 from app.embedding.infrastructure.repository.pg_user_profile_repository import PgUserProfileRepository
@@ -44,6 +45,7 @@ class UserRegisteredConsumer(KafkaConsumerBase):
                 post_repo=PgPostEmbeddingRepository(db),
                 profile_repo=PgUserProfileRepository(db),
                 model=ModelLoader(),
+                batch_runner=BatchEmbeddingRunner(),
             )
             try:
                 await svc.init_user_profile(user_id, gender, birthdate)
@@ -64,6 +66,7 @@ class UserRegisteredConsumer(KafkaConsumerBase):
                 post_repo=PgPostEmbeddingRepository(db),
                 profile_repo=PgUserProfileRepository(db),
                 model=ModelLoader(),
+                batch_runner=BatchEmbeddingRunner(),
             )
             try:
                 await svc.register_user_interests(user_id, hashtags)
