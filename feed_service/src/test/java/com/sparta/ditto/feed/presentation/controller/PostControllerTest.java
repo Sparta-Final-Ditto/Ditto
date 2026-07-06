@@ -17,6 +17,7 @@ import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.ForbiddenException;
 import com.sparta.ditto.feed.domain.exception.LikeNotFoundException;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
+import com.sparta.ditto.feed.domain.exception.S3ValidationFailedException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -182,6 +183,22 @@ class PostControllerTest {
                 .andExpect(jsonPath("$.data.createdAt").value("2026-06-16T05:30:00Z"))
                 .andExpect(jsonPath("$.data.latitude").doesNotExist())
                 .andExpect(jsonPath("$.data.longitude").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("S3 검증 확인 불가(S3ValidationFailedException) → 503, S3_VALIDATION_FAILED")
+    void createPost_S3검증_확인불가_503() throws Exception {
+        when(postCreateFacade.createPost(any(CreatePostCommand.class)))
+                .thenThrow(new S3ValidationFailedException());
+
+        mockMvc.perform(post("/api/v1/posts")
+                        .header("X-User-Id", userId.toString())
+                        .header("X-User-Nickname", "새벽러너")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validRequestBody()))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503))
+                .andExpect(jsonPath("$.code").value("S3_VALIDATION_FAILED"));
     }
 
     // ============================================================
