@@ -71,9 +71,7 @@ services:
 
   api-gateway:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: api-gateway/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/api-gateway:${IMAGE_TAG:-latest}
     container_name: ditto-api-gateway
     ports:
       - "8080:8080"
@@ -93,9 +91,7 @@ services:
 
   user-service:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: user_service/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/user-service:${IMAGE_TAG:-latest}
     container_name: ditto-user-service
     ports:
       # 로컬 개발 편의용 포트 공개입니다.
@@ -115,9 +111,7 @@ services:
 
   feed-service:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: feed_service/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/feed-service:${IMAGE_TAG:-latest}
     container_name: ditto-feed-service
     ports:
       - "8082:8082"
@@ -140,9 +134,7 @@ services:
 
   match-service:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: match_service/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/match-service:${IMAGE_TAG:-latest}
     container_name: ditto-match-service
     ports:
       - "8083:8083"
@@ -165,9 +157,7 @@ services:
 
   chat-service:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: chat_service/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/chat-service:${IMAGE_TAG:-latest}
     container_name: ditto-chat-service
     ports:
       - "8084:8084"
@@ -192,9 +182,7 @@ services:
 
   notification-service:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: notification_service/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/notification-service:${IMAGE_TAG:-latest}
     container_name: ditto-notification-service
     ports:
       - "8085:8085"
@@ -209,15 +197,17 @@ services:
 
   embedding-service:
     profiles: [app]
-    build:
-      context: ./embedding_service
+    image: ${ECR_REGISTRY:-}ditto/embedding-service:${IMAGE_TAG:-latest}
     container_name: ditto-embedding-service
     ports:
       - "8090:8090"
     environment:
       DB_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/ditto_embedding
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
 
 volumes:
