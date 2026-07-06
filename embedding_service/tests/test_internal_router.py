@@ -33,8 +33,7 @@ class TestInternalRouter(unittest.TestCase):
     def test_get_active_ids_200(self):
         """활성 유저 ID 목록 — 200 + count 반환."""
         user_ids = [uuid.uuid4(), uuid.uuid4()]
-        self.mock_svc.profile_repo = AsyncMock()
-        self.mock_svc.profile_repo.find_active_user_ids = AsyncMock(return_value=user_ids)
+        self.mock_svc.get_active_user_ids = AsyncMock(return_value=user_ids)
 
         resp = self.client.get("/api/v1/internal/embedding/profiles/active/ids")
 
@@ -45,8 +44,7 @@ class TestInternalRouter(unittest.TestCase):
 
     def test_get_active_ids_empty(self):
         """활성 유저 없을 때 — count=0."""
-        self.mock_svc.profile_repo = AsyncMock()
-        self.mock_svc.profile_repo.find_active_user_ids = AsyncMock(return_value=[])
+        self.mock_svc.get_active_user_ids = AsyncMock(return_value=[])
 
         resp = self.client.get("/api/v1/internal/embedding/profiles/active/ids")
 

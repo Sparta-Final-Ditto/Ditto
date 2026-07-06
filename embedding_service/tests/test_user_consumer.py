@@ -46,12 +46,9 @@ class TestUserRegisteredConsumer(unittest.IsolatedAsyncioTestCase):
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
         p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
-        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=AsyncMock())
-        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=AsyncMock())
-        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
-        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=self.mock_svc)
+        p_factory = patch(f"{_CONSUMER_MODULE}.build_embedding_service", return_value=self.mock_svc)
 
-        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+        for p in [p_session, p_factory]:
             p.start()
             self.addCleanup(p.stop)
 

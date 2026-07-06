@@ -9,8 +9,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.dependencies import get_embedding_service, get_model
-from tests.helpers import FakeModel, make_profile, FAKE_VECTOR
+from app.dependencies import get_embedding_service
+from tests.helpers import FAKE_VECTOR
 
 _ROUTER_MODULE = "app.embedding.presentation.router.embedding_router"
 
@@ -27,10 +27,8 @@ class TestEmbeddingRouter(unittest.TestCase):
 
     def setUp(self):
         self.mock_svc = AsyncMock()
-        self.mock_model = FakeModel()
 
         app.dependency_overrides[get_embedding_service] = lambda: self.mock_svc
-        app.dependency_overrides[get_model] = lambda: self.mock_model
         self.client = TestClient(app, raise_server_exceptions=False)
 
     def tearDown(self):
@@ -98,6 +96,8 @@ class TestEmbeddingRouter(unittest.TestCase):
 
     def test_embed_test_returns_768_dim(self):
         """테스트 임베딩 — dimension=768, sample 길이=7."""
+        self.mock_svc.embed_text = AsyncMock(return_value=FAKE_VECTOR)
+
         resp = self.client.post("/api/v1/test/embedding", json={"text": "테스트 문장"})
 
         self.assertEqual(resp.status_code, 200)
@@ -107,6 +107,7 @@ class TestEmbeddingRouter(unittest.TestCase):
 
     def test_embed_test_input_text_echoed(self):
         """input_text 필드에 입력값이 그대로 반환된다."""
+        self.mock_svc.embed_text = AsyncMock(return_value=FAKE_VECTOR)
         text = "안녕하세요"
         resp = self.client.post("/api/v1/test/embedding", json={"text": text})
         self.assertEqual(resp.json()["data"]["input_text"], text)
@@ -114,6 +115,8 @@ class TestEmbeddingRouter(unittest.TestCase):
     # ── POST /api/v1/test/embedding/initial-profile ───────────────────────────
 
     def test_embed_initial_profile_returns_768_dim(self):
+        self.mock_svc.build_and_embed_initial_profile = AsyncMock(return_value=("구조화 텍스트", FAKE_VECTOR))
+
         resp = self.client.post(
             "/api/v1/test/embedding/initial-profile",
             json={"hashtags": ["등산", "카공"], "gender": "여", "age_group": "20대"},
@@ -124,6 +127,8 @@ class TestEmbeddingRouter(unittest.TestCase):
     # ── POST /api/v1/test/embedding/post ──────────────────────────────────────
 
     def test_embed_post_returns_768_dim(self):
+        self.mock_svc.build_and_embed_post = AsyncMock(return_value=("구조화 텍스트", FAKE_VECTOR))
+
         resp = self.client.post(
             "/api/v1/test/embedding/post",
             json={"content": "오늘 한강 갔다", "hashtags": ["한강"]},
