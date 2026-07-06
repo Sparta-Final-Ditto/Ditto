@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 from app.config.settings import settings
@@ -73,6 +73,59 @@ class EmbeddingService:
         except Exception as e:
             # 프로필 갱신 실패는 게시글 임베딩 성공과 무관 — 새벽 배치에서 보정
             logger.warning(f"[EmbeddingService] 프로필 카운트 갱신 실패 (배치에서 복구 예정): {e}")
+
+    async def handle_post_deleted(self, post_id: UUID, user_id: UUID) -> None:
+        """당일 게시글 삭제 처리 — 당일 게시글만 DELETED로 표시하고 record_count/active를 동기화한다."""
+        embedding = await self.post_repo.find_by_post_id(post_id)
+        if embedding is None or embedding.embedded_at is None:
+            return
+
+        kst = timezone(timedelta(hours=9))
+        today_kst = datetime.now(kst).date()
+        embedded_date_kst = embedding.embedded_at.astimezone(kst).date()
+        # KST 캘린더 날짜가 다르면 이미 다음 배치 처리 대상이 아님 — PASS
+        if embedded_date_kst != today_kst:
+            logger.info(f"[EmbeddingService] 당일 게시글 아님 — PASS: post_id={post_id}")
+            return
+
+        await self.post_repo.update_status(post_id, "DELETED")
+        logger.info(f"[EmbeddingService] 당일 게시글 DELETED 처리: post_id={post_id}")
+
+        done_count = await self.post_repo.count_done_by_user_id(user_id)
+        await self.profile_repo.sync_count_and_active(user_id, done_count)
+
+    async def handle_post_hard_deleted(self, post_id: UUID, author_id: UUID) -> None:
+        """게시글 하드 삭제 처리 — 임베딩 레코드를 삭제하고 필요 시 record_count/active를 보정한다."""
+        embedding = await self.post_repo.find_by_post_id(post_id)
+        if embedding is None:
+            logger.info(f"[EmbeddingService] 임베딩 없음 — PASS: post_id={post_id}")
+            return
+
+        await self.post_repo.delete_by_post_id(post_id)
+        logger.info(f"[EmbeddingService] hard delete 완료: post_id={post_id}")
+
+        # 엣지케이스: soft delete 이벤트 누락으로 DONE 상태인 경우 record_count 보정
+        if embedding.embedding_status == "DONE":
+            done_count = await self.post_repo.count_done_by_user_id(author_id)
+            await self.profile_repo.sync_count_and_active(author_id, done_count)
+
+    async def handle_post_restored(self, post_id: UUID, author_id: UUID) -> None:
+        """게시글 복구 처리 — DELETED 상태였던 게시글만 DONE으로 되돌리고 record_count/active를 갱신한다."""
+        embedding = await self.post_repo.find_by_post_id(post_id)
+        if embedding is None:
+            logger.info(f"[EmbeddingService] 임베딩 없음 — PASS: post_id={post_id}")
+            return
+
+        if embedding.embedding_status != "DELETED":
+            logger.info(f"[EmbeddingService] DELETED 상태 아님 — PASS: post_id={post_id}, status={embedding.embedding_status}")
+            return
+
+        await self.post_repo.update_status(post_id, "DONE")
+        logger.info(f"[EmbeddingService] 게시글 복구 DONE 처리: post_id={post_id}")
+
+        # record_count/active 즉시 갱신, 벡터 재계산은 월배치에서 처리
+        done_count = await self.post_repo.count_done_by_user_id(author_id)
+        await self.profile_repo.sync_count_and_active(author_id, done_count)
 
     async def init_user_profile(
         self,
