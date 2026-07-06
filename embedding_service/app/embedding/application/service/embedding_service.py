@@ -156,6 +156,31 @@ class EmbeddingService:
     async def trigger_monthly_batch(self) -> None:
         await self.batch_runner.run_monthly()
 
+    async def embed_text(self, text: str) -> list[float]:
+        """임의 텍스트를 벡터로 변환한다."""
+        return await asyncio.to_thread(self.model.encode, text)
+
+    async def build_and_embed_initial_profile(
+        self,
+        hashtags: list[str],
+        gender: str,
+        age_group: str,
+    ) -> tuple[str, list[float]]:
+        """구조화 텍스트 생성 후 임베딩 — 생성된 텍스트와 벡터를 함께 반환한다."""
+        text = build_initial_text(hashtags, gender, age_group)
+        vector = await asyncio.to_thread(self.model.encode, text)
+        return text, vector
+
+    async def build_and_embed_post(
+        self,
+        content: str,
+        hashtags: list[str],
+    ) -> tuple[str, list[float]]:
+        """게시글 구조화 텍스트 생성 후 임베딩 — 생성된 텍스트와 벡터를 함께 반환한다."""
+        text = build_post_text(content, hashtags)
+        vector = await asyncio.to_thread(self.model.encode, text)
+        return text, vector
+
 
 def _compute_age_group(birthdate: date) -> str:
     from datetime import date as date_cls

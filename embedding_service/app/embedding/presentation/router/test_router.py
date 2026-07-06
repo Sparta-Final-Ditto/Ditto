@@ -6,11 +6,8 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from app.common.response.api_response import ApiResponse
-from app.dependencies import get_embedding_service, get_model
-from app.embedding.application.port.embedding_model_port import EmbeddingModelPort
+from app.dependencies import get_embedding_service
 from app.embedding.application.service.embedding_service import EmbeddingService
-from app.embedding.domain.algorithm.post_text_builder import build_post_text
-from app.embedding.domain.algorithm.profile_builder import build_initial_text
 
 router = APIRouter(tags=["Test"])
 
@@ -63,9 +60,9 @@ class RawTextRequest(BaseModel):
 )
 async def embed_test(
     body: RawTextRequest,
-    model: EmbeddingModelPort = Depends(get_model),
+    svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[EmbedTestResponse]:
-    vector = np.array(model.encode(body.text))
+    vector = np.array(await svc.embed_text(body.text))
     return ApiResponse.success(
         EmbedTestResponse(input_text=body.text, dimension=len(vector), sample=vector[:7].tolist())
     )
@@ -85,10 +82,10 @@ class InitialProfileRequest(BaseModel):
 )
 async def embed_initial_profile(
     body: InitialProfileRequest,
-    model: EmbeddingModelPort = Depends(get_model),
+    svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[EmbedTestResponse]:
-    text = build_initial_text(body.hashtags, body.gender, body.age_group)
-    vector = np.array(model.encode(text))
+    text, vector = await svc.build_and_embed_initial_profile(body.hashtags, body.gender, body.age_group)
+    vector = np.array(vector)
     return ApiResponse.success(
         EmbedTestResponse(input_text=text, dimension=len(vector), sample=vector[:7].tolist())
     )
@@ -107,10 +104,10 @@ class PostEmbedRequest(BaseModel):
 )
 async def embed_post(
     body: PostEmbedRequest,
-    model: EmbeddingModelPort = Depends(get_model),
+    svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[EmbedTestResponse]:
-    text = build_post_text(body.content, body.hashtags)
-    vector = np.array(model.encode(text))
+    text, vector = await svc.build_and_embed_post(body.content, body.hashtags)
+    vector = np.array(vector)
     return ApiResponse.success(
         EmbedTestResponse(input_text=text, dimension=len(vector), sample=vector[:7].tolist())
     )
