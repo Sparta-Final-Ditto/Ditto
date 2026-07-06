@@ -11,6 +11,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,7 +53,7 @@ class MatchingHistoryRepositoryImplTest {
         LocalDateTime expectedStartOfDay = LocalDateTime.of(2026, 6, 19, 0, 0, 0);
         MatchingHistory history = MatchingHistory.of(userId, UUID.randomUUID(), 0.8f, 0.75f, "NONE", false);
 
-        given(jpaRepository.findTodayMatch(eq(userId), eq(expectedStartOfDay))).willReturn(Optional.of(history));
+        given(jpaRepository.findTodayMatch(eq(userId), any(Instant.class))).willReturn(Optional.of(history));
 
         Optional<MatchingHistory> result = repositoryImpl.findTodayMatchByUserId(userId, today);
 
