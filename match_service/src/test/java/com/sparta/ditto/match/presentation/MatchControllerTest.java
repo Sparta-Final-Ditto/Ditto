@@ -59,7 +59,7 @@ class MatchControllerTest {
         UUID userId = UUID.randomUUID();
         UUID matchId = UUID.randomUUID();
         UUID matchedUserId = UUID.randomUUID();
-        MatchRequestDto request = new MatchRequestDto("NONE", false);
+        MatchRequestDto request = new MatchRequestDto("NONE", false, null, null);
         MatchResponseDto response = new MatchResponseDto(
                 matchId, matchedUserId, 0.8f, 0.75f,
                 Instant.now(), MatchStatus.PENDING, "여행을 좋아하는 두 분이에요!");

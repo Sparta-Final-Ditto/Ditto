@@ -107,6 +107,24 @@ class AssistantChatServiceTest {
                 .isInstanceOf(LlmResponseFailedException.class);
     }
 
+    @Test
+    @DisplayName("채팅 로그 저장이 실패해도 이미 생성된 답변은 정상 반환한다")
+    void ask_whenChatLogSaveThrows_stillReturnsAnswer() {
+        AskAssistantCommand command = new AskAssistantCommand(UUID.randomUUID(), "질문");
+        ChatClientResponse chatClientResponse =
+                buildChatClientResponse("정상 답변입니다.", List.of());
+
+        given(chatClient.prompt().user(command.question()).call().chatClientResponse())
+                .willReturn(chatClientResponse);
+        given(chatLogRepository.save(org.mockito.ArgumentMatchers.any()))
+                .willThrow(new RuntimeException("DB 연결 실패"));
+
+        AssistantAnswerResult result = assistantChatService.ask(command);
+
+        assertThat(result.answer()).isEqualTo("정상 답변입니다.");
+        assertThat(result.sources()).isEmpty();
+    }
+
     private ChatClientResponse buildChatClientResponse(
             String answer, List<Document> retrievedDocuments) {
         Generation generation = new Generation(new AssistantMessage(answer));

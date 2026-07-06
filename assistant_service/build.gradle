@@ -32,3 +32,21 @@ dependencies {
     testImplementation 'org.testcontainers:postgresql'
     testImplementation 'org.testcontainers:junit-jupiter'
 }
+
+// RAG 골든셋 평가(evaluation 태그)는 test/CI에서 제외
+tasks.named('test') {
+    useJUnitPlatform {
+        excludeTags 'evaluation'
+    }
+}
+
+tasks.register('ragEvaluation', Test) {
+    description = '골든셋 기반 RAG 품질 평가 (실제 Ollama + 적재된 vector_store 필요, CI 미실행)'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'evaluation'
+    }
+    outputs.upToDateWhen { false }
+}
