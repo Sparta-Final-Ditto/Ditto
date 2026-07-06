@@ -239,5 +239,26 @@ class TestFlow3GetProfileVector(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(np.allclose(today_vector, expected))
 
 
+class TestTriggerBatch(unittest.IsolatedAsyncioTestCase):
+
+    async def test_trigger_daily_batch_calls_run_daily(self):
+        batch_runner = FakeBatchRunner()
+        svc = EmbeddingService(new_post_repo(), new_profile_repo(), FakeModel(), batch_runner)
+
+        await svc.trigger_daily_batch()
+
+        self.assertEqual(batch_runner.daily_calls, 1)
+        self.assertEqual(batch_runner.monthly_calls, 0)
+
+    async def test_trigger_monthly_batch_calls_run_monthly(self):
+        batch_runner = FakeBatchRunner()
+        svc = EmbeddingService(new_post_repo(), new_profile_repo(), FakeModel(), batch_runner)
+
+        await svc.trigger_monthly_batch()
+
+        self.assertEqual(batch_runner.monthly_calls, 1)
+        self.assertEqual(batch_runner.daily_calls, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

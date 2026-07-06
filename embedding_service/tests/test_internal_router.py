@@ -124,6 +124,31 @@ class TestInternalRouter(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.json()["data"]["today_vector"])
 
+    # ── POST /api/v1/internal/embedding/embed-text ─────────────────────────────
+
+    def test_embed_text_200(self):
+        """임의 텍스트 임베딩 — 200 + vector/dimension 반환."""
+        self.mock_svc.embed_text = AsyncMock(return_value=FAKE_VECTOR)
+
+        resp = self.client.post(
+            "/api/v1/internal/embedding/embed-text",
+            json={"text": "매칭 서비스 RAG 텍스트"},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()["data"]
+        self.assertEqual(data["dimension"], 768)
+        self.assertEqual(len(data["vector"]), 768)
+
+    def test_embed_text_calls_service_with_input_text(self):
+        """embed_text가 요청 본문의 text를 그대로 전달받는다."""
+        self.mock_svc.embed_text = AsyncMock(return_value=FAKE_VECTOR)
+        text = "임베딩할 문장"
+
+        self.client.post("/api/v1/internal/embedding/embed-text", json={"text": text})
+
+        self.mock_svc.embed_text.assert_called_once_with(text)
+
 
 if __name__ == "__main__":
     unittest.main()
