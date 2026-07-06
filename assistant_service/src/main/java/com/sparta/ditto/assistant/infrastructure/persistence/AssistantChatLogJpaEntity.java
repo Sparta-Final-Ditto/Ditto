@@ -3,8 +3,6 @@ package com.sparta.ditto.assistant.infrastructure.persistence;
 import com.sparta.ditto.assistant.domain.entity.AssistantChatLog;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -22,9 +20,7 @@ import org.hibernate.type.SqlTypes;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class AssistantChatLogJpaEntity {
 
-    // TODO: 공통모듈에 UUID v7 generator 적용 후 교체 (chat_service의 UuidMessageIdGenerator와 동일한 이유)
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @Column(name = "user_id")
@@ -47,8 +43,9 @@ public class AssistantChatLogJpaEntity {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    public static AssistantChatLogJpaEntity from(AssistantChatLog domain) {
+    public static AssistantChatLogJpaEntity from(AssistantChatLog domain, UUID id) {
         AssistantChatLogJpaEntity entity = new AssistantChatLogJpaEntity();
+        entity.id = id;
         entity.userId = domain.getUserId();
         entity.question = domain.getQuestion();
         entity.answer = domain.getAnswer();
