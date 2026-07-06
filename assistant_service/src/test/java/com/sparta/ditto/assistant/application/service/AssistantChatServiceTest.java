@@ -2,41 +2,33 @@ package com.sparta.ditto.assistant.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.assistant.application.dto.command.AskAssistantCommand;
 import com.sparta.ditto.assistant.application.dto.result.AssistantAnswerResult;
+import com.sparta.ditto.assistant.application.port.AssistantAnswerPort;
+import com.sparta.ditto.assistant.application.port.AssistantAnswerPort.AssistantAnswer;
+import com.sparta.ditto.assistant.application.port.AssistantAnswerPort.RetrievedDocument;
 import com.sparta.ditto.assistant.domain.entity.AssistantChatLog;
 import com.sparta.ditto.assistant.domain.exception.LlmResponseFailedException;
 import com.sparta.ditto.assistant.domain.repository.AssistantChatLogRepository;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
-import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.ChatClientResponse;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
-import org.springframework.ai.chat.messages.AssistantMessage;
-import org.springframework.ai.chat.model.ChatResponse;
-import org.springframework.ai.chat.model.Generation;
-import org.springframework.ai.document.Document;
 
 @ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
 class AssistantChatServiceTest {
 
-    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
-    private ChatClient chatClient;
+    @Mock
+    private AssistantAnswerPort assistantAnswerPort;
 
     @Mock
     private AssistantChatLogRepository chatLogRepository;
@@ -49,18 +41,12 @@ class AssistantChatServiceTest {
     void ask_success_returnsAnswerWithSourcesAndSavesLog() {
         UUID userId = UUID.randomUUID();
         AskAssistantCommand command = new AskAssistantCommand(userId, "회원가입은 어떻게 하나요?");
+        UUID documentId = UUID.randomUUID();
+        AssistantAnswer answer = new AssistantAnswer(
+                "이메일로 가입할 수 있습니다.",
+                List.of(new RetrievedDocument(documentId, "회원가입 방법", "FAQ", 0.9f)));
 
-        Document document = Document.builder()
-                .id(UUID.randomUUID().toString())
-                .text("Q: 회원가입은 어떻게 하나요?\nA: 이메일로 가입합니다.")
-                .metadata(Map.of("title", "회원가입 방법", "sourceType", "FAQ"))
-                .score(0.9)
-                .build();
-        ChatClientResponse chatClientResponse =
-                buildChatClientResponse("이메일로 가입할 수 있습니다.", List.of(document));
-
-        given(chatClient.prompt().user(command.question()).call().chatClientResponse())
-                .willReturn(chatClientResponse);
+        given(assistantAnswerPort.ask(command.question())).willReturn(answer);
 
         AssistantAnswerResult result = assistantChatService.ask(command);
 
@@ -74,8 +60,7 @@ class AssistantChatServiceTest {
         verify(chatLogRepository).save(logCaptor.capture());
         assertThat(logCaptor.getValue().getQuestion()).isEqualTo(command.question());
         assertThat(logCaptor.getValue().getAnswer()).isEqualTo(result.answer());
-        assertThat(logCaptor.getValue().getMatchedDocumentIds())
-                .containsExactly(UUID.fromString(document.getId()));
+        assertThat(logCaptor.getValue().getMatchedDocumentIds()).containsExactly(documentId);
         assertThat(logCaptor.getValue().getSimilarityScores()).containsExactly(0.9f);
     }
 
@@ -84,10 +69,8 @@ class AssistantChatServiceTest {
     void ask_whenNoDocumentsRetrieved_returnsEmptySources() {
         AskAssistantCommand command =
                 new AskAssistantCommand(UUID.randomUUID(), "매칭 성공 확률은 몇 %인가요?");
-        ChatClientResponse chatClientResponse = buildChatClientResponse("확인이 어렵습니다.", List.of());
-
-        given(chatClient.prompt().user(command.question()).call().chatClientResponse())
-                .willReturn(chatClientResponse);
+        given(assistantAnswerPort.ask(command.question()))
+                .willReturn(new AssistantAnswer("확인이 어렵습니다.", List.of()));
 
         AssistantAnswerResult result = assistantChatService.ask(command);
 
@@ -96,12 +79,11 @@ class AssistantChatServiceTest {
     }
 
     @Test
-    @DisplayName("ChatClient 호출이 실패하면 LlmResponseFailedException을 던진다")
-    void ask_whenChatClientThrows_throwsLlmResponseFailedException() {
+    @DisplayName("포트에서 LlmResponseFailedException이 발생하면 그대로 전파한다")
+    void ask_whenPortThrows_propagatesException() {
         AskAssistantCommand command = new AskAssistantCommand(UUID.randomUUID(), "질문");
-
-        given(chatClient.prompt().user(command.question()).call().chatClientResponse())
-                .willThrow(new RuntimeException("Ollama 연결 실패"));
+        given(assistantAnswerPort.ask(command.question()))
+                .willThrow(new LlmResponseFailedException());
 
         assertThatThrownBy(() -> assistantChatService.ask(command))
                 .isInstanceOf(LlmResponseFailedException.class);
@@ -111,26 +93,13 @@ class AssistantChatServiceTest {
     @DisplayName("채팅 로그 저장이 실패해도 이미 생성된 답변은 정상 반환한다")
     void ask_whenChatLogSaveThrows_stillReturnsAnswer() {
         AskAssistantCommand command = new AskAssistantCommand(UUID.randomUUID(), "질문");
-        ChatClientResponse chatClientResponse =
-                buildChatClientResponse("정상 답변입니다.", List.of());
-
-        given(chatClient.prompt().user(command.question()).call().chatClientResponse())
-                .willReturn(chatClientResponse);
-        given(chatLogRepository.save(org.mockito.ArgumentMatchers.any()))
-                .willThrow(new RuntimeException("DB 연결 실패"));
+        given(assistantAnswerPort.ask(command.question()))
+                .willReturn(new AssistantAnswer("정상 답변입니다.", List.of()));
+        given(chatLogRepository.save(any())).willThrow(new RuntimeException("DB 연결 실패"));
 
         AssistantAnswerResult result = assistantChatService.ask(command);
 
         assertThat(result.answer()).isEqualTo("정상 답변입니다.");
         assertThat(result.sources()).isEmpty();
-    }
-
-    private ChatClientResponse buildChatClientResponse(
-            String answer, List<Document> retrievedDocuments) {
-        Generation generation = new Generation(new AssistantMessage(answer));
-        ChatResponse chatResponse = new ChatResponse(List.of(generation));
-        Map<String, Object> context =
-                Map.of(QuestionAnswerAdvisor.RETRIEVED_DOCUMENTS, retrievedDocuments);
-        return new ChatClientResponse(chatResponse, context);
     }
 }
