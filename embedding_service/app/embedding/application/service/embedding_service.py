@@ -10,6 +10,7 @@ from app.embedding.domain.algorithm.ema_calculator import average_vectors
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
 from app.embedding.domain.algorithm.profile_builder import build_initial_text
 from app.embedding.domain.model.post_embedding import PostEmbedding
+from app.embedding.domain.model.user_profile import UserProfile
 from app.embedding.domain.repository.post_embedding_repository import PostEmbeddingRepository
 from app.embedding.domain.repository.user_profile_repository import UserProfileRepository
 
@@ -119,6 +120,13 @@ class EmbeddingService:
 
     async def get_embedding_status(self, post_id: UUID) -> PostEmbedding | None:
         return await self.post_repo.find_by_post_id(post_id)
+
+    async def get_active_user_ids(self) -> list[UUID]:
+        """매칭 가능(active=True) 유저 ID 목록 조회."""
+        return await self.profile_repo.find_active_user_ids()
+
+    async def get_profile(self, user_id: UUID) -> UserProfile | None:
+        return await self.profile_repo.find_by_user_id(user_id)
 
     async def get_profile_vector(self, user_id: UUID):
         """match_service 연동용 — V_batch(프로필)와 V_today(오늘 게시글 평균) 반환."""
