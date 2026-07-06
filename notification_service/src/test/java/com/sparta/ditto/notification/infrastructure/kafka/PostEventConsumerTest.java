@@ -1,13 +1,14 @@
 package com.sparta.ditto.notification.infrastructure.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.NotificationEventHandler;
 import com.sparta.ditto.notification.application.dto.PostNotificationCommand;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -22,8 +23,12 @@ class PostEventConsumerTest {
     @Mock
     private NotificationEventHandler handler;
 
-    @InjectMocks
     private PostEventConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new PostEventConsumer(new ObjectMapper().findAndRegisterModules(), handler);
+    }
 
     // ── 공통 고정 값 ──────────────────────────────────────────────────────────
     private static final String ACTOR_UUID   = "7b9f6e22-03e7-4b59-a9a4-95de4e2f1234";
