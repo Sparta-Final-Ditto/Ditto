@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.facade.FeedSourceFacade;
 import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
 import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
@@ -48,7 +49,7 @@ class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
     private FollowServicePort followServicePort;
 
     @Autowired
-    private FeedService feedService;
+    private FeedSourceFacade feedSourceFacade;
 
     @Autowired
     private CircuitBreakerRegistry circuitBreakerRegistry;
@@ -70,7 +71,7 @@ class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
         given(followServicePort.getFollowingIds(any()))
                 .willThrow(new RuntimeException("Connection timed out"));
 
-        FeedResult result = feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
+        FeedResult result = feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -96,7 +97,7 @@ class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
         given(followServicePort.getFollowingIds(any()))
                 .willThrow(internalServerError);
 
-        FeedResult result = feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
+        FeedResult result = feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -112,7 +113,7 @@ class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
                 .willThrow(new RuntimeException("transient error"))
                 .willReturn(new FollowingResult(List.of()));
 
-        feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
+        feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
 
         // maxAttempts=2 → 최초 시도(1회) + 재시도(1회) = 총 2회
         verify(followServicePort, times(2)).getFollowingIds(any());
@@ -130,7 +131,7 @@ class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
         // minimum-number-of-calls=3, failure-rate-threshold=50%
         // 3회 모두 실패(Retry 포함 각 2회 시도 후 CB 1회 실패 카운트) → 100% > 50% → OPEN
         for (int i = 0; i < 3; i++) {
-            feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
+            feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
         }
 
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.OPEN);
