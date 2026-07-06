@@ -4,6 +4,7 @@ from datetime import date
 from uuid import UUID
 
 from app.config.settings import settings
+from app.embedding.application.port.batch_runner_port import BatchRunnerPort
 from app.embedding.application.port.embedding_model_port import EmbeddingModelPort
 from app.embedding.domain.algorithm.ema_calculator import average_vectors
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
@@ -22,10 +23,12 @@ class EmbeddingService:
         post_repo: PostEmbeddingRepository,
         profile_repo: UserProfileRepository,
         model: EmbeddingModelPort,
+        batch_runner: BatchRunnerPort,
     ):
         self.post_repo = post_repo
         self.profile_repo = profile_repo
         self.model = model
+        self.batch_runner = batch_runner
 
     async def embed_and_store(
         self,
@@ -148,12 +151,10 @@ class EmbeddingService:
         await self.embed_and_store(post_id, user_id, content, hashtags)
 
     async def trigger_daily_batch(self) -> None:
-        from app.embedding.infrastructure.batch.batch_embedding import run_batch
-        await run_batch()
+        await self.batch_runner.run_daily()
 
     async def trigger_monthly_batch(self) -> None:
-        from app.embedding.infrastructure.batch.batch_embedding import run_monthly_batch
-        await run_monthly_batch()
+        await self.batch_runner.run_monthly()
 
 
 def _compute_age_group(birthdate: date) -> str:
