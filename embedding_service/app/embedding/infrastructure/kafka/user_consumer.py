@@ -5,11 +5,7 @@ from uuid import UUID
 from app.common.db.database import AsyncSessionLocal
 from app.common.kafka.consumer_base import KafkaConsumerBase
 from app.config.settings import settings
-from app.embedding.application.service.embedding_service import EmbeddingService
-from app.embedding.infrastructure.batch.batch_embedding import BatchEmbeddingRunner
-from app.embedding.infrastructure.model.model_loader import ModelLoader
-from app.embedding.infrastructure.repository.pg_post_embedding_repository import PgPostEmbeddingRepository
-from app.embedding.infrastructure.repository.pg_user_profile_repository import PgUserProfileRepository
+from app.embedding.infrastructure.service_factory import build_embedding_service
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +37,7 @@ class UserRegisteredConsumer(KafkaConsumerBase):
             return
 
         async with AsyncSessionLocal() as db:
-            svc = EmbeddingService(
-                post_repo=PgPostEmbeddingRepository(db),
-                profile_repo=PgUserProfileRepository(db),
-                model=ModelLoader(),
-                batch_runner=BatchEmbeddingRunner(),
-            )
+            svc = build_embedding_service(db)
             try:
                 await svc.init_user_profile(user_id, gender, birthdate)
                 logger.info(f"[UserRegisteredConsumer] 프로필 stub 생성: user_id={user_id}")
@@ -62,12 +53,7 @@ class UserRegisteredConsumer(KafkaConsumerBase):
             return
 
         async with AsyncSessionLocal() as db:
-            svc = EmbeddingService(
-                post_repo=PgPostEmbeddingRepository(db),
-                profile_repo=PgUserProfileRepository(db),
-                model=ModelLoader(),
-                batch_runner=BatchEmbeddingRunner(),
-            )
+            svc = build_embedding_service(db)
             try:
                 await svc.register_user_interests(user_id, hashtags)
                 logger.info(f"[UserRegisteredConsumer] 초기 프로필 벡터 생성: user_id={user_id}")
