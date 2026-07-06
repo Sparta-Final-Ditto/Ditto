@@ -140,7 +140,7 @@ async def embed_and_store_test(
 ) -> ApiResponse[EmbedAndStoreResponse]:
     post_id = uuid7()
     await svc.embed_and_store(post_id, body.user_id, body.content, body.hashtags)
-    profile = await svc.profile_repo.find_by_user_id(body.user_id)
+    profile = await svc.get_profile(body.user_id)
     return ApiResponse.success(
         EmbedAndStoreResponse(
             post_id=post_id,

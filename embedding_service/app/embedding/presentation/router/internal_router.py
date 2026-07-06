@@ -29,7 +29,7 @@ router = APIRouter(tags=["Internal"])
 async def get_active_user_ids(
         svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[ActiveUserIdsResponse]:
-    user_ids = await svc.profile_repo.find_active_user_ids()
+    user_ids = await svc.get_active_user_ids()
     return ApiResponse.success(
         ActiveUserIdsResponse(user_ids=user_ids, count=len(user_ids))
     )
