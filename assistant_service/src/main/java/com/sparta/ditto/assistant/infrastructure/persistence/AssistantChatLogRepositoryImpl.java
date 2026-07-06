@@ -13,6 +13,7 @@ public class AssistantChatLogRepositoryImpl implements AssistantChatLogRepositor
 
     @Override
     public AssistantChatLog save(AssistantChatLog chatLog) {
-        return jpaRepository.save(chatLog);
+        AssistantChatLogJpaEntity saved = jpaRepository.save(AssistantChatLogJpaEntity.from(chatLog));
+        return saved.toDomain();
     }
 }
