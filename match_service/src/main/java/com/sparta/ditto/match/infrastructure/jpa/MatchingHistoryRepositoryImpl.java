@@ -5,8 +5,9 @@ import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -24,8 +25,7 @@ public class MatchingHistoryRepositoryImpl implements MatchingHistoryRepository 
 
     @Override
     public Optional<MatchingHistory> findTodayMatchByUserId(UUID userId, LocalDate today) {
-        // 오늘 0시 기준으로 조회
-        LocalDateTime startOfDay = today.atStartOfDay();
+        Instant startOfDay = today.atStartOfDay(ZoneId.systemDefault()).toInstant();
         return jpaRepository.findTodayMatch(userId, startOfDay);
     }
 
