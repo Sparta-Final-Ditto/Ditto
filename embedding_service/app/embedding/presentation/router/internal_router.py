@@ -1,4 +1,5 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.common.exception.business_exception import BusinessException
@@ -8,6 +9,8 @@ from app.dependencies import get_embedding_service
 from app.embedding.application.service.embedding_service import EmbeddingService
 from app.embedding.presentation.dto.embedding_dto import (
     ActiveUserIdsResponse,
+    EmbedTextRequest,
+    EmbedTextResponse,
     ProfileBatchItem,
     ProfileBatchRequest,
     ProfileBatchResponse,
@@ -24,9 +27,9 @@ router = APIRouter(tags=["Internal"])
     response_model=ApiResponse[ActiveUserIdsResponse],
 )
 async def get_active_user_ids(
-    svc: EmbeddingService = Depends(get_embedding_service),
+        svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[ActiveUserIdsResponse]:
-    user_ids = await svc.profile_repo.find_active_user_ids()
+    user_ids = await svc.get_active_user_ids()
     return ApiResponse.success(
         ActiveUserIdsResponse(user_ids=user_ids, count=len(user_ids))
     )
@@ -39,8 +42,8 @@ async def get_active_user_ids(
     response_model=ApiResponse[ProfileBatchResponse],
 )
 async def get_profiles_batch(
-    body: ProfileBatchRequest,
-    svc: EmbeddingService = Depends(get_embedding_service),
+        body: ProfileBatchRequest,
+        svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[ProfileBatchResponse]:
     if len(body.user_ids) > 100:
         raise HTTPException(status_code=400, detail="user_ids는 최대 100개까지 허용됩니다.")
@@ -64,8 +67,8 @@ async def get_profiles_batch(
     response_model=ApiResponse[ProfileVectorResponse],
 )
 async def get_profile_vector(
-    user_id: UUID,
-    svc: EmbeddingService = Depends(get_embedding_service),
+        user_id: UUID,
+        svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[ProfileVectorResponse]:
     profile, today_vector = await svc.get_profile_vector(user_id)
     if profile is None:
@@ -79,3 +82,17 @@ async def get_profile_vector(
             record_count=profile.record_count,
         )
     )
+
+
+@router.post(
+    "/embed-text",
+    summary="임의 텍스트 임베딩",
+    description="match_service RAG용 : 임의 텍스트를 벡터로 변환하여 반환한다.",
+    response_model=ApiResponse[EmbedTextResponse],
+)
+async def embed_text(
+        body: EmbedTextRequest,
+        svc: EmbeddingService = Depends(get_embedding_service),
+) -> ApiResponse[EmbedTextResponse]:
+    vector = await svc.embed_text(body.text)
+    return ApiResponse.success(EmbedTextResponse(vector=vector, dimension=len(vector)))

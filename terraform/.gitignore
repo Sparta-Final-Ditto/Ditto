@@ -1,0 +1,16 @@
+# Terraform 상태 파일 (민감 정보 포함)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# 실제 변수값 파일 (IP, 시크릿 포함)
+terraform.tfvars
+*.auto.tfvars
+
+# 크래시 로그
+crash.log
+crash.*.log
+
+# 플랜 파일
+*.tfplan
