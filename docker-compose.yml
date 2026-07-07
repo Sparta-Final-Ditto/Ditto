@@ -214,9 +214,7 @@ services:
 
   assistant-service:
     profiles: [app]
-    build:
-      context: .
-      dockerfile: assistant_service/Dockerfile
+    image: ${ECR_REGISTRY:-}ditto/assistant-service:${IMAGE_TAG:-latest}
     container_name: ditto-assistant-service
     ports:
       - "8086:8086"
