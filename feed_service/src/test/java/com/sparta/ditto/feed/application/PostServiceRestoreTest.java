@@ -18,6 +18,7 @@ import com.sparta.ditto.feed.infrastructure.persistence.OutboxEventJpaRepository
 import com.sparta.ditto.feed.infrastructure.persistence.OutboxEventRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostJpaRepository;
 import com.sparta.ditto.feed.infrastructure.persistence.PostRepositoryImpl;
+import com.sparta.ditto.feed.support.PostgresTestContainerSupport;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -34,12 +35,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -55,7 +51,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 데이터 셋업·검증에는 @DataJpaTest가 자동 등록하는 JpaRepository를 직접 사용한다.
  */
 @DataJpaTest
-@Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @TestPropertySource(properties = "app.cloudfront.domain=https://test.example.com")
@@ -67,7 +62,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
     OutboxEventRepositoryImpl.class,
     OutboxEventAdapter.class
 })
-class PostServiceRestoreTest {
+class PostServiceRestoreTest extends PostgresTestContainerSupport {
 
     @TestConfiguration
     @EnableJpaAuditing
@@ -76,16 +71,6 @@ class PostServiceRestoreTest {
         AuditorAware<UUID> auditorAwareImpl() {
             return Optional::empty;
         }
-    }
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     @Autowired

@@ -82,8 +82,25 @@ public class ChatRoom extends BaseEntity {
         if (messageId == null || messageId.isBlank() || messageCreatedAt == null) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
+        // 재처리/비동기 유입으로 오래된 메시지가 뒤늦게 도착해도 최신 lastMessage를 덮지 않도록,
+        // createdAt(같으면 messageId) 기준으로 더 최신일 때만 갱신한다.
+        // 이미 로드된 필드끼리의 메모리 비교라 추가 DB 조회는 없다.
+        if (!isNewerThanCurrentLastMessage(messageId, messageCreatedAt)) {
+            return;
+        }
         this.lastMessageId = messageId;
         this.lastMessageAt = messageCreatedAt;
+    }
+
+    private boolean isNewerThanCurrentLastMessage(String messageId, Instant messageCreatedAt) {
+        if (this.lastMessageAt == null) {
+            return true;
+        }
+        int createdAtCompare = messageCreatedAt.compareTo(this.lastMessageAt);
+        if (createdAtCompare != 0) {
+            return createdAtCompare > 0;
+        }
+        return this.lastMessageId == null || messageId.compareTo(this.lastMessageId) > 0;
     }
 
     public void inactivate(UUID userId) {

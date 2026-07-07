@@ -33,8 +33,7 @@ class TestInternalRouter(unittest.TestCase):
     def test_get_active_ids_200(self):
         """활성 유저 ID 목록 — 200 + count 반환."""
         user_ids = [uuid.uuid4(), uuid.uuid4()]
-        self.mock_svc.profile_repo = AsyncMock()
-        self.mock_svc.profile_repo.find_active_user_ids = AsyncMock(return_value=user_ids)
+        self.mock_svc.get_active_user_ids = AsyncMock(return_value=user_ids)
 
         resp = self.client.get("/api/v1/internal/embedding/profiles/active/ids")
 
@@ -45,8 +44,7 @@ class TestInternalRouter(unittest.TestCase):
 
     def test_get_active_ids_empty(self):
         """활성 유저 없을 때 — count=0."""
-        self.mock_svc.profile_repo = AsyncMock()
-        self.mock_svc.profile_repo.find_active_user_ids = AsyncMock(return_value=[])
+        self.mock_svc.get_active_user_ids = AsyncMock(return_value=[])
 
         resp = self.client.get("/api/v1/internal/embedding/profiles/active/ids")
 
@@ -125,6 +123,31 @@ class TestInternalRouter(unittest.TestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertIsNone(resp.json()["data"]["today_vector"])
+
+    # ── POST /api/v1/internal/embedding/embed-text ─────────────────────────────
+
+    def test_embed_text_200(self):
+        """임의 텍스트 임베딩 — 200 + vector/dimension 반환."""
+        self.mock_svc.embed_text = AsyncMock(return_value=FAKE_VECTOR)
+
+        resp = self.client.post(
+            "/api/v1/internal/embedding/embed-text",
+            json={"text": "매칭 서비스 RAG 텍스트"},
+        )
+
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()["data"]
+        self.assertEqual(data["dimension"], 768)
+        self.assertEqual(len(data["vector"]), 768)
+
+    def test_embed_text_calls_service_with_input_text(self):
+        """embed_text가 요청 본문의 text를 그대로 전달받는다."""
+        self.mock_svc.embed_text = AsyncMock(return_value=FAKE_VECTOR)
+        text = "임베딩할 문장"
+
+        self.client.post("/api/v1/internal/embedding/embed-text", json={"text": text})
+
+        self.mock_svc.embed_text.assert_called_once_with(text)
 
 
 if __name__ == "__main__":

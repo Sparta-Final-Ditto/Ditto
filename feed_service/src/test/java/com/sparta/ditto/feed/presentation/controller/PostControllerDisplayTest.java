@@ -5,6 +5,8 @@ import com.sparta.ditto.common.exception.GlobalExceptionHandler;
 import com.sparta.ditto.feed.application.dto.command.UpdatePostDisplayCommand;
 import com.sparta.ditto.feed.application.dto.result.UpdatePostDisplayResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
+import com.sparta.ditto.feed.application.facade.PostQueryFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
@@ -14,7 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -35,13 +37,19 @@ class PostControllerDisplayTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private PostCreateFacade postCreateFacade;
 
-    @MockBean
+    @MockitoBean
+    private PostInteractionFacade postInteractionFacade;
+
+    @MockitoBean
+    private PostQueryFacade postQueryFacade;
+
+    @MockitoBean
     private PostInteractionService postInteractionService;
 
-    @MockBean
+    @MockitoBean
     private PostService postService;
 
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");

@@ -78,4 +78,8 @@ public interface ChatMessageMongoRepository extends MongoRepository<ChatMessageD
 
     // 방 목록: 여러 messageId(=_id)로 마지막 메시지 batch 조회
     List<ChatMessageDocument> findByMessageIdIn(Collection<String> messageIds);
+
+    // 중복키 흡수: 유니크 키(room_id+sender_id+client_message_id)로 기존 메시지 조회
+    Optional<ChatMessageDocument> findByRoomIdAndSenderIdAndClientMessageId(
+            UUID roomId, UUID senderId, UUID clientMessageId);
 }

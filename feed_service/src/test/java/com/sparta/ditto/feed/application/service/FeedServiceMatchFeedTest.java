@@ -8,6 +8,8 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.facade.FeedSourceFacade;
+import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
 import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import com.sparta.ditto.feed.domain.entity.Post;
@@ -16,10 +18,10 @@ import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.type.Visibility;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -28,6 +30,9 @@ import org.springframework.test.util.ReflectionTestUtils;
  * 매칭 피드(GET /feeds/match) 핵심 로직 단위 테스트.
  * MatchServicePort/PostRepository/LikeRepository를 Mock으로 격리하며,
  * Resilience4j(CB/Retry) 동작은 별도 통합 테스트(RED-2)에서 검증한다.
+ *
+ * <p>외부 호출(match)은 {@link FeedSourceFacade}가 트랜잭션 밖에서 수행하고 DB 조회는
+ * {@link FeedService}에 위임하므로, 두 실제 빈을 조립해 전체 흐름을 검증한다.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class FeedServiceMatchFeedTest {
@@ -44,8 +49,17 @@ class FeedServiceMatchFeedTest {
     @Mock
     private MatchServicePort matchServicePort;
 
-    @InjectMocks
-    private FeedService feedService;
+    @Mock
+    private FollowServicePort followServicePort;
+
+    private FeedSourceFacade feedSourceFacade;
+
+    @BeforeEach
+    void setUp() {
+        FeedService feedService = new FeedService(postRepository, likeRepository);
+        ReflectionTestUtils.setField(feedService, "cloudfrontDomain", CLOUDFRONT_DOMAIN);
+        feedSourceFacade = new FeedSourceFacade(matchServicePort, followServicePort, feedService);
+    }
 
     private Post publicPost(UUID id, UUID authorId, boolean showLocation) {
         Post post = new Post(authorId, "추천유저", "추천 사용자의 게시글", "서울 강남구",
@@ -58,7 +72,6 @@ class FeedServiceMatchFeedTest {
     @DisplayName("005-1: 추천 사용자가 있으면 그들의 PUBLIC 게시글이 FeedResult로 반환된다")
     void getMatchFeed_returnsRecommendedUsersPublicPosts() {
         // given
-        ReflectionTestUtils.setField(feedService, "cloudfrontDomain", CLOUDFRONT_DOMAIN);
         UUID userId = UUID.randomUUID();
         UUID authorA = UUID.randomUUID();
         UUID authorB = UUID.randomUUID();
@@ -81,7 +94,7 @@ class FeedServiceMatchFeedTest {
                 .willReturn(List.of(postIdA));
 
         // when
-        FeedResult result = feedService.getMatchFeed(query);
+        FeedResult result = feedSourceFacade.getMatchFeed(query, List.of());
 
         // then
         assertThat(result.feeds()).hasSize(2);
@@ -105,7 +118,7 @@ class FeedServiceMatchFeedTest {
                 .willReturn(new RecommendationResult(List.of()));
 
         // when
-        FeedResult result = feedService.getMatchFeed(query);
+        FeedResult result = feedSourceFacade.getMatchFeed(query, List.of());
 
         // then
         assertThat(result.feeds()).isEmpty();

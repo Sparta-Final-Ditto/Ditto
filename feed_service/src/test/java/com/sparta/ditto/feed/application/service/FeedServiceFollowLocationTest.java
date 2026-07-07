@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 
 import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.facade.FeedSourceFacade;
 import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
 import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
@@ -20,7 +21,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -39,8 +39,7 @@ class FeedServiceFollowLocationTest {
     @Mock
     private FollowServicePort followServicePort;
 
-    @InjectMocks
-    private FeedService feedService;
+    private FeedSourceFacade feedSourceFacade;
 
     private UUID userId;
     private UUID followingId;
@@ -49,7 +48,9 @@ class FeedServiceFollowLocationTest {
 
     @BeforeEach
     void setUp() {
+        FeedService feedService = new FeedService(postRepository, likeRepository);
         ReflectionTestUtils.setField(feedService, "cloudfrontDomain", CLOUDFRONT_DOMAIN);
+        feedSourceFacade = new FeedSourceFacade(matchServicePort, followServicePort, feedService);
         userId     = UUID.randomUUID();
         followingId = UUID.randomUUID();
         postId     = UUID.randomUUID();
@@ -76,7 +77,7 @@ class FeedServiceFollowLocationTest {
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postWithShowLocation(false)));
 
-        FeedResult result = feedService.getFollowFeed(query);
+        FeedResult result = feedSourceFacade.getFollowFeed(query, List.of());
 
         assertThat(result.feeds()).hasSize(1);
         assertThat(result.feeds().get(0).neighborhood()).isNull();
@@ -89,7 +90,7 @@ class FeedServiceFollowLocationTest {
                 any(), any(), any(), any(), eq(21)))
                 .willReturn(List.of(postWithShowLocation(true)));
 
-        FeedResult result = feedService.getFollowFeed(query);
+        FeedResult result = feedSourceFacade.getFollowFeed(query, List.of());
 
         assertThat(result.feeds()).hasSize(1);
         assertThat(result.feeds().get(0).neighborhood()).isEqualTo("서울 마포구");

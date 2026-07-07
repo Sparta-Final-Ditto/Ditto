@@ -71,6 +71,26 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
 
     @Query(value = """
             SELECT * FROM posts
+            WHERE visibility IN (:#{#scopes.![name()]})
+              AND deleted_at IS NULL
+              AND user_id NOT IN (:excludeUserIds)
+              AND (
+                CAST(:cursorAt AS timestamptz) IS NULL
+                OR created_at < CAST(:cursorAt AS timestamptz)
+                OR (created_at = CAST(:cursorAt AS timestamptz) AND id < CAST(:cursorId AS uuid))
+              )
+            ORDER BY created_at DESC, id DESC
+            """, nativeQuery = true)
+    List<Post> findFeedByVisibilityExcludingAuthorsWithCursor(
+            @Param("scopes") List<Visibility> scopes,
+            @Param("excludeUserIds") List<UUID> excludeUserIds,
+            @Param("cursorAt") Instant cursorAt,
+            @Param("cursorId") UUID cursorId,
+            Pageable pageable
+    );
+
+    @Query(value = """
+            SELECT * FROM posts
             WHERE user_id = CAST(:userId AS uuid)
               AND deleted_at IS NULL
               AND (
@@ -89,7 +109,7 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
 
     @Query(value = """
             SELECT * FROM posts
-            WHERE CAST(user_id AS text) IN (:#{#userIds.![toString()]})
+            WHERE user_id IN (:userIds)
               AND visibility IN (:#{#scopes.![name()]})
               AND deleted_at IS NULL
               AND (

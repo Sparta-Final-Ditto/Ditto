@@ -5,6 +5,7 @@ import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
 import com.sparta.ditto.notification.infrastructure.persistence.NotificationJpaRepository;
 import com.sparta.ditto.notification.infrastructure.persistence.NotificationRepositoryImpl;
+import com.sparta.ditto.notification.support.AbstractPostgresContainerTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,11 +16,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,11 +24,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import(NotificationRepositoryImpl.class)
-class NotificationRepositoryTest {
+class NotificationRepositoryTest extends AbstractPostgresContainerTest {
 
     @TestConfiguration
     @EnableJpaAuditing
@@ -41,16 +36,6 @@ class NotificationRepositoryTest {
         org.springframework.data.domain.AuditorAware<UUID> auditorAwareImpl() {
             return Optional::empty;
         }
-    }
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     @Autowired

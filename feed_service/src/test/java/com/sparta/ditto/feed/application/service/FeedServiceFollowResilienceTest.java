@@ -10,9 +10,11 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.facade.FeedSourceFacade;
 import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
 import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
+import com.sparta.ditto.feed.support.PostgresTestContainerSupport;
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
@@ -28,44 +30,26 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * 팔로우 피드 Resilience4j CB/Retry AOP 동작 통합 테스트.
- * FollowServicePort를 @MockBean으로 격리하고, Spring 프록시를 통해 CB·Retry AOP가
+ * FollowServicePort를 @MockitoBean으로 격리하고, Spring 프록시를 통해 CB·Retry AOP가
  * 실제로 동작하는지 CircuitBreakerRegistry 상태와 호출 횟수로 검증한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-@Testcontainers
-class FeedServiceFollowResilienceTest {
+class FeedServiceFollowResilienceTest extends PostgresTestContainerSupport {
 
-    @Container
-    @SuppressWarnings("resource")
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:15-alpine");
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
-
-    @MockBean
+    @MockitoBean
     private MatchServicePort matchServicePort;
 
-    @MockBean
+    @MockitoBean
     private FollowServicePort followServicePort;
 
     @Autowired
-    private FeedService feedService;
+    private FeedSourceFacade feedSourceFacade;
 
     @Autowired
     private CircuitBreakerRegistry circuitBreakerRegistry;
@@ -87,7 +71,7 @@ class FeedServiceFollowResilienceTest {
         given(followServicePort.getFollowingIds(any()))
                 .willThrow(new RuntimeException("Connection timed out"));
 
-        FeedResult result = feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20));
+        FeedResult result = feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -113,7 +97,7 @@ class FeedServiceFollowResilienceTest {
         given(followServicePort.getFollowingIds(any()))
                 .willThrow(internalServerError);
 
-        FeedResult result = feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20));
+        FeedResult result = feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -129,7 +113,7 @@ class FeedServiceFollowResilienceTest {
                 .willThrow(new RuntimeException("transient error"))
                 .willReturn(new FollowingResult(List.of()));
 
-        feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20));
+        feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
 
         // maxAttempts=2 → 최초 시도(1회) + 재시도(1회) = 총 2회
         verify(followServicePort, times(2)).getFollowingIds(any());
@@ -147,7 +131,7 @@ class FeedServiceFollowResilienceTest {
         // minimum-number-of-calls=3, failure-rate-threshold=50%
         // 3회 모두 실패(Retry 포함 각 2회 시도 후 CB 1회 실패 카운트) → 100% > 50% → OPEN
         for (int i = 0; i < 3; i++) {
-            feedService.getFollowFeed(new GetFollowFeedQuery(userId, null, 20));
+            feedSourceFacade.getFollowFeed(new GetFollowFeedQuery(userId, null, 20), List.of());
         }
 
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.OPEN);

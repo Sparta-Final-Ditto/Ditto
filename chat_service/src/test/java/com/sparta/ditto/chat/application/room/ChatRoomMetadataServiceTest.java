@@ -43,7 +43,7 @@ class ChatRoomMetadataServiceTest {
     void updateLastMessage_success() {
         // given
         ChatRoom chatRoom = mock(ChatRoom.class);
-        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoomPort.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(chatRoom));
         given(chatRoom.getStatus()).willReturn(RoomStatus.ACTIVE);
 
         // when
@@ -61,7 +61,7 @@ class ChatRoomMetadataServiceTest {
     @DisplayName("채팅방이 없으면 마지막 메시지를 갱신할 수 없다")
     void updateLastMessage_fail_room_not_found() {
         // given
-        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.empty());
+        given(chatRoomPort.findByIdForUpdate(ROOM_ID)).willReturn(Optional.empty());
 
         // when & then
         assertThatThrownBy(() -> chatRoomMetadataService.updateLastMessage(
@@ -79,7 +79,7 @@ class ChatRoomMetadataServiceTest {
     void updateLastMessage_fail_room_inactive() {
         // given
         ChatRoom chatRoom = mock(ChatRoom.class);
-        given(chatRoomPort.findById(ROOM_ID)).willReturn(Optional.of(chatRoom));
+        given(chatRoomPort.findByIdForUpdate(ROOM_ID)).willReturn(Optional.of(chatRoom));
         given(chatRoom.getStatus()).willReturn(RoomStatus.INACTIVE);
 
         // when & then

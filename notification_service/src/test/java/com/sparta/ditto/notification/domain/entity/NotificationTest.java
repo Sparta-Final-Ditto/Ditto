@@ -4,10 +4,13 @@ import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class NotificationTest {
 
@@ -100,6 +103,49 @@ class NotificationTest {
 
         // Then
         assertThat(notification.isRead()).isTrue();
+    }
+
+    // ── type/target_type 불변식 ────────────────────────────────────────────
+
+    @ParameterizedTest
+    @EnumSource(NotificationType.class)
+    @DisplayName("NotificationType의 모든 값(LIKE, COMMENT, CHAT_MESSAGE)으로 알림을 생성할 수 있다")
+    void create_withAllNotificationTypes_succeeds(NotificationType type) {
+        // Given / When
+        TargetType targetType = TargetType.valueOf(type.name());
+        Notification notification = Notification.create(
+                RECEIVER_ID, ACTOR_ID, type, targetType, TARGET_ID, MESSAGE, META_DATA);
+
+        // Then
+        assertThat(notification.getType()).isEqualTo(type);
+        assertThat(notification.getTargetType()).isEqualTo(targetType);
+    }
+
+    // ── target_id 타입 불변식 ─────────────────────────────────────────────
+
+    @Test
+    @DisplayName("target_id는 String 타입으로 저장된다 (likeId/commentId/messageId 등 여러 서비스 리소스 ID 수용)")
+    void create_targetId_isStoredAsString() {
+        // Given
+        String likeId = UUID.randomUUID().toString();
+
+        // When
+        Notification notification = Notification.create(
+                RECEIVER_ID, ACTOR_ID, NotificationType.LIKE, TargetType.LIKE, likeId, MESSAGE, META_DATA);
+
+        // Then
+        assertThat(notification.getTargetId()).isEqualTo(likeId);
+        assertThat(notification.getTargetId()).isInstanceOf(String.class);
+    }
+
+    // ── actor_id NOT NULL 불변식 ──────────────────────────────────────────
+
+    @Test
+    @DisplayName("actorId가 null이면 IllegalArgumentException을 던진다")
+    void create_withNullActorId_throwsIllegalArgumentException() {
+        assertThatThrownBy(() -> Notification.create(
+                RECEIVER_ID, null, NotificationType.LIKE, TargetType.LIKE, TARGET_ID, MESSAGE, META_DATA
+        )).isInstanceOf(IllegalArgumentException.class);
     }
 
 }

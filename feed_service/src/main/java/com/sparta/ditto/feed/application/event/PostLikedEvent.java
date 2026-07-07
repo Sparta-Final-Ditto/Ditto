@@ -7,6 +7,7 @@ public record PostLikedEvent(
         UUID likeId,
         UUID postId,
         UUID likerId,
+        String actorNickname,
         UUID ownerId,
         Instant likedAt
 ) {}

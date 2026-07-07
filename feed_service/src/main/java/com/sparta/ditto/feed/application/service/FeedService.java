@@ -1,20 +1,12 @@
 package com.sparta.ditto.feed.application.service;
 
-import com.sparta.ditto.feed.application.dto.query.GetFollowFeedQuery;
-import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedItemResult;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
-import com.sparta.ditto.feed.application.port.out.FollowServicePort;
-import com.sparta.ditto.feed.application.port.out.MatchServicePort;
-import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
-import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.LikeRepository;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.type.Visibility;
-import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.retry.annotation.Retry;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -25,75 +17,54 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 피드 조회의 <b>DB 트랜잭션 계층</b>.
+ *
+ * <p>외부 서비스(match/user) 호출은 이 서비스에 존재하지 않는다. 매칭/팔로우 피드의 외부 호출과
+ * Resilience4j 처리는 {@link com.sparta.ditto.feed.application.facade.FeedSourceFacade}가
+ * 트랜잭션 밖에서 수행하고, 확정된 사용자 ID 목록만 이 서비스의 {@code @Transactional} 메서드로
+ * 전달한다. 따라서 외부 호출 지연이 DB 커넥션 점유로 이어지지 않는다.</p>
+ */
 @Service
 @RequiredArgsConstructor
 public class FeedService {
 
     private final PostRepository postRepository;
     private final LikeRepository likeRepository;
-    private final MatchServicePort matchServicePort;
-    private final FollowServicePort followServicePort;
 
     @Value("${app.cloudfront.domain}")
     private String cloudfrontDomain;
 
     @Transactional(readOnly = true)
-    public FeedResult getRandomFeed(GetRandomFeedQuery query) {
-        return randomFeedCore(query);
+    public FeedResult getRandomFeed(GetRandomFeedQuery query, List<UUID> blockedIds) {
+        return randomFeedCore(query, blockedIds);
     }
 
-    @CircuitBreaker(name = "matchServiceClient", fallbackMethod = "fallbackGetMatchFeed")
-    @Retry(name = "matchServiceClient")
+    /**
+     * 확정된 사용자 ID 목록의 게시글을 조회한다(매칭/팔로우 피드 공용 DB 조회).
+     *
+     * <p>외부 호출은 이 메서드에 진입하기 전(트랜잭션 밖)에 이미 완료되어 있어야 한다.
+     * 소스 사용자 ID가 비면 IN () 빈 쿼리를 피하기 위해 DB 조회 없이 빈 결과를 반환한다.</p>
+     */
     @Transactional(readOnly = true)
-    public FeedResult getMatchFeed(GetMatchFeedQuery query) {
-        RecommendationResult recommendations = matchServicePort
-                .getRecommendations(query.userId(), 50);
-        List<UUID> recommendedUserIds = recommendations.recommendedUserIds();
-
-        if (recommendedUserIds.isEmpty()) {
+    public FeedResult getFeedByUserIds(UUID userId, List<UUID> userIds,
+            List<Visibility> visibilities, UUID cursorPostId, int size) {
+        if (userIds.isEmpty()) {
             return new FeedResult(List.of(), null, false);
         }
 
-        CursorContext cursor = resolveCursor(query.cursor());
+        CursorContext cursor = resolveCursor(cursorPostId);
         List<Post> posts = postRepository.findFeedByUserIdsAndVisibilityWithCursor(
-                recommendedUserIds, List.of(Visibility.PUBLIC),
-                cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
+                userIds, visibilities, cursor.cursorAt(), cursor.cursorId(), size + 1);
 
-        return buildFeedResult(posts, query.userId(), query.size());
+        return buildFeedResult(posts, userId, size);
     }
 
-    public FeedResult fallbackGetMatchFeed(GetMatchFeedQuery query, Throwable t) {
-        return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
-    }
-
-    @CircuitBreaker(name = "userServiceClient", fallbackMethod = "fallbackGetFollowFeed")
-    @Retry(name = "userServiceClient")
-    @Transactional(readOnly = true)
-    public FeedResult getFollowFeed(GetFollowFeedQuery query) {
-        FollowingResult following = followServicePort.getFollowingIds(query.userId());
-        List<UUID> followingUserIds = following.followingUserIds();
-
-        if (followingUserIds.isEmpty()) {
-            return new FeedResult(List.of(), null, false);
-        }
-
-        CursorContext cursor = resolveCursor(query.cursor());
-        List<Post> posts = postRepository.findFeedByUserIdsAndVisibilityWithCursor(
-                followingUserIds,
-                List.of(Visibility.PUBLIC, Visibility.FOLLOWERS_ONLY),
-                cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
-
-        return buildFeedResult(posts, query.userId(), query.size());
-    }
-
-    public FeedResult fallbackGetFollowFeed(GetFollowFeedQuery query, Throwable t) {
-        return randomFeedCore(new GetRandomFeedQuery(query.userId(), query.cursor(), query.size()));
-    }
-
-    private FeedResult randomFeedCore(GetRandomFeedQuery query) {
+    private FeedResult randomFeedCore(GetRandomFeedQuery query, List<UUID> blockedIds) {
         CursorContext cursor = resolveCursor(query.cursorPostId());
-        List<Post> posts = postRepository.findFeedByVisibilityWithCursor(
-                List.of(Visibility.PUBLIC),
+        // 빈/null 분기는 RepositoryImpl 책임 — Service는 항상 제외 쿼리로 위임한다.
+        List<Post> posts = postRepository.findFeedByVisibilityExcludingAuthorsWithCursor(
+                List.of(Visibility.PUBLIC), blockedIds,
                 cursor.cursorAt(), cursor.cursorId(), query.size() + 1);
         return buildFeedResult(posts, query.userId(), query.size());
     }

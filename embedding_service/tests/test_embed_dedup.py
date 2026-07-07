@@ -7,7 +7,7 @@ import unittest
 
 from app.embedding.application.service.embedding_service import EmbeddingService
 from app.config.settings import settings
-from tests.helpers import FakeModel, make_profile, new_post_repo, new_profile_repo
+from tests.helpers import FakeModel, FakeBatchRunner, make_profile, new_post_repo, new_profile_repo
 
 
 class TestEmbedAndStoreDedup(unittest.IsolatedAsyncioTestCase):
@@ -15,7 +15,7 @@ class TestEmbedAndStoreDedup(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.post_repo = new_post_repo()
         self.profile_repo = new_profile_repo()
-        self.svc = EmbeddingService(self.post_repo, self.profile_repo, FakeModel())
+        self.svc = EmbeddingService(self.post_repo, self.profile_repo, FakeModel(), FakeBatchRunner())
 
     async def test_case1_new_post_increments_count(self):
         """Case 1: 신규 post_id → record_count 증가, save() 호출."""

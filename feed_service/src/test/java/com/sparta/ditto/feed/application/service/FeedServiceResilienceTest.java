@@ -11,9 +11,11 @@ import static org.mockito.Mockito.verify;
 
 import com.sparta.ditto.feed.application.dto.query.GetMatchFeedQuery;
 import com.sparta.ditto.feed.application.dto.result.FeedResult;
+import com.sparta.ditto.feed.application.facade.FeedSourceFacade;
 import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
 import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
+import com.sparta.ditto.feed.support.PostgresTestContainerSupport;
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
@@ -29,44 +31,26 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Resilience4j CB/Retry AOP 동작 통합 테스트.
- * MatchServicePort를 @MockBean으로 격리하고, Spring 프록시를 통해 CB·Retry AOP가
+ * MatchServicePort를 @MockitoBean으로 격리하고, Spring 프록시를 통해 CB·Retry AOP가
  * 실제로 동작하는지 CircuitBreakerRegistry 상태와 호출 횟수로 검증한다.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-@Testcontainers
-class FeedServiceResilienceTest {
+class FeedServiceResilienceTest extends PostgresTestContainerSupport {
 
-    @Container
-    @SuppressWarnings("resource")
-    static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:15-alpine");
-
-    @DynamicPropertySource
-    static void datasourceProps(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
-        registry.add("spring.datasource.username", POSTGRES::getUsername);
-        registry.add("spring.datasource.password", POSTGRES::getPassword);
-    }
-
-    @MockBean
+    @MockitoBean
     private MatchServicePort matchServicePort;
 
-    @MockBean
+    @MockitoBean
     private FollowServicePort followServicePort;
 
     @Autowired
-    private FeedService feedService;
+    private FeedSourceFacade feedSourceFacade;
 
     @Autowired
     private CircuitBreakerRegistry circuitBreakerRegistry;
@@ -88,7 +72,7 @@ class FeedServiceResilienceTest {
         given(matchServicePort.getRecommendations(any(), anyInt()))
                 .willThrow(new RuntimeException("Connection timed out"));
 
-        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        FeedResult result = feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -101,7 +85,7 @@ class FeedServiceResilienceTest {
     void tc005_4_fallback_on_5xx() {
         UUID userId = UUID.randomUUID();
         Request request = Request.create(
-                Request.HttpMethod.GET, "/api/v1/internal/recommendations",
+                Request.HttpMethod.GET, "/api/v1/matching/recommendations",
                 Collections.emptyMap(), null, StandardCharsets.UTF_8, null);
         FeignException internalServerError = FeignException.errorStatus(
                 "getRecommendations",
@@ -114,7 +98,7 @@ class FeedServiceResilienceTest {
         given(matchServicePort.getRecommendations(any(), anyInt()))
                 .willThrow(internalServerError);
 
-        FeedResult result = feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        FeedResult result = feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         assertThat(result).isNotNull();
         assertThat(result.feeds()).isNotNull();
@@ -130,7 +114,7 @@ class FeedServiceResilienceTest {
                 .willThrow(new RuntimeException("transient error"))
                 .willReturn(new RecommendationResult(List.of()));
 
-        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         // maxAttempts=2 → 최초 시도(1회) + 재시도(1회) = 총 2회
         verify(matchServicePort, times(2)).getRecommendations(any(), anyInt());
@@ -148,7 +132,7 @@ class FeedServiceResilienceTest {
         // minimum-number-of-calls=3, failure-rate-threshold=50%
         // 3회 모두 실패(Retry 포함 각 2회 시도 후 CB 1회 실패 카운트) → 100% > 50% → OPEN
         for (int i = 0; i < 3; i++) {
-            feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+            feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
         }
 
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.OPEN);
@@ -165,7 +149,7 @@ class FeedServiceResilienceTest {
 
         // 3회 실패 → OPEN
         for (int i = 0; i < 3; i++) {
-            feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+            feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
         }
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.OPEN);
 
@@ -179,8 +163,8 @@ class FeedServiceResilienceTest {
                 .until(() -> cb.getState() == CircuitBreaker.State.HALF_OPEN);
 
         // permitted-number-of-calls-in-half-open-state=2 → 2회 성공 후 CLOSED
-        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
-        feedService.getMatchFeed(new GetMatchFeedQuery(userId, null, 20));
+        feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
+        feedSourceFacade.getMatchFeed(new GetMatchFeedQuery(userId, null, 20), List.of());
 
         assertThat(cb.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
