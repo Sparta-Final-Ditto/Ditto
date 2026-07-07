@@ -90,7 +90,7 @@ variable "ecr_service_names" {
     "chat-service",
     "notification-service",
     "embedding-service",
-    # "assistant_service"
+    "assistant-service",
   ]
 }
 
