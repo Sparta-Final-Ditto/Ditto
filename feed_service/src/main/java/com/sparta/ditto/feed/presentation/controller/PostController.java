@@ -16,6 +16,8 @@ import com.sparta.ditto.feed.application.dto.result.PostResult;
 import com.sparta.ditto.feed.application.dto.result.UpdatePostDisplayResult;
 import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
+import com.sparta.ditto.feed.application.facade.PostQueryFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.presentation.dto.request.CreateCommentRequest;
@@ -56,6 +58,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostController {
 
     private final PostCreateFacade postCreateFacade;
+    private final PostInteractionFacade postInteractionFacade;
+    private final PostQueryFacade postQueryFacade;
     private final PostInteractionService postInteractionService;
     private final PostService postService;
 
@@ -83,7 +87,7 @@ public class PostController {
             @RequestHeader("X-User-Role") String userRole,
             @PathVariable UUID postId
     ) {
-        PostDetailResult result = postService.getPostDetail(postId, userId);
+        PostDetailResult result = postQueryFacade.getPostDetail(postId, userId);
         return ResponseEntity.ok(ApiResponse.success(PostDetailResponse.from(result)));
     }
 
@@ -127,7 +131,7 @@ public class PostController {
             @RequestHeader("X-User-Nickname") String nickname,
             @PathVariable UUID postId
     ) {
-        LikeResult result = postInteractionService.addLike(userId, postId, nickname);
+        LikeResult result = postInteractionFacade.addLike(userId, postId, nickname);
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
@@ -154,7 +158,7 @@ public class PostController {
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        CommentListResult result = postInteractionService.getComments(
+        CommentListResult result = postQueryFacade.getComments(
                 new GetCommentsQuery(postId, userId, userRole, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(CommentListResponse.from(result)));
     }
@@ -164,12 +168,13 @@ public class PostController {
     // -------------------------------------------------------
     @GetMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeListResponse>> getLikes(
+            @RequestHeader("X-User-Id") UUID userId,
             @PathVariable UUID postId,
             @RequestParam(required = false) UUID cursor,
             @RequestParam(defaultValue = "20") @Min(1) @Max(20) int size
     ) {
-        LikeListResult result = postInteractionService.getLikes(
-                new GetLikesQuery(postId, cursor, size));
+        LikeListResult result = postQueryFacade.getLikes(
+                new GetLikesQuery(postId, userId, cursor, size));
         return ResponseEntity.ok(ApiResponse.success(LikeListResponse.from(result)));
     }
 
@@ -238,7 +243,7 @@ public class PostController {
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
-        CommentResult result = postInteractionService.createComment(
+        CommentResult result = postInteractionFacade.createComment(
                 userId, nickname, postId, new CreateCommentCommand(request.content()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(CommentResponse.from(result)));

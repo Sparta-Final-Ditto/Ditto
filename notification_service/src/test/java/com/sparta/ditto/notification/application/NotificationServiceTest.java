@@ -2,10 +2,12 @@ package com.sparta.ditto.notification.application;
 
 import com.sparta.ditto.notification.application.dto.NotificationItemResult;
 import com.sparta.ditto.notification.application.dto.NotificationListResult;
+import com.sparta.ditto.notification.application.port.MetaDataPort;
 import com.sparta.ditto.notification.domain.entity.Notification;
 import com.sparta.ditto.notification.domain.repository.NotificationRepository;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,6 +33,7 @@ import org.mockito.Captor;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
@@ -45,11 +48,32 @@ class NotificationServiceTest {
     @Mock
     private NotificationRepository notificationRepository;
 
+    @Mock
+    private MetaDataPort metaDataPort;
+
     @Captor
     private ArgumentCaptor<Collection<UUID>> idsCaptor;
 
     @InjectMocks
     private NotificationService notificationService;
+
+    @BeforeEach
+    void setUpMetaDataStubs() {
+        lenient().when(metaDataPort.extractRoomId(anyString())).thenAnswer(inv -> {
+            String meta = inv.getArgument(0);
+            if (meta == null || meta.isBlank()) return null;
+            int keyIdx = meta.indexOf("\"roomId\"");
+            if (keyIdx < 0) return null;
+            int colonIdx = meta.indexOf(':', keyIdx);
+            if (colonIdx < 0) return null;
+            int valStart = colonIdx + 1;
+            while (valStart < meta.length() && Character.isWhitespace(meta.charAt(valStart))) valStart++;
+            if (valStart >= meta.length() || meta.charAt(valStart) != '"') return null;
+            valStart++;
+            int valEnd = meta.indexOf('"', valStart);
+            return valEnd >= valStart ? meta.substring(valStart, valEnd) : null;
+        });
+    }
 
     private static final UUID USER_ID = UUID.randomUUID();
 

@@ -1,10 +1,19 @@
 spring:
+  datasource:
+    hikari:
+      connection-timeout: 5000    # 커넥션 획득 실패를 30초가 아닌 5초에 감지
+      maximum-pool-size: 4        # 테스트 컨텍스트 다수 생성 시 커넥션 폭증 방지
   jpa:
     hibernate:
       ddl-auto: create-drop
     show-sql: true
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: localhost:9094
+    producer:
+      properties:
+        max.block.ms: 1000          # 브로커 부재 시 메타데이터 조회 블로킹 상한
+        delivery.timeout.ms: 2000
+        request.timeout.ms: 1000
   data:
     redis:
       host: localhost
@@ -31,6 +40,8 @@ cloud:
       secret-key: test-secret-key
 
 app:
+  scheduling:
+    enabled: false   # 테스트에서는 @Scheduled 비활성화 (SchedulingConfig 참고)
   cloudfront:
     domain: https://test.cloudfront.net
   kakao:

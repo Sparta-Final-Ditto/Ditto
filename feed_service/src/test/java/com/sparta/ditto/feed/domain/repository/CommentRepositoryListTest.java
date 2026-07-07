@@ -5,6 +5,7 @@ import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.type.Visibility;
 import com.sparta.ditto.feed.infrastructure.persistence.CommentRepositoryImpl;
 import com.sparta.ditto.feed.infrastructure.persistence.PostRepositoryImpl;
+import com.sparta.ditto.feed.support.PostgresTestContainerSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,11 +17,6 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.AuditorAware;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,11 +25,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @DataJpaTest
-@Testcontainers
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({CommentRepositoryImpl.class, PostRepositoryImpl.class})
-class CommentRepositoryListTest {
+class CommentRepositoryListTest extends PostgresTestContainerSupport {
 
     @TestConfiguration
     @EnableJpaAuditing
@@ -42,16 +37,6 @@ class CommentRepositoryListTest {
         AuditorAware<UUID> auditorAwareImpl() {
             return Optional::empty;
         }
-    }
-
-    @Container
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:15");
-
-    @DynamicPropertySource
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgres::getJdbcUrl);
-        registry.add("spring.datasource.username", postgres::getUsername);
-        registry.add("spring.datasource.password", postgres::getPassword);
     }
 
     @Autowired

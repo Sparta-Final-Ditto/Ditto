@@ -7,7 +7,7 @@ import com.sparta.ditto.feed.application.dto.query.GetRandomFeedQuery;
 import com.sparta.ditto.feed.application.dto.command.UploadUrlCommand;
 import com.sparta.ditto.feed.application.dto.result.UploadUrlResult;
 import com.sparta.ditto.feed.application.dto.result.UploadUrlResult.FileResult;
-import com.sparta.ditto.feed.application.service.FeedService;
+import com.sparta.ditto.feed.application.facade.FeedFacade;
 import com.sparta.ditto.feed.application.service.UploadUrlService;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest;
 import com.sparta.ditto.feed.presentation.dto.request.UploadUrlRequest.FileRequest;
@@ -15,7 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -42,11 +42,11 @@ class FeedControllerTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    @MockBean
+    @MockitoBean
     private UploadUrlService uploadUrlService;
 
-    @MockBean
-    private FeedService feedService;
+    @MockitoBean
+    private FeedFacade feedFacade;
 
     private final UUID userId = UUID.fromString("550e8400-e29b-41d4-a716-446655440000");
 
@@ -73,16 +73,16 @@ class FeedControllerTest {
     }
 
     @Test
-    @DisplayName("003-9: size 파라미터 누락 → 기본값 20으로 FeedService 호출")
+    @DisplayName("003-9: size 파라미터 누락 → 기본값 20으로 FeedFacade 호출")
     void tc003_9_size누락_기본값20() throws Exception {
-        when(feedService.getRandomFeed(any(GetRandomFeedQuery.class)))
+        when(feedFacade.getRandomFeed(any(GetRandomFeedQuery.class)))
                 .thenReturn(new FeedResult(List.of(), null, false));
 
         mockMvc.perform(get("/api/v1/feeds/random")
                         .header("X-User-Id", userId.toString()))
                 .andExpect(status().isOk());
 
-        verify(feedService).getRandomFeed(
+        verify(feedFacade).getRandomFeed(
                 argThat(q -> q.cursorPostId() == null && q.size() == 20)
         );
     }

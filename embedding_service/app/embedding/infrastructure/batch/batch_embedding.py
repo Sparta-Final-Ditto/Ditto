@@ -7,8 +7,13 @@ from aiokafka import AIOKafkaConsumer
 
 from app.config.settings import settings
 from app.common.db.database import AsyncSessionLocal
+from app.embedding.application.port.batch_runner_port import BatchRunnerPort
 from app.embedding.domain.algorithm.ema_calculator import update_profile
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
+from app.embedding.infrastructure.kafka.profile_embedding_producer import (
+    ProfileEmbeddingProducer,
+    reprocess_profile_embedding_dlq,
+)
 from app.embedding.infrastructure.model.model_loader import ModelLoader
 from app.embedding.infrastructure.repository.pg_post_embedding_repository import PgPostEmbeddingRepository
 from app.embedding.infrastructure.repository.pg_user_profile_repository import PgUserProfileRepository
@@ -71,6 +76,12 @@ async def run_batch() -> None:
     if dlq_count:
         logger.info(f"[Batch] DLQ 재처리: {dlq_count}건")
 
+    profile_dlq_count = await reprocess_profile_embedding_dlq()
+    if profile_dlq_count:
+        logger.info(f"[Batch] profile-embedding DLQ 재처리: {profile_dlq_count}건")
+
+    updated_profiles: list[tuple[UUID, list[float], int, bool]] = []
+
     async with AsyncSessionLocal() as db:
         post_repo = PgPostEmbeddingRepository(db)
         profile_repo = PgUserProfileRepository(db)
@@ -97,7 +108,8 @@ async def run_batch() -> None:
                     ema = list(profile.vector)
                     for _, vec in new_records:
                         ema = update_profile(ema, vec, settings.EMA_ALPHA)
-                    new_count = (profile.record_count or 0) + len(new_records)
+                    # record_count는 DB count로 두어 중복 집계 방지
+                    new_count = await post_repo.count_done_by_user_id(user_id)
                     new_last_id = new_records[-1][0]
                 else:
                     # 전체 재계산: 첫 배치 실행 또는 프로필 벡터 없음
@@ -108,22 +120,38 @@ async def run_batch() -> None:
                     ema = list(all_records[0][1])
                     for _, vec in all_records[1:]:
                         ema = update_profile(ema, vec, settings.EMA_ALPHA)
-                    new_count = len(all_records)
+                    new_count = await post_repo.count_done_by_user_id(user_id)
                     new_last_id = all_records[-1][0]
 
+                active_flag = new_count >= settings.MIN_RECORDS_FOR_MATCHING
                 await profile_repo.upsert(
                     user_id=user_id,
                     vector=ema,
                     record_count=new_count,
-                    active=new_count >= settings.MIN_RECORDS_FOR_MATCHING,
+                    active=active_flag,
                     last_processed_record_id=new_last_id,
                 )
+                updated_profiles.append((user_id, ema, new_count, active_flag))
                 success += 1
             except Exception as e:
                 logger.error(f"[Batch] 유저 {user_id} EMA 재계산 실패: {e}")
                 fail += 1
 
     logger.info(f"[Batch] 완료 — 성공: {success}, 스킵: {skip}, 실패: {fail}")
+
+    if len(updated_profiles) <= settings.PROFILE_SYNC_BULK_THRESHOLD:
+        for user_id, vector, record_count, active in updated_profiles:
+            await ProfileEmbeddingProducer.publish_profile_updated(user_id, vector, record_count, active)
+        if updated_profiles:
+            logger.info(f"[Batch] PROFILE_EMBEDDING_UPDATED {len(updated_profiles)}건 발행 완료")
+    else:
+        logger.info(f"[Batch] 변경 인원 {len(updated_profiles)}명 > 임계값({settings.PROFILE_SYNC_BULK_THRESHOLD}) — BULK_COMPLETED로 전환")
+        await ProfileEmbeddingProducer.publish_bulk_completed(
+            batch_type="DAILY",
+            total_updated=success,
+            total_skipped=skip,
+            total_failed=fail,
+        )
 
 
 async def run_monthly_batch() -> None:
@@ -176,3 +204,20 @@ async def run_monthly_batch() -> None:
                 fail += 1
 
     logger.info(f"[MonthlyBatch] 완료 — 성공: {success}, 스킵: {skip}, 실패: {fail}")
+
+    await ProfileEmbeddingProducer.publish_bulk_completed(
+        batch_type="MONTHLY",
+        total_updated=success,
+        total_skipped=skip,
+        total_failed=fail,
+    )
+
+
+class BatchEmbeddingRunner(BatchRunnerPort):
+    """Application의 BatchRunnerPort 구현체 — 기존 run_batch/run_monthly_batch를 위임."""
+
+    async def run_daily(self) -> None:
+        await run_batch()
+
+    async def run_monthly(self) -> None:
+        await run_monthly_batch()

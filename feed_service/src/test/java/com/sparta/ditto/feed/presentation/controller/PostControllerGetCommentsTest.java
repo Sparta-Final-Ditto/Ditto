@@ -5,6 +5,8 @@ import com.sparta.ditto.feed.application.dto.result.CommentListResult;
 import com.sparta.ditto.feed.application.dto.result.CommentResult;
 import com.sparta.ditto.feed.application.dto.query.GetCommentsQuery;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
+import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
+import com.sparta.ditto.feed.application.facade.PostQueryFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
@@ -12,7 +14,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -33,13 +35,19 @@ class PostControllerGetCommentsTest {
     @Autowired
     private MockMvc mockMvc;
 
-    @MockBean
+    @MockitoBean
     private PostCreateFacade postCreateFacade;
 
-    @MockBean
+    @MockitoBean
+    private PostInteractionFacade postInteractionFacade;
+
+    @MockitoBean
+    private PostQueryFacade postQueryFacade;
+
+    @MockitoBean
     private PostInteractionService postInteractionService;
 
-    @MockBean
+    @MockitoBean
     private PostService postService;
 
     private final UUID postId = UUID.fromString("660e8400-e29b-41d4-a716-446655440001");
@@ -49,7 +57,7 @@ class PostControllerGetCommentsTest {
     @DisplayName("게시글 없음 → 404, POST_NOT_FOUND")
     void getComments_게시글없음_404_POST_NOT_FOUND() throws Exception {
         // given
-        when(postInteractionService.getComments(any(GetCommentsQuery.class)))
+        when(postQueryFacade.getComments(any(GetCommentsQuery.class)))
                 .thenThrow(new PostNotFoundException());
 
         // when & then
@@ -82,7 +90,7 @@ class PostControllerGetCommentsTest {
         CommentListResult listResult = new CommentListResult(
                 List.of(commentResult), nextCursor, true);
 
-        when(postInteractionService.getComments(any(GetCommentsQuery.class)))
+        when(postQueryFacade.getComments(any(GetCommentsQuery.class)))
                 .thenReturn(listResult);
 
         // when & then

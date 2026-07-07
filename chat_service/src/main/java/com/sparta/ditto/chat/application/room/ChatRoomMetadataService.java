@@ -34,15 +34,17 @@ public class ChatRoomMetadataService {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT);
         }
 
-        ChatRoom chatRoom = chatRoomPort.findById(roomId)
+        // 같은 방 lastMessage를 동시에 갱신하는 트랜잭션 간 lost update를 막기 위해
+        // 방 row에 쓰기 락을 걸어 갱신을 직렬화한다(도메인의 역전 방어 비교와 함께 동작).
+        ChatRoom chatRoom = chatRoomPort.findByIdForUpdate(roomId)
                 .orElseThrow(ChatRoomNotFoundException::new);
 
         if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
             throw new ChatRoomInactiveException();
         }
 
-        // TODO: 재처리/비동기 흐름이 들어오면 오래된 메시지가 최신 메시지를 덮지 않도록
-        // createdAt + messageId 복합 기준으로 역전 방어를 추가한다.
+        // 오래된 메시지가 최신 lastMessage를 덮지 않게 하는 역전 방어는
+        // ChatRoom.updateLastMessage 도메인 메서드에 있다(createdAt + messageId 기준).
         chatRoom.updateLastMessage(messageId, messageCreatedAt);
         log.debug("Chat room last message updated. roomId={}, messageId={}, messageCreatedAt={}",
                 roomId, messageId, messageCreatedAt);

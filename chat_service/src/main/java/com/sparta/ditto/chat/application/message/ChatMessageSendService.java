@@ -19,6 +19,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -101,8 +102,12 @@ public class ChatMessageSendService {
                     command.messageType(),
                     command.content()
             );
+        } catch (DuplicateKeyException ex) {
+            // Redis dedup을 놓쳤지만 Mongo unique index(최후 방어선)가 이미 저장된 메시지를 막은 것.
+            // 500으로 던지지 않고 기존 메시지를 조회해 멱등 ACK로 흡수한다.
+            return ackExistingByClientMessage(command);
         } catch (RuntimeException ex) {
-            // 저장 실패 → PROCESSING 잠금 해제해 즉시 재시도 가능하게 한다.
+            // 그 외 저장 실패 → PROCESSING 잠금 해제해 즉시 재시도 가능하게 한다.
             chatMessageDedupStore.release(
                     command.roomId(), command.senderId(), command.clientMessageId());
             throw ex;
@@ -177,6 +182,34 @@ public class ChatMessageSendService {
                 command.roomId(), command.senderId(), command.clientMessageId(),
                 original.messageId());
         return original;
+    }
+
+    // Mongo unique index에 걸린(이미 저장된) 메시지를 유니크 키로 조회해 멱등 ACK로 흡수한다.
+    private SentMessage ackExistingByClientMessage(ChatMessageSendCommand command) {
+        SentMessage existing = chatMessageQueryPort
+                .findByRoomIdAndSenderIdAndClientMessageId(
+                        command.roomId(), command.senderId(), command.clientMessageId())
+                .orElse(null);
+        if (existing == null) {
+            // 유니크 위반인데 기존 메시지 조회가 실패하면 예상 밖 상황 → 잠금 정리 후 오류 전파.
+            chatMessageDedupStore.release(
+                    command.roomId(), command.senderId(), command.clientMessageId());
+            log.error("Duplicate key but existing message not found. "
+                            + "roomId={}, senderId={}, clientMessageId={}",
+                    command.roomId(), command.senderId(), command.clientMessageId());
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        // 다음 재시도가 빠르게 완료-중복으로 처리되도록 dedup을 기존 messageId로 확정한다.
+        chatMessageDedupStore.complete(
+                command.roomId(), command.senderId(),
+                command.clientMessageId(), existing.messageId());
+        chatMessagePublisher.ackToSender(command.senderId(), existing);
+        log.warn("Duplicate key absorbed as idempotent ack "
+                        + "(Redis dedup missed, Mongo unique caught). "
+                        + "roomId={}, senderId={}, clientMessageId={}, messageId={}",
+                command.roomId(), command.senderId(), command.clientMessageId(),
+                existing.messageId());
+        return existing;
     }
 
     private void validateUserContent(ChatMessageSendCommand command) {

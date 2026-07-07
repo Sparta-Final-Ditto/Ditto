@@ -1,5 +1,7 @@
 *.md
 !README.md
+!assistant_service/src/main/resources/**/*.md
+!assistant_service/src/test/resources/**/*.md
 
 .gradle
 build/
