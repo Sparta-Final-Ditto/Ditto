@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ditto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1f6f4a;--green-b:#35c281;--green-10:rgba(31,111,74,.1);--green-20:rgba(31,111,74,.2);
+  --bg:#fbfbf7;--bg2:#f4f6f0;--bg3:#eef1e9;
+  --border:rgba(18,20,15,.1);--border2:rgba(18,20,15,.16);
+  --ink:#12140f;--im:rgba(18,20,15,.55);--id:rgba(18,20,15,.32);
+  --fd:'Fraunces',serif;--fk:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+}
+html,body{width:100%;height:100%;background:var(--bg);color:var(--ink);font-family:var(--fk);-webkit-font-smoothing:antialiased;overflow:hidden}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--fk)}
+::selection{background:var(--green);color:#fff}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+.app{display:grid;grid-template-columns:240px 1fr;height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{background:#fff;border-right:1px solid var(--border);display:flex;flex-direction:column;padding:22px 16px}
+.side-brand{display:flex;align-items:center;gap:9px;font-family:var(--fd);font-weight:700;font-size:19px;padding:6px 10px 26px}
+.side-brand svg{width:24px;height:24px}
+.side-nav{display:flex;flex-direction:column;gap:2px;flex:1}
+.nav-item{
+  display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:12px;
+  font-size:14px;font-weight:600;color:var(--im);cursor:pointer;transition:all .18s;
+}
+.nav-item svg{width:19px;height:19px;flex-shrink:0;stroke:var(--im);fill:none;stroke-width:1.7;transition:stroke .18s}
+.nav-item:hover{background:var(--bg2);color:var(--ink)}
+.nav-item:hover svg{stroke:var(--ink)}
+.nav-item.act{background:var(--green-10);color:var(--green)}
+.nav-item.act svg{stroke:var(--green)}
+.nav-badge{margin-left:auto;background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:100px}
+.side-user{display:flex;align-items:center;gap:10px;padding:12px 10px;border-top:1px solid var(--border);margin-top:8px}
+.side-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--green),var(--green-b));flex-shrink:0}
+.side-user-info{flex:1;min-width:0}
+.side-user-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.side-user-sub{font-size:11px;color:var(--id)}
+.side-logout{cursor:pointer;color:var(--id);flex-shrink:0}
+.side-logout:hover{color:var(--ink)}
+
+/* ── MAIN ── */
+.main{overflow-y:auto;position:relative}
+.view{display:none;padding:36px 44px;max-width:900px;margin:0 auto}
+.view.act{display:block}
+.view-head{margin-bottom:28px}
+.view-head h1{font-family:var(--fd);font-weight:700;font-size:26px;letter-spacing:-.015em}
+.view-head p{font-size:13.5px;color:var(--im);margin-top:4px}
+
+/* ── FEED ── */
+.post{background:#fff;border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:14px}
+.post-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.post-av{width:38px;height:38px;border-radius:50%;flex-shrink:0}
+.post-av.g1{background:linear-gradient(135deg,var(--green),var(--green-b))}
+.post-av.g2{background:linear-gradient(135deg,#0d3d29,var(--green))}
+.post-av.g3{background:linear-gradient(135deg,#35c281,#8fffc0)}
+.post-name{font-size:13.5px;font-weight:700}
+.post-time{font-size:11.5px;color:var(--id)}
+.post-body{font-size:14px;line-height:1.65;color:var(--ink);margin-bottom:12px}
+.post-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.post-tag{font-size:11px;font-weight:600;color:var(--green);background:var(--green-10);padding:3px 10px;border-radius:100px}
+.post-actions{display:flex;gap:18px;padding-top:12px;border-top:1px solid var(--border)}
+.post-action{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--im);cursor:pointer}
+.post-action svg{width:16px;height:16px;stroke:var(--im);fill:none;stroke-width:1.7}
+.post-action:hover{color:var(--green)}
+.post-action:hover svg{stroke:var(--green)}
+
+/* ── MATCHING ── */
+.match-today{background:#fff;border:1px solid var(--border2);border-radius:20px;padding:28px;margin-bottom:32px;box-shadow:0 20px 50px -24px rgba(18,20,15,.14)}
+.match-top{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.match-avpair{display:flex}
+.match-av{width:44px;height:44px;border-radius:50%;border:3px solid #fff}
+.match-av.a{background:linear-gradient(135deg,var(--green),var(--green-b))}
+.match-av.b{margin-left:-14px;background:linear-gradient(135deg,#0d3d29,var(--green))}
+.match-score{margin-left:auto;text-align:right}
+.match-score b{font-family:var(--fd);font-size:26px;font-weight:700;color:var(--green)}
+.match-score span{font-size:11px;color:var(--im);display:block}
+.match-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.match-explain{font-size:14px;line-height:1.7;color:var(--im);background:var(--bg2);border-radius:12px;padding:16px;margin-bottom:20px}
+.match-explain b{color:var(--ink);font-weight:600}
+.match-cta{display:flex;gap:10px}
+.mbtn{flex:1;padding:12px;border-radius:100px;font-size:13.5px;font-weight:700;cursor:pointer;transition:all .2s;border:1px solid transparent;text-align:center}
+.mbtn-accept{background:var(--ink);color:#fff}
+.mbtn-accept:hover{background:var(--green)}
+.mbtn-reject{background:transparent;color:var(--im);border-color:var(--border2)}
+.mbtn-reject:hover{border-color:var(--im);color:var(--ink)}
+.hist-item{display:flex;align-items:center;gap:12px;padding:14px 0;border-bottom:1px solid var(--border)}
+.hist-av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#0d3d29,var(--green));flex-shrink:0}
+.hist-info{flex:1}
+.hist-date{font-size:12px;color:var(--id)}
+.hist-score{font-size:13px;font-weight:700;color:var(--green)}
+.hist-status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px}
+.hist-status.pending{background:var(--bg3);color:var(--im)}
+.hist-status.accepted{background:var(--green-10);color:var(--green)}
+
+/* ── FEED SUBTABS ── */
+.feed-tabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:2px}
+.feed-tab{font-size:13px;font-weight:600;color:var(--im);padding:8px 14px;border-radius:10px 10px 0 0;cursor:pointer;position:relative;transition:color .18s}
+.feed-tab:hover{color:var(--ink)}
+.feed-tab.act{color:var(--green)}
+.feed-tab.act::after{content:'';position:absolute;left:10px;right:10px;bottom:-2px;height:2px;background:var(--green);border-radius:2px}
+.feed-panel{display:none}
+.feed-panel.act{display:block}
+
+/* ── CANDIDATE CARD (매칭 후보) ── */
+.cand-card{display:flex;align-items:flex-start;gap:14px;background:#fff;border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:14px}
+.cand-body{flex:1}
+.cand-name{font-size:14px;font-weight:700;margin-bottom:4px}
+.cand-score{font-size:11px;font-weight:700;color:var(--green);background:var(--green-10);padding:2px 8px;border-radius:100px;margin-left:6px}
+.cand-bio{font-size:13px;color:var(--im);line-height:1.55;margin-bottom:10px}
+.cand-like{font-size:20px;color:var(--id);cursor:pointer;flex-shrink:0;transition:color .18s,transform .18s}
+.cand-like:hover{color:#e0526b;transform:scale(1.15)}
+
+/* ── CHAT (실제 대화) ── */
+.chat-layout{display:grid;grid-template-columns:240px 1fr;gap:20px;height:calc(100vh - 140px)}
+.conv-list{border-right:1px solid var(--border);overflow-y:auto}
+.conv-item{display:flex;align-items:center;gap:10px;padding:12px 8px;border-radius:12px;cursor:pointer}
+.conv-item:hover,.conv-item.act{background:var(--bg2)}
+.conv-info{flex:1;min-width:0}
+.conv-name{font-size:13.5px;font-weight:700}
+.conv-preview{font-size:11.5px;color:var(--im);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.conv-meta{text-align:right;flex-shrink:0}
+.conv-time{font-size:10.5px;color:var(--id)}
+.conv-unread{width:16px;height:16px;background:var(--green);color:#fff;font-size:9px;font-weight:700;border-radius:50%;display:flex;align-items:center;justify-content:center;margin-left:auto;margin-top:3px}
+.conv-thread{display:flex;flex-direction:column}
+
+/* ── CHATBOT (플로팅) ── */
+.chatbot-fab{
+  position:fixed;bottom:26px;right:26px;z-index:300;
+  display:flex;align-items:center;gap:8px;padding:13px 18px;border-radius:100px;
+  background:var(--ink);color:#fff;font-size:13px;font-weight:700;cursor:pointer;
+  box-shadow:0 14px 30px -10px rgba(18,20,15,.4);transition:background .2s,transform .2s;
+}
+.chatbot-fab:hover{background:var(--green);transform:translateY(-2px)}
+.chatbot-fab svg{width:18px;height:18px;stroke:#fff;fill:none;stroke-width:1.8}
+.chatbot-panel{
+  position:fixed;bottom:90px;right:26px;z-index:300;width:340px;max-height:480px;
+  background:#fff;border:1px solid var(--border2);border-radius:20px;
+  box-shadow:0 30px 70px -20px rgba(18,20,15,.35);
+  display:none;flex-direction:column;overflow:hidden;
+}
+.chatbot-panel.open{display:flex}
+.chatbot-panel-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;background:var(--ink);color:#fff;font-size:13.5px;font-weight:700}
+.chatbot-close{cursor:pointer;font-size:18px;opacity:.7}
+.chatbot-close:hover{opacity:1}
+.chatbot-panel .chat-log{flex:1;overflow-y:auto;padding:16px;gap:12px;display:flex;flex-direction:column}
+.chatbot-panel .chat-input{padding:12px 14px;margin:0}
+
+/* ── CHATBOT ── */
+.chat-wrap{display:flex;flex-direction:column;height:calc(100vh - 80px);max-width:640px}
+.chat-log{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding:4px 4px 20px}
+.msg{max-width:78%;padding:12px 16px;border-radius:16px;font-size:13.5px;line-height:1.6}
+.msg.bot{align-self:flex-start;background:#fff;border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.user{align-self:flex-end;background:var(--ink);color:#fff;border-bottom-right-radius:4px}
+.chat-input{display:flex;gap:10px;padding-top:14px;border-top:1px solid var(--border)}
+.chat-input input{flex:1;padding:13px 16px;border:1px solid var(--border2);border-radius:100px;font-size:13.5px;outline:none;font-family:var(--fk)}
+.chat-input input:focus{border-color:var(--green)}
+.chat-send{width:44px;height:44px;border-radius:50%;background:var(--ink);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
+.chat-send:hover{background:var(--green)}
+.chat-send svg{width:17px;height:17px;stroke:#fff;fill:none;stroke-width:2}
+
+/* ── NOTIFICATIONS ── */
+.noti-item{display:flex;gap:14px;padding:16px 4px;border-bottom:1px solid var(--border);cursor:pointer}
+.noti-item:hover{background:var(--bg2)}
+.noti-icon{width:38px;height:38px;border-radius:50%;background:var(--green-10);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.noti-icon svg{width:17px;height:17px;stroke:var(--green);fill:none;stroke-width:1.8}
+.noti-body{flex:1}
+.noti-text{font-size:13.5px;line-height:1.5}
+.noti-text b{font-weight:700}
+.noti-time{font-size:11.5px;color:var(--id);margin-top:3px}
+.noti-dot{width:7px;height:7px;border-radius:50%;background:var(--green-b);flex-shrink:0;margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="side-brand">
+      <svg viewBox="0 0 32 32"><circle cx="12" cy="16" r="10" fill="#1f6f4a" fill-opacity=".85"/><circle cx="20" cy="16" r="10" fill="#35c281" fill-opacity=".85" style="mix-blend-mode:multiply"/></svg>
+      Ditto
+    </div>
+    <div class="side-nav">
+      <div class="nav-item act" data-view="feed">
+        <svg viewBox="0 0 24 24"><path d="M4 4h16v4H4zM4 10h16v10H4z"/></svg>
+        피드
+      </div>
+      <div class="nav-item" data-view="matching">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>
+        매칭
+      </div>
+      <div class="nav-item" data-view="chat">
+        <svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>
+        채팅
+        <span class="nav-badge">2</span>
+      </div>
+      <div class="nav-item" data-view="notifications">
+        <svg viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+        알림
+        <span class="nav-badge">3</span>
+      </div>
+    </div>
+    <div class="side-user">
+      <div class="side-avatar"></div>
+      <div class="side-user-info">
+        <div class="side-user-name">소윤</div>
+        <div class="side-user-sub">테스트 계정</div>
+      </div>
+      <a href="login.html" class="side-logout" title="로그아웃">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4H5v16h4M15 8l4 4-4 4M19 12H9"/></svg>
+      </a>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- FEED -->
+    <div class="view act" id="view-feed">
+      <div class="view-head"><h1>피드</h1><p>친구들의 최근 관심사와 활동을 확인해보세요.</p></div>
+
+      <div class="feed-tabs">
+        <div class="feed-tab act" data-feed="follow">팔로우</div>
+        <div class="feed-tab" data-feed="candidate">매칭 후보</div>
+        <div class="feed-tab" data-feed="random">랜덤</div>
+      </div>
+
+      <!-- 팔로우 피드 -->
+      <div class="feed-panel act" id="feed-follow">
+        <div class="post">
+          <div class="post-head">
+            <div class="post-av g1"></div>
+            <div><div class="post-name">선진</div><div class="post-time">2시간 전</div></div>
+          </div>
+          <div class="post-body">오늘 한강에서 러닝 5km 완주! 날씨가 딱 좋아서 기분 최고였어요 🏃‍♀️</div>
+          <div class="post-tags"><span class="post-tag">#운동</span><span class="post-tag">#러닝</span></div>
+          <div class="post-actions">
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 8 8H6l-2 2z"/></svg>댓글 4</div>
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.5-9C.6 8.4 3 5 6.5 5 8.6 5 10.4 6.2 12 8c1.6-1.8 3.4-3 5.5-3 3.5 0 5.9 3.4 4 7-2.5 4.4-9.5 9-9.5 9z"/></svg>좋아요 12</div>
+          </div>
+        </div>
+        <div class="post">
+          <div class="post-head">
+            <div class="post-av g2"></div>
+            <div><div class="post-name">다연</div><div class="post-time">5시간 전</div></div>
+          </div>
+          <div class="post-body">새로 생긴 카페 발견! 원두 향이 진짜 좋아서 자꾸 생각나요. 다음엔 같이 갈 사람 구해요.</div>
+          <div class="post-tags"><span class="post-tag">#카페</span><span class="post-tag">#여행</span></div>
+          <div class="post-actions">
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 8 8H6l-2 2z"/></svg>댓글 2</div>
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.5-9C.6 8.4 3 5 6.5 5 8.6 5 10.4 6.2 12 8c1.6-1.8 3.4-3 5.5-3 3.5 0 5.9 3.4 4 7-2.5 4.4-9.5 9-9.5 9z"/></svg>좋아요 8</div>
+          </div>
+        </div>
+        <div class="post">
+          <div class="post-head">
+            <div class="post-av g3"></div>
+            <div><div class="post-name">형호</div><div class="post-time">어제</div></div>
+          </div>
+          <div class="post-body">주말 등산 완료. 정상에서 본 노을이 진짜 예술이었음. 다음엔 새벽 산행 도전해보려고요.</div>
+          <div class="post-tags"><span class="post-tag">#등산</span><span class="post-tag">#운동</span></div>
+          <div class="post-actions">
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 8 8H6l-2 2z"/></svg>댓글 6</div>
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.5-9C.6 8.4 3 5 6.5 5 8.6 5 10.4 6.2 12 8c1.6-1.8 3.4-3 5.5-3 3.5 0 5.9 3.4 4 7-2.5 4.4-9.5 9-9.5 9z"/></svg>좋아요 15</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 매칭 후보 피드 -->
+      <div class="feed-panel" id="feed-candidate">
+        <div class="cand-card">
+          <div class="post-av g1"></div>
+          <div class="cand-body">
+            <div class="cand-name">주원 <span class="cand-score">82% 일치</span></div>
+            <div class="cand-bio">필름 카메라로 여행 다니는 걸 좋아해요. 주말엔 주로 전시 보러 다녀요.</div>
+            <div class="post-tags"><span class="post-tag">#여행</span><span class="post-tag">#사진</span><span class="post-tag">#전시</span></div>
+          </div>
+          <div class="cand-like">♡</div>
+        </div>
+        <div class="cand-card">
+          <div class="post-av g2"></div>
+          <div class="cand-body">
+            <div class="cand-name">다은 <span class="cand-score">76% 일치</span></div>
+            <div class="cand-bio">클라이밍 3년 차예요. 새로운 루트 도전하는 재미로 살아요.</div>
+            <div class="post-tags"><span class="post-tag">#클라이밍</span><span class="post-tag">#운동</span></div>
+          </div>
+          <div class="cand-like">♡</div>
+        </div>
+        <div class="cand-card">
+          <div class="post-av g3"></div>
+          <div class="cand-body">
+            <div class="cand-name">선진 <span class="cand-score">71% 일치</span></div>
+            <div class="cand-bio">홈베이킹이 취미예요. 맛있는 빵집 정보 나누는 것도 좋아해요.</div>
+            <div class="post-tags"><span class="post-tag">#베이킹</span><span class="post-tag">#카페</span></div>
+          </div>
+          <div class="cand-like">♡</div>
+        </div>
+      </div>
+
+      <!-- 랜덤 피드 -->
+      <div class="feed-panel" id="feed-random">
+        <div class="post">
+          <div class="post-head">
+            <div class="post-av g2"></div>
+            <div><div class="post-name">형호</div><div class="post-time">1시간 전</div></div>
+          </div>
+          <div class="post-body">사이드 프로젝트 배포 완료! 다들 새해 목표 어떻게 되어가시나요 😄</div>
+          <div class="post-tags"><span class="post-tag">#개발</span><span class="post-tag">#사이드프로젝트</span></div>
+          <div class="post-actions">
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 8 8H6l-2 2z"/></svg>댓글 3</div>
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.5-9C.6 8.4 3 5 6.5 5 8.6 5 10.4 6.2 12 8c1.6-1.8 3.4-3 5.5-3 3.5 0 5.9 3.4 4 7-2.5 4.4-9.5 9-9.5 9z"/></svg>좋아요 5</div>
+          </div>
+        </div>
+        <div class="post">
+          <div class="post-head">
+            <div class="post-av g3"></div>
+            <div><div class="post-name">다연</div><div class="post-time">4시간 전</div></div>
+          </div>
+          <div class="post-body">오늘 본 영화 미쳤다... 올해 최고의 영화였어요. 스포 안 할 테니 꼭 보세요.</div>
+          <div class="post-tags"><span class="post-tag">#영화</span><span class="post-tag">#리뷰</span></div>
+          <div class="post-actions">
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 8 8H6l-2 2z"/></svg>댓글 9</div>
+            <div class="post-action"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.5-9C.6 8.4 3 5 6.5 5 8.6 5 10.4 6.2 12 8c1.6-1.8 3.4-3 5.5-3 3.5 0 5.9 3.4 4 7-2.5 4.4-9.5 9-9.5 9z"/></svg>좋아요 21</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MATCHING -->
+    <div class="view" id="view-matching">
+      <div class="view-head"><h1>오늘의 매칭</h1><p>매일 정오, 가장 결이 맞는 한 사람을 찾아드려요.</p></div>
+
+      <div class="match-today">
+        <div class="match-top">
+          <div class="match-avpair"><div class="match-av a"></div><div class="match-av b"></div></div>
+          <div class="match-score"><b>87%</b><span>일치</span></div>
+        </div>
+        <div class="match-tags">
+          <span class="post-tag">#여행</span><span class="post-tag">#사진</span><span class="post-tag">#카페투어</span>
+        </div>
+        <div class="match-explain">
+          <b>"여행과 사진을 함께 즐기는 감성이 잘 맞는 두 분이에요."</b><br>
+          최근 방문한 도시, 저장한 카페 리스트, 촬영 스타일까지 세 가지 신호가 겹쳤어요.
+        </div>
+        <div class="match-cta">
+          <div class="mbtn mbtn-reject">넘어갈게요</div>
+          <div class="mbtn mbtn-accept">대화 시작하기</div>
+        </div>
+      </div>
+
+      <div class="view-head"><h1 style="font-size:18px">매칭 히스토리</h1></div>
+      <div class="hist-item">
+        <div class="hist-av"></div>
+        <div class="hist-info"><div class="hist-score">92% 일치</div><div class="hist-date">2026.07.05</div></div>
+        <div class="hist-status accepted">수락함</div>
+      </div>
+      <div class="hist-item">
+        <div class="hist-av"></div>
+        <div class="hist-info"><div class="hist-score">78% 일치</div><div class="hist-date">2026.07.04</div></div>
+        <div class="hist-status pending">대기중</div>
+      </div>
+      <div class="hist-item">
+        <div class="hist-av"></div>
+        <div class="hist-info"><div class="hist-score">85% 일치</div><div class="hist-date">2026.07.03</div></div>
+        <div class="hist-status accepted">수락함</div>
+      </div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="view" id="view-chat">
+      <div class="view-head"><h1>채팅</h1><p>매칭된 분들과의 대화예요.</p></div>
+      <div class="chat-layout">
+        <div class="conv-list">
+          <div class="conv-item act">
+            <div class="post-av g1"></div>
+            <div class="conv-info">
+              <div class="conv-name">선진</div>
+              <div class="conv-preview">내일 시간 괜찮으세요?</div>
+            </div>
+            <div class="conv-meta"><div class="conv-time">방금</div><div class="conv-unread">1</div></div>
+          </div>
+          <div class="conv-item">
+            <div class="post-av g2"></div>
+            <div class="conv-info">
+              <div class="conv-name">다은</div>
+              <div class="conv-preview">저도 그 전시 가보고 싶었어요!</div>
+            </div>
+            <div class="conv-meta"><div class="conv-time">2시간 전</div></div>
+          </div>
+        </div>
+        <div class="conv-thread">
+          <div class="chat-log">
+            <div class="msg bot">안녕하세요! 매칭돼서 반가워요 :)</div>
+            <div class="msg user">안녕하세요! 저도 반가워요, 여행 좋아하신다고 들었어요</div>
+            <div class="msg bot">네 맞아요! 내일 시간 괜찮으세요?</div>
+          </div>
+          <div class="chat-input">
+            <input type="text" placeholder="메시지를 입력하세요...">
+            <button class="chat-send"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="view" id="view-notifications">
+      <div class="view-head"><h1>알림</h1><p>새 매칭, 대화, 시스템 알림을 모아봤어요.</p></div>
+
+      <div class="noti-item">
+        <div class="noti-icon"><svg viewBox="0 0 24 24"><circle cx="9" cy="12" r="5"/><circle cx="15" cy="12" r="5"/></svg></div>
+        <div class="noti-body"><div class="noti-text"><b>새로운 매칭</b>이 도착했어요. 87% 일치하는 분이에요.</div><div class="noti-time">10분 전</div></div>
+        <div class="noti-dot"></div>
+      </div>
+      <div class="noti-item">
+        <div class="noti-icon"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg></div>
+        <div class="noti-body"><div class="noti-text"><b>선진</b>님이 메시지를 보냈어요: "안녕하세요!"</div><div class="noti-time">1시간 전</div></div>
+        <div class="noti-dot"></div>
+      </div>
+      <div class="noti-item">
+        <div class="noti-icon"><svg viewBox="0 0 24 24"><path d="M12 21s-7-4.6-9.5-9C.6 8.4 3 5 6.5 5 8.6 5 10.4 6.2 12 8c1.6-1.8 3.4-3 5.5-3 3.5 0 5.9 3.4 4 7-2.5 4.4-9.5 9-9.5 9z"/></svg></div>
+        <div class="noti-body"><div class="noti-text"><b>다연</b>님이 회원님의 게시물을 좋아합니다.</div><div class="noti-time">3시간 전</div></div>
+        <div class="noti-dot"></div>
+      </div>
+      <div class="noti-item" style="opacity:.5">
+        <div class="noti-icon"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg></div>
+        <div class="noti-body"><div class="noti-text">지난주 매칭 만족도 설문에 참여해주세요.</div><div class="noti-time">어제</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 챗봇 플로팅 위젯 -->
+<div class="chatbot-fab" id="chatbotFab">
+  <svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>
+  <span>챗봇</span>
+</div>
+<div class="chatbot-panel" id="chatbotPanel">
+  <div class="chatbot-panel-head">
+    <span>Ditto 챗봇</span>
+    <span class="chatbot-close" id="chatbotClose">×</span>
+  </div>
+  <div class="chat-log" id="chatLog">
+    <div class="msg bot">안녕하세요! 저는 Ditto 도우미예요. 매칭 관련해서 궁금한 점 있으면 편하게 물어보세요 🙂</div>
+    <div class="msg user">오늘 매칭은 언제 되나요?</div>
+    <div class="msg bot">매일 정오 12시에 새로운 매칭이 도착해요. 지금 시간 기준으로 다음 매칭까지 조금 남았어요!</div>
+  </div>
+  <div class="chat-input">
+    <input type="text" id="chatInput" placeholder="메시지를 입력하세요...">
+    <button class="chat-send" id="chatSend"><svg viewBox="0 0 24 24"><path d="M4 12l16-8-6 8 6 8z"/></svg></button>
+  </div>
+</div>
+
+<script>
+// 탭 전환
+document.querySelectorAll('.nav-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.nav-item').forEach(i=>i.classList.remove('act'));
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('act'));
+    item.classList.add('act');
+    document.getElementById('view-'+item.dataset.view).classList.add('act');
+  });
+});
+
+// 피드 서브탭 전환 (팔로우 / 매칭 후보 / 랜덤)
+document.querySelectorAll('.feed-tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.feed-tab').forEach(t=>t.classList.remove('act'));
+    document.querySelectorAll('.feed-panel').forEach(p=>p.classList.remove('act'));
+    tab.classList.add('act');
+    document.getElementById('feed-'+tab.dataset.feed).classList.add('act');
+  });
+});
+
+// 대화 목록 클릭
+document.querySelectorAll('.conv-item').forEach(item=>{
+  item.addEventListener('click', ()=>{
+    document.querySelectorAll('.conv-item').forEach(i=>i.classList.remove('act'));
+    item.classList.add('act');
+  });
+});
+
+// 챗봇 플로팅 위젯 열기/닫기
+const fab = document.getElementById('chatbotFab');
+const panel = document.getElementById('chatbotPanel');
+fab.addEventListener('click', ()=> panel.classList.toggle('open'));
+document.getElementById('chatbotClose').addEventListener('click', ()=> panel.classList.remove('open'));
+
+// 챗봇 데모 입력 처리
+const chatLog = document.getElementById('chatLog');
+const chatInput = document.getElementById('chatInput');
+function sendMsg(){
+  const text = chatInput.value.trim();
+  if(!text) return;
+  const u = document.createElement('div'); u.className='msg user'; u.textContent=text;
+  chatLog.appendChild(u);
+  chatInput.value='';
+  chatLog.scrollTop = chatLog.scrollHeight;
+  setTimeout(()=>{
+    const b = document.createElement('div'); b.className='msg bot';
+    b.textContent='좋은 질문이에요! (데모 화면이라 실제 응답은 assistant_service 연동 후 나와요)';
+    chatLog.appendChild(b);
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }, 500);
+}
+document.getElementById('chatSend').addEventListener('click', sendMsg);
+chatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') sendMsg(); });
+</script>
+</body>
+</html>
