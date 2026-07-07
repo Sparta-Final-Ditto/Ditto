@@ -1,0 +1,102 @@
+spring:
+  datasource:
+    hikari:
+      connection-timeout: 5000    # 커넥션 획득 실패를 30초가 아닌 5초에 감지
+      maximum-pool-size: 4        # 테스트 컨텍스트 다수 생성 시 커넥션 폭증 방지
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+  kafka:
+    bootstrap-servers: localhost:9094
+    producer:
+      properties:
+        max.block.ms: 1000          # 브로커 부재 시 메타데이터 조회 블로킹 상한
+        delivery.timeout.ms: 2000
+        request.timeout.ms: 1000
+  data:
+    redis:
+      host: localhost
+      port: 6379
+  cloud:
+    openfeign:
+      client:
+        config:
+          match-service:
+            connect-timeout: 500
+            read-timeout: 1000
+          user-service:
+            connect-timeout: 500
+            read-timeout: 1000
+
+cloud:
+  aws:
+    s3:
+      bucket: test-bucket
+    region:
+      static: ap-northeast-2
+    credentials:
+      access-key: test-access-key
+      secret-key: test-secret-key
+
+app:
+  scheduling:
+    enabled: false   # 테스트에서는 @Scheduled 비활성화 (SchedulingConfig 참고)
+  cloudfront:
+    domain: https://test.cloudfront.net
+  kakao:
+    api-key: test-key
+  matching-service:
+    base-url: http://localhost:8083
+    timeout-ms: 1000
+  user-service:
+    base-url: http://localhost:8084
+  outbox:
+    publish:
+      interval-ms: 5000
+      batch-size: 100
+    monitor:
+      interval-ms: 60000
+    replay:
+      interval-ms: 3600000
+      batch-size: 100
+  post-hard-delete:
+    retention-days: 30
+    chunk-size: 100
+    cron: "-"
+
+resilience4j:
+  circuitbreaker:
+    circuit-breaker-aspect-order: 1
+    instances:
+      matchServiceClient:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 4
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 700ms
+        wait-duration-in-open-state: 1s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+      userServiceClient:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 4
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 700ms
+        wait-duration-in-open-state: 1s
+        permitted-number-of-calls-in-half-open-state: 2
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    retry-aspect-order: 2
+    instances:
+      matchServiceClient:
+        max-attempts: 2
+        wait-duration: 10ms
+        enable-exponential-backoff: false
+      userServiceClient:
+        max-attempts: 2
+        wait-duration: 10ms
+        enable-exponential-backoff: false

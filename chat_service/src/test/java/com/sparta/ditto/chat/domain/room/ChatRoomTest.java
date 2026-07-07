@@ -1,0 +1,154 @@
+package com.sparta.ditto.chat.domain.room;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import com.sparta.ditto.common.exception.BusinessException;
+import java.time.Instant;
+import java.util.UUID;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+
+@DisplayName("ChatRoom 도메인 테스트")
+class ChatRoomTest {
+
+    private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final String MESSAGE_ID = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f70";
+
+    @Test
+    @DisplayName("성공 - 1:1 채팅방을 생성한다")
+    void createDirect_success() {
+        // when
+        ChatRoom chatRoom = ChatRoom.createDirect();
+
+        // then
+        assertThat(chatRoom.getRoomType()).isEqualTo(RoomType.DIRECT);
+        assertThat(chatRoom.getRoomName()).isNull();
+        assertThat(chatRoom.getStatus()).isEqualTo(RoomStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("성공 - 그룹 채팅방을 생성한다")
+    void createGroup_success() {
+        // when
+        ChatRoom chatRoom = ChatRoom.createGroup("스터디방");
+
+        // then
+        assertThat(chatRoom.getRoomType()).isEqualTo(RoomType.GROUP);
+        assertThat(chatRoom.getRoomName()).isEqualTo("스터디방");
+        assertThat(chatRoom.getStatus()).isEqualTo(RoomStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("실패 - 그룹 채팅방 이름은 비어 있을 수 없다")
+    void createGroup_fail_blank_room_name() {
+        // when & then
+        assertThatThrownBy(() -> ChatRoom.createGroup(" "))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("성공 - 마지막 메시지 정보를 갱신한다")
+    void updateLastMessage_success() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant messageCreatedAt = Instant.parse("2026-06-18T00:00:00Z");
+
+        // when
+        chatRoom.updateLastMessage(MESSAGE_ID, messageCreatedAt);
+
+        // then
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(MESSAGE_ID);
+        assertThat(chatRoom.getLastMessageAt()).isEqualTo(messageCreatedAt);
+    }
+
+    @Test
+    @DisplayName("역전 방어 - 더 오래된 메시지는 lastMessage를 되돌리지 않는다")
+    void updateLastMessage_ignores_older() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant newer = Instant.parse("2026-06-18T10:00:00Z");
+        Instant older = Instant.parse("2026-06-18T09:00:00Z");
+        chatRoom.updateLastMessage(MESSAGE_ID, newer);
+
+        // when: 더 오래된 메시지로 갱신 시도
+        chatRoom.updateLastMessage("018f7b7a-0000-7c22-9f1b-2a3c4d5e6f00", older);
+
+        // then: 최신 값 유지
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(MESSAGE_ID);
+        assertThat(chatRoom.getLastMessageAt()).isEqualTo(newer);
+    }
+
+    @Test
+    @DisplayName("역전 방어 - 더 최신 메시지는 lastMessage를 갱신한다")
+    void updateLastMessage_updates_newer() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant older = Instant.parse("2026-06-18T09:00:00Z");
+        Instant newer = Instant.parse("2026-06-18T10:00:00Z");
+        String newerId = "018f7b7a-9999-7c22-9f1b-2a3c4d5e6f99";
+        chatRoom.updateLastMessage(MESSAGE_ID, older);
+
+        // when
+        chatRoom.updateLastMessage(newerId, newer);
+
+        // then
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(newerId);
+        assertThat(chatRoom.getLastMessageAt()).isEqualTo(newer);
+    }
+
+    @Test
+    @DisplayName("역전 방어 - createdAt이 같으면 messageId가 더 클 때만 갱신한다")
+    void updateLastMessage_tie_break_by_message_id() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant sameTime = Instant.parse("2026-06-18T10:00:00Z");
+        String smaller = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f00";
+        String larger = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f99";
+        chatRoom.updateLastMessage(MESSAGE_ID, sameTime); // ...6f70
+
+        // when & then: 같은 시각 + 더 작은 messageId → 무시
+        chatRoom.updateLastMessage(smaller, sameTime);
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(MESSAGE_ID);
+
+        // when & then: 같은 시각 + 더 큰 messageId → 갱신
+        chatRoom.updateLastMessage(larger, sameTime);
+        assertThat(chatRoom.getLastMessageId()).isEqualTo(larger);
+    }
+
+    @Test
+    @DisplayName("실패 - 마지막 메시지 ID는 비어 있을 수 없다")
+    void updateLastMessage_fail_blank_message_id() {
+        // given
+        ChatRoom chatRoom = ChatRoom.createDirect();
+        Instant messageCreatedAt = Instant.parse("2026-06-18T00:00:00Z");
+
+        // when & then
+        assertThatThrownBy(() -> chatRoom.updateLastMessage(" ", messageCreatedAt))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    @DisplayName("성공 - 채팅방을 비활성화한 뒤 재활성화한다")
+    void inactivate_and_reactivate_success() {
+        // given
+        UUID userId = USER_ID;
+        ChatRoom chatRoom = ChatRoom.createDirect();
+
+        // when
+        chatRoom.inactivate(userId);
+
+        // then
+        assertThat(chatRoom.getStatus()).isEqualTo(RoomStatus.INACTIVE);
+        assertThat(chatRoom.getInactivatedBy()).isEqualTo(userId);
+        assertThat(chatRoom.getInactivatedAt()).isNotNull();
+
+        // when
+        chatRoom.reactivate();
+
+        // then
+        assertThat(chatRoom.getStatus()).isEqualTo(RoomStatus.ACTIVE);
+        assertThat(chatRoom.getInactivatedBy()).isNull();
+        assertThat(chatRoom.getInactivatedAt()).isNull();
+    }
+}

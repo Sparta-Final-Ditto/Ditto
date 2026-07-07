@@ -1,5 +1,7 @@
 *.md
 !README.md
+!assistant_service/src/main/resources/**/*.md
+!assistant_service/src/test/resources/**/*.md
 
 .gradle
 build/
@@ -40,3 +42,28 @@ out/
 
 ### Local profile — contains secrets, never commit ###
 **/application-local.yml
+
+### Python ###
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.egg-info/
+dist/
+.pytest_cache/
+
+### .env ###
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+.env.local
+.env.prod
+
+### JMeter ###
+jmeter.log
+*.jtl

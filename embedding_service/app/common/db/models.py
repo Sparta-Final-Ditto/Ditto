@@ -1,0 +1,32 @@
+import uuid
+from datetime import date, datetime
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Integer, String
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import Mapped, mapped_column
+from pgvector.sqlalchemy import Vector
+from uuid6 import uuid7
+from app.common.db.base_entity import BaseEntity
+from app.common.db.database import Base
+
+
+class UserPostEmbedding(Base, BaseEntity):
+    __tablename__ = "user_posts_embeddings"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    post_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, unique=True)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    vector: Mapped[list[float]] = mapped_column(Vector(768), nullable=False)
+    embedding_status: Mapped[str] = mapped_column(String(10), nullable=False, default="PENDING", index=True)
+    embedded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class UserProfileEmbedding(Base, BaseEntity):
+    __tablename__ = "user_profile_embeddings"
+
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid7)
+    vector: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+    record_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_processed_record_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    gender: Mapped[str | None] = mapped_column(String(6), nullable=True)
+    birthdate: Mapped[date | None] = mapped_column(Date, nullable=True)

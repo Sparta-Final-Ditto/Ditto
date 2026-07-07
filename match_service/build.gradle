@@ -1,11 +1,44 @@
 apply plugin: 'org.springframework.boot'
 
+repositories {
+    mavenCentral()
+    maven { url 'https://repo.spring.io/milestone' }
+    maven { url 'https://repo.spring.io/snapshot' }
+}
+
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    // Swagger
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
     implementation 'org.springframework.kafka:spring-kafka'
     implementation 'com.pgvector:pgvector:0.1.6'
     runtimeOnly 'org.postgresql:postgresql'
     implementation project(':common')
+
+    // OpenFeign
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign:4.2.1'
+
+    // Spring AI
+    implementation 'org.springframework.ai:spring-ai-pgvector-store-spring-boot-starter:1.0.0-M6'
+
+    // Spring AI Ollama
+    implementation 'org.springframework.ai:spring-ai-ollama-spring-boot-starter:1.0.0-M6'
+
+    // Zipkin (분산 추적)
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation 'io.zipkin.reporter2:zipkin-reporter-brave'
+
+    // Flyway
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // Test
+    testImplementation 'org.testcontainers:postgresql:1.19.0'
+    testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
+
+    //metrics
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'io.micrometer:micrometer-registry-prometheus'
 }

@@ -1,0 +1,148 @@
+package com.sparta.ditto.chat.application.room;
+
+import com.sparta.ditto.chat.application.room.dto.command.ChatDirectRoomCreateCommand;
+import com.sparta.ditto.chat.application.room.dto.result.ChatDirectRoomResult;
+import com.sparta.ditto.chat.application.room.port.ChatRoomParticipantPort;
+import com.sparta.ditto.chat.application.room.port.ChatRoomPort;
+import com.sparta.ditto.chat.application.room.port.ChatUserValidationPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairPort;
+import com.sparta.ditto.chat.application.room.port.DirectChatPairUniqueConflictException;
+import com.sparta.ditto.chat.domain.exception.ChatInvalidDirectTargetException;
+import com.sparta.ditto.chat.domain.exception.ChatRoomNotFoundException;
+import com.sparta.ditto.chat.domain.participant.ChatRoomParticipant;
+import com.sparta.ditto.chat.domain.participant.ParticipantRole;
+import com.sparta.ditto.chat.domain.room.ChatRoom;
+import com.sparta.ditto.chat.domain.room.DirectChatPair;
+import com.sparta.ditto.chat.domain.room.RoomStatus;
+import com.sparta.ditto.common.exception.BusinessException;
+import com.sparta.ditto.common.exception.CommonErrorCode;
+import java.util.List;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class ChatDirectRoomService {
+
+    private final ChatRoomPort chatRoomPort;
+    private final ChatRoomParticipantPort chatRoomParticipantPort;
+    private final DirectChatPairPort directChatPairPort;
+    private final ChatUserValidationPort chatUserValidationPort;
+    private final TransactionTemplate transactionTemplate;
+
+    public ChatDirectRoomResult createOrGetDirectRoom(ChatDirectRoomCreateCommand command) {
+        if (command == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_INPUT);
+        }
+        UUID requesterId = command.requesterId();
+        UUID targetUserId = command.targetUserId();
+        validateDirectTarget(requesterId, targetUserId);
+
+        // 1:1 채팅방은 두 사용자 ID를 항상 같은 순서로 정렬해야 중복 생성을 막을 수 있다.
+        DirectChatPair.OrderedUserIds orderedUserIds =
+                DirectChatPair.orderUserIds(requesterId, targetUserId);
+
+        ChatDirectRoomResult existingRoom = resolveExistingRoom(orderedUserIds);
+        if (existingRoom != null) {
+            log.info(
+                    "Direct chat room resolved. requesterId={}, targetUserId={}, "
+                            + "roomId={}, created={}, reactivated={}",
+                    requesterId, targetUserId, existingRoom.roomId(),
+                    existingRoom.created(), existingRoom.reactivated());
+            return existingRoom;
+        }
+
+        try {
+            ChatDirectRoomResult result = transactionTemplate.execute(
+                    status -> createDirectRoom(requesterId, targetUserId)
+            );
+            log.info("Direct chat room created. requesterId={}, targetUserId={}, roomId={}",
+                    requesterId, targetUserId, result.roomId());
+            return result;
+        } catch (DirectChatPairUniqueConflictException ex) {
+            // 실패한 생성 트랜잭션과 분리된 새 트랜잭션에서 기존 방을 재조회한다.
+            ChatDirectRoomResult roomAfterConflict = transactionTemplate.execute(
+                    status -> findRoomAfterUniqueConflict(requesterId, targetUserId)
+            );
+            if (roomAfterConflict == null) {
+                throw ex;
+            }
+            log.info("Direct chat room resolved after unique conflict. "
+                            + "requesterId={}, targetUserId={}, roomId={}",
+                    requesterId, targetUserId, roomAfterConflict.roomId());
+            return roomAfterConflict;
+        }
+    }
+
+    private ChatDirectRoomResult resolveExistingRoom(DirectChatPair.OrderedUserIds orderedUserIds) {
+        return transactionTemplate.execute(status -> directChatPairPort
+                .findByOrderedUserIds(orderedUserIds.user1Id(), orderedUserIds.user2Id())
+                .map(this::returnExistingOrReactivateRoom)
+                .orElse(null));
+    }
+
+    private void validateDirectTarget(UUID requesterId, UUID targetUserId) {
+        if (requesterId == null) {
+            throw new ChatInvalidDirectTargetException();
+        }
+        if (targetUserId == null) {
+            throw new ChatInvalidDirectTargetException();
+        }
+        if (requesterId.equals(targetUserId)) {
+            throw new ChatInvalidDirectTargetException();
+        }
+        chatUserValidationPort.validateDirectChatTarget(requesterId, targetUserId);
+    }
+
+    private ChatDirectRoomResult returnExistingOrReactivateRoom(DirectChatPair directChatPair) {
+        ChatRoom chatRoom = chatRoomPort.findById(directChatPair.getRoomId())
+                .orElseThrow(ChatRoomNotFoundException::new);
+
+        boolean reactivated = false;
+        if (chatRoom.getStatus() == RoomStatus.INACTIVE) {
+            // 1:1 방은 direct_chat_pairs unique 구조 때문에 새 방을 만들지 않고 기존 방을 되살린다.
+            chatRoom.reactivate();
+            rejoinParticipants(chatRoom.getId());
+            reactivated = true;
+        }
+        return ChatDirectRoomResult.of(chatRoom.getId(), chatRoom.getStatus(), false, reactivated);
+    }
+
+    private void rejoinParticipants(UUID roomId) {
+        // 재활성화 시 나갔던 참여자 상태를 복구하되, lastVisibleMessageId는 보존한다.
+        List<ChatRoomParticipant> participants =
+                chatRoomParticipantPort.findAllParticipants(roomId);
+        participants.forEach(ChatRoomParticipant::rejoin);
+    }
+
+    private ChatDirectRoomResult createDirectRoom(UUID requesterId, UUID targetUserId) {
+        ChatRoom chatRoom = chatRoomPort.saveForUniqueCheck(ChatRoom.createDirect());
+        // 1:1 채팅방은 별도 방장 없이 두 사용자를 모두 MEMBER로 생성한다.
+        chatRoomParticipantPort.saveAll(List.of(
+                ChatRoomParticipant.join(chatRoom.getId(), requesterId, ParticipantRole.MEMBER),
+                ChatRoomParticipant.join(chatRoom.getId(), targetUserId, ParticipantRole.MEMBER)
+        ));
+        directChatPairPort.saveForUniqueCheck(DirectChatPair.create(
+                chatRoom.getId(),
+                requesterId,
+                targetUserId
+        ));
+        return ChatDirectRoomResult.of(chatRoom.getId(), chatRoom.getStatus(), true, false);
+    }
+
+    private ChatDirectRoomResult findRoomAfterUniqueConflict(
+            UUID requesterId,
+            UUID targetUserId
+    ) {
+        DirectChatPair.OrderedUserIds orderedUserIds =
+                DirectChatPair.orderUserIds(requesterId, targetUserId);
+        return directChatPairPort
+                .findByOrderedUserIds(orderedUserIds.user1Id(), orderedUserIds.user2Id())
+                .map(this::returnExistingOrReactivateRoom)
+                .orElse(null);
+    }
+}

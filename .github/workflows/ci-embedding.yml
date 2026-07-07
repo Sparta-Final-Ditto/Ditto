@@ -1,0 +1,127 @@
+name: CI (embedding-service)
+
+on:
+  pull_request:
+    branches: [develop, main]
+    paths: ['embedding_service/**']
+  push:
+    branches: [develop, main]
+    paths: ['embedding_service/**']
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python Test & Coverage
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.test_run.outputs.result }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check for test files
+        id: check_tests
+        run: |
+          TEST_FILES=$(find embedding_service -name "test_*.py" -o -name "*_test.py" 2>/dev/null | head -1)
+          if [ -z "$TEST_FILES" ]; then
+            echo "found=false" >> $GITHUB_OUTPUT
+          else
+            echo "found=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Cache virtualenv
+        if: steps.check_tests.outputs.found == 'true'
+        id: cache-venv
+        uses: actions/cache@v4
+        with:
+          path: .venv
+          key: venv-${{ runner.os }}-${{ hashFiles('embedding_service/requirements*.txt') }}
+
+      - name: Install dependencies
+        if: steps.check_tests.outputs.found == 'true' && steps.cache-venv.outputs.cache-hit != 'true'
+        run: |
+          python -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          .venv/bin/pip install -r embedding_service/requirements.txt
+          .venv/bin/pip install -r embedding_service/requirements-test.txt
+
+      - name: Run Tests & Coverage
+        id: test_run
+        run: |
+          if [ "${{ steps.check_tests.outputs.found }}" = "false" ]; then
+            echo "테스트 파일 없음 — 스킵"
+            echo "result=skipped" >> $GITHUB_OUTPUT
+          elif .venv/bin/pytest embedding_service/ \
+            --cov=embedding_service \
+            --cov-fail-under=70 \
+            --asyncio-mode=auto \
+            -v; then
+            echo "result=success" >> $GITHUB_OUTPUT
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Upload Coverage Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-${{ github.run_number }}
+          path: .coverage
+          retention-days: 7
+
+  notify:
+    name: Discord Notification
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: always()
+    steps:
+      - name: Send Result to Discord
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          TEST_RESULT: ${{ needs.test.result }}
+          TEST_RUN_RESULT: ${{ needs.test.outputs.result }}
+          BRANCH: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref_name }}
+          ACTOR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login || github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [[ "$TEST_RUN_RESULT" == "skipped" ]]; then
+            COLOR=9807270
+            STATUS="⏭️ 스킵"
+            TEST_ICON="⏭️"
+            TEST_TEXT="스킵 (테스트 없음)"
+          elif [[ "$TEST_RESULT" == "success" ]]; then
+            COLOR=3066993
+            STATUS="✅ 성공"
+            TEST_ICON="✅"
+            TEST_TEXT="성공 (≥70%)"
+          else
+            COLOR=15158332
+            STATUS="❌ 실패"
+            TEST_ICON="❌"
+            TEST_TEXT="실패"
+          fi
+
+          curl -s -X POST "$DISCORD_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "$(cat << EOF
+          {
+            "embeds": [{
+              "title": "CI ${STATUS} — ${BRANCH}",
+              "url": "${RUN_URL}",
+              "color": ${COLOR},
+              "fields": [
+                {"name": "브랜치", "value": "\`${BRANCH}\`", "inline": true},
+                {"name": "작성자", "value": "\`${ACTOR}\`", "inline": true},
+                {"name": "Embedding Service", "value": "Unit Test: ${TEST_ICON} ${TEST_TEXT}", "inline": false}
+              ],
+              "footer": {"text": "GitHub Actions CI · embedding-service"}
+            }]
+          }
+          EOF
+          )"

@@ -1,0 +1,177 @@
+[
+  {
+    "id": 1,
+    "commonTags": ["여행", "사진"],
+    "score": 0.82,
+    "expectedKeywords": ["여행", "사진"],
+    "expectedExplanation": "여행과 사진을 함께 즐기는 감성이 딱 맞는 두 분이에요! 서로의 여행 사진 이야기로 대화가 끊이지 않을 것 같아요."
+  },
+  {
+    "id": 2,
+    "commonTags": ["독서", "카페"],
+    "score": 0.75,
+    "expectedKeywords": ["독서", "카페"],
+    "expectedExplanation": "독서와 카페를 좋아하는 취향이 잘 맞는 분들이에요. 조용한 카페에서 책 이야기 나눠보는 건 어떨까요?"
+  },
+  {
+    "id": 3,
+    "commonTags": ["운동", "헬스"],
+    "score": 0.90,
+    "expectedKeywords": ["운동", "헬스"],
+    "expectedExplanation": "운동을 향한 열정이 두 분을 이어주었어요! 함께 운동 루틴을 공유하며 서로 동기부여가 될 것 같아요."
+  },
+  {
+    "id": 4,
+    "commonTags": ["요리", "맛집"],
+    "score": 0.78,
+    "expectedKeywords": ["요리", "맛집"],
+    "expectedExplanation": "요리와 맛집 탐방을 좋아하는 두 분의 만남이에요! 함께 새로운 레시피를 나누며 즐거운 시간을 보낼 것 같아요."
+  },
+  {
+    "id": 5,
+    "commonTags": [],
+    "score": 0.45,
+    "expectedKeywords": ["45"],
+    "expectedExplanation": "매칭 점수 45%로 서로 잘 맞는 분들이에요! 새로운 인연을 만들어보세요."
+  },
+  {
+    "id": 6,
+    "commonTags": ["음악"],
+    "score": 0.68,
+    "expectedKeywords": ["음악"],
+    "expectedExplanation": "음악에 대한 공통 관심사로 연결된 두 분이에요. 좋아하는 아티스트를 공유하며 대화를 시작해보세요!"
+  },
+  {
+    "id": 7,
+    "commonTags": ["게임", "애니"],
+    "score": 0.85,
+    "expectedKeywords": ["게임", "애니"],
+    "expectedExplanation": "게임과 애니를 함께 즐기는 두 분이에요! 좋아하는 작품 이야기로 금방 친해질 것 같아요."
+  },
+  {
+    "id": 8,
+    "commonTags": ["코딩", "개발"],
+    "score": 0.88,
+    "expectedKeywords": ["코딩", "개발"],
+    "expectedExplanation": "코딩과 개발에 대한 열정을 공유하는 두 분이에요! 함께 프로젝트 이야기를 나눠보는 건 어떨까요?"
+  },
+  {
+    "id": 9,
+    "commonTags": ["반려동물"],
+    "score": 0.72,
+    "expectedKeywords": ["반려동물"],
+    "expectedExplanation": "반려동물에 대한 공통 관심사로 연결된 두 분이에요. 반려동물 사진을 공유하며 대화해보세요!"
+  },
+  {
+    "id": 10,
+    "commonTags": ["영화", "넷플릭스"],
+    "score": 0.80,
+    "expectedKeywords": ["영화", "넷플릭스"],
+    "expectedExplanation": "영화와 넷플릭스를 좋아하는 취향이 잘 맞는 두 분이에요! 서로 추천작을 공유하며 대화가 끊이지 않을 것 같아요."
+  },
+  {
+    "id": 11,
+    "commonTags": ["등산", "자연"],
+    "score": 0.77,
+    "expectedKeywords": ["등산", "자연"],
+    "expectedExplanation": "등산과 자연을 사랑하는 두 분이에요! 함께 산행 코스를 공유하며 건강한 만남을 시작해보세요."
+  },
+  {
+    "id": 12,
+    "commonTags": ["패션", "쇼핑"],
+    "score": 0.73,
+    "expectedKeywords": ["패션", "쇼핑"],
+    "expectedExplanation": "패션과 쇼핑에 대한 감각이 비슷한 두 분이에요! 트렌드 이야기로 금방 친해질 것 같아요."
+  },
+  {
+    "id": 13,
+    "commonTags": ["여행", "맛집", "카페"],
+    "score": 0.92,
+    "expectedKeywords": ["여행", "맛집", "카페"],
+    "expectedExplanation": "여행, 맛집, 카페까지 3개의 공통 관심사를 가진 두 분이에요! 함께 맛집 투어하며 즐거운 시간 보낼 것 같아요."
+  },
+  {
+    "id": 14,
+    "commonTags": ["음악", "콘서트", "페스티벌"],
+    "score": 0.91,
+    "expectedKeywords": ["음악", "콘서트"],
+    "expectedExplanation": "음악과 공연을 사랑하는 두 분이에요! 함께 페스티벌에 가면 최고의 시간이 될 것 같아요."
+  },
+  {
+    "id": 15,
+    "commonTags": [],
+    "score": 0.38,
+    "expectedKeywords": ["38"],
+    "expectedExplanation": "매칭 점수 38%로 서로 잘 맞는 분들이에요! 새로운 인연을 만들어보세요."
+  },
+  {
+    "id": 16,
+    "commonTags": ["드로잉", "일러스트"],
+    "score": 0.79,
+    "expectedKeywords": ["드로잉", "일러스트"],
+    "expectedExplanation": "드로잉과 일러스트를 즐기는 예술적 감성이 통하는 두 분이에요! 서로의 작품을 공유하며 영감을 나눠보세요."
+  },
+  {
+    "id": 17,
+    "commonTags": ["캠핑"],
+    "score": 0.65,
+    "expectedKeywords": ["캠핑"],
+    "expectedExplanation": "캠핑에 대한 공통 관심사로 연결된 두 분이에요. 좋아하는 캠핑 스팟을 공유하며 대화해보세요!"
+  },
+  {
+    "id": 18,
+    "commonTags": ["요가", "명상"],
+    "score": 0.76,
+    "expectedKeywords": ["요가", "명상"],
+    "expectedExplanation": "요가와 명상으로 마음의 평화를 찾는 두 분이에요! 함께 힐링하며 좋은 에너지를 나눌 수 있을 것 같아요."
+  },
+  {
+    "id": 19,
+    "commonTags": ["댄스", "K-POP"],
+    "score": 0.84,
+    "expectedKeywords": ["댄스", "K-POP"],
+    "expectedExplanation": "댄스와 K-POP을 사랑하는 두 분이에요! 좋아하는 아이돌 이야기로 대화가 끊이지 않을 것 같아요."
+  },
+  {
+    "id": 20,
+    "commonTags": ["외국어", "영어"],
+    "score": 0.71,
+    "expectedKeywords": ["외국어", "영어"],
+    "expectedExplanation": "외국어 학습에 대한 관심을 공유하는 두 분이에요! 함께 언어 교환하며 실력을 키워보는 건 어떨까요?"
+  },
+  {
+    "id": 21,
+    "commonTags": ["주식", "투자"],
+    "score": 0.74,
+    "expectedKeywords": ["주식", "투자"],
+    "expectedExplanation": "투자에 대한 관심을 공유하는 두 분이에요! 시장 분석이나 투자 전략을 함께 이야기하면 시너지가 날 것 같아요."
+  },
+  {
+    "id": 22,
+    "commonTags": ["독서", "글쓰기", "카페", "영화"],
+    "score": 0.95,
+    "expectedKeywords": ["독서", "글쓰기", "카페", "영화"],
+    "expectedExplanation": "독서, 글쓰기, 카페, 영화까지 4개의 공통 관심사를 가진 두 분이에요! 조용한 카페에서 영화와 책 이야기 나누면 최고의 시간이 될 것 같아요."
+  },
+  {
+    "id": 23,
+    "commonTags": [],
+    "score": 0.52,
+    "expectedKeywords": ["52"],
+    "expectedExplanation": "매칭 점수 52%로 서로 잘 맞는 분들이에요! 새로운 인연을 만들어보세요."
+  },
+  {
+    "id": 24,
+    "commonTags": ["보드게임"],
+    "score": 0.60,
+    "expectedKeywords": ["보드게임"],
+    "expectedExplanation": "보드게임에 대한 공통 관심사로 연결된 두 분이에요. 함께 보드게임 카페에 가보는 건 어떨까요?"
+  },
+  {
+    "id": 25,
+    "commonTags": ["사진", "카메라"],
+    "score": 0.83,
+    "expectedKeywords": ["사진", "카메라"],
+    "expectedExplanation": "사진과 카메라를 사랑하는 두 분이에요! 함께 출사 다니며 멋진 순간을 담아보세요."
+  }
+]

@@ -1,0 +1,53 @@
+## version: '3.8'
+
+# TODO: 추후 루트 docker-compose.yml로 통합 예정
+# - Redis (공통 인프라)
+# - Kafka + Zookeeper (공통 인프라)
+# - PostgreSQL (서비스별 DB 분리 유지)
+
+services:
+  postgres-match:
+    image: pgvector/pgvector:pg16
+    container_name: postgres-match
+    environment:
+      POSTGRES_DB: ditto_match
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-match-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    container_name: redis-match
+    ports:
+      - "6379:6379"
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+
+volumes:
+  postgres-match-data:
+

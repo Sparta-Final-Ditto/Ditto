@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT}
+  port: 8084
 
 spring:
   application:
@@ -9,9 +9,15 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      # 기본값 10. 메시지 전송 시 PostgreSQL 쿼리가 여러 번 나가 동시 요청 시 커넥션 대기가 생길 수 있어 늘림.
+      # 검증 결과(2026-06-30): ack-only saturation에서 풀 20 vs 40의 break point가 VU 150~200으로 동일 →
+      # 풀 사이즈는 이 워크로드의 병목이 아님. 무리한 증설 불필요해 20 유지(기본 10보다 동시요청 여유만 확보).
+      # 운영 환경에선 DB max_connections(로컬 100) 고려해 환경별로 분리 검토.
+      maximum-pool-size: 20
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO}
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -19,8 +25,41 @@ spring:
   data:
     mongodb:
       uri: ${MONGODB_URI}
+      auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+kafka:
+  topic:
+    chat-message-created: chat-message-created
+
+chat:
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://localhost:8081}
+  websocket:
+    # 콤마 구분 허용 origin. 로컬 프론트 기본 포트(CRA 3000 / Vite 5173 / demo 5500) 허용, 배포는 env로 주입.
+    allowed-origins: ${CHAT_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,http://localhost:5500}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      userServiceChatValidation:
+        sliding-window-size: 20
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2
+        ignore-exceptions:
+          - com.sparta.ditto.common.exception.BusinessException
+      userServiceChatProfile:
+        sliding-window-size: 20
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 2

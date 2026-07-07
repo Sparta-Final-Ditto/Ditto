@@ -1,0 +1,58 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: assistant-service
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioSpeechAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiAudioTranscriptionAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiImageAutoConfiguration
+      - org.springframework.ai.model.openai.autoconfigure.OpenAiEmbeddingAutoConfiguration
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5435/ditto_assistant}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+  ai:
+    ollama:
+      base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+      chat:
+        model: ${OLLAMA_CHAT_MODEL:llama3.2}
+        options:
+          temperature: 0.1   # 낮은 temperature로 언어 혼입/할루시네이션 억제
+      embedding:
+        model: ${OLLAMA_EMBEDDING_MODEL:embeddinggemma}
+    openai:
+      api-key: ${LLM_API_KEY:local-dev-dummy-key}
+      base-url: ${LLM_API_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+      chat:
+        options:
+          model: ${LLM_API_MODEL:gemini-2.5-flash}
+    vectorstore:
+      pgvector:
+        initialize-schema: true
+        dimensions: 768   # embeddinggemma 임베딩 차원 (기본값 1536은 OpenAI 기준이라 맞지 않음)
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+assistant:
+  llm:
+    provider: ${ASSISTANT_LLM_PROVIDER:ollama}   # ollama | api
+  rag:
+    search:
+      top-k: ${RAG_SEARCH_TOP_K:5}
+      similarity-threshold: ${RAG_SEARCH_SIMILARITY_THRESHOLD:0.5}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html

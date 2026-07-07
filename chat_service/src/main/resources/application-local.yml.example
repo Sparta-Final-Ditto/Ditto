@@ -8,9 +8,16 @@ spring:
     password: postgres
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: validate
   data:
     mongodb:
       uri: mongodb://localhost:27017/ditto_chat
+    redis:
+      host: localhost
+      port: 6379
   kafka:
     bootstrap-servers: localhost:9092
+
+chat:
+  user-service:
+    base-url: http://localhost:8081
