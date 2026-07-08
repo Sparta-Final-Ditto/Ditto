@@ -85,14 +85,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy docker-compose.yml to EC2
+      - name: Copy docker-compose.yml and scripts to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml"
+          source: "docker-compose.yml,scripts/init-db.sh"
           target: "~/ditto"
+          strip_components: 0
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
