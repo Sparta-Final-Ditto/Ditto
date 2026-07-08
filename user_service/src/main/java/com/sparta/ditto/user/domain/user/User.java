@@ -81,6 +81,15 @@ public class User extends BaseEntity {
     @Column(name = "interest_registered", nullable = false)
     private boolean interestRegistered = false;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
+    @Column(length = 100)
+    private String neighborhood;
+
     private User(String email, String password, String nickname,
                  Gender gender, LocalDate birthdate, LoginProvider loginProvider) {
         this.email = Objects.requireNonNull(email, "email must not be null");
