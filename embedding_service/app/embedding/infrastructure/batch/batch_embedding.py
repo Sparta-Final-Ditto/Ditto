@@ -7,6 +7,7 @@ from aiokafka import AIOKafkaConsumer
 
 from app.config.settings import settings
 from app.common.db.database import AsyncSessionLocal
+from app.embedding.application.port.batch_runner_port import BatchRunnerPort
 from app.embedding.domain.algorithm.ema_calculator import update_profile
 from app.embedding.domain.algorithm.post_text_builder import build_post_text
 from app.embedding.infrastructure.kafka.profile_embedding_producer import (
@@ -210,3 +211,13 @@ async def run_monthly_batch() -> None:
         total_skipped=skip,
         total_failed=fail,
     )
+
+
+class BatchEmbeddingRunner(BatchRunnerPort):
+    """Application의 BatchRunnerPort 구현체 — 기존 run_batch/run_monthly_batch를 위임."""
+
+    async def run_daily(self) -> None:
+        await run_batch()
+
+    async def run_monthly(self) -> None:
+        await run_monthly_batch()

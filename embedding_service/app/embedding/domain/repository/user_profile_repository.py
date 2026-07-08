@@ -43,3 +43,8 @@ class UserProfileRepository(ABC):
     async def find_active_user_ids(self) -> list[UUID]:
         """match_service 배치용: active=True인 유저 ID 목록."""
         ...
+
+    @abstractmethod
+    async def sync_count_and_active(self, user_id: UUID, done_count: int) -> None:
+        """record_count/active를 done_count 기준으로 동기화."""
+        ...

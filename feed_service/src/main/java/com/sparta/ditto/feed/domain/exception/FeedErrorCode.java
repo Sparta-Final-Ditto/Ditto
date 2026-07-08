@@ -19,6 +19,8 @@ public enum FeedErrorCode implements ErrorCode {
 
     // S3 객체 검증
     S3_OBJECT_NOT_FOUND("S3_OBJECT_NOT_FOUND", "업로드된 파일을 찾을 수 없습니다.", 400),
+    S3_VALIDATION_FAILED("S3_VALIDATION_FAILED",
+            "파일 검증에 실패했습니다. 잠시 후 다시 시도해주세요.", 503),
 
     // 게시글 생성 입력값 검증 (POST /posts)
     EMPTY_POST("VALIDATION_ERROR", "이미지, 영상, 텍스트 중 하나는 반드시 입력해주세요.", 400),

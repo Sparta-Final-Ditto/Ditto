@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.port.MetaDataPort;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class MetaDataAdapter implements MetaDataPort {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Override
     public String buildPostMetaData(String postId) {
@@ -34,15 +36,15 @@ public class MetaDataAdapter implements MetaDataPort {
             return null;
         }
         try {
-            return OBJECT_MAPPER.readTree(metaData).path("roomId").asText(null);
+            return objectMapper.readTree(metaData).path("roomId").asText(null);
         } catch (Exception e) {
             return null;
         }
     }
 
-    private static String toJson(Map<String, Object> map) {
+    private String toJson(Map<String, Object> map) {
         try {
-            return OBJECT_MAPPER.writeValueAsString(map);
+            return objectMapper.writeValueAsString(map);
         } catch (JsonProcessingException e) {
             throw new RuntimeException("메타데이터 직렬화 실패", e);
         }

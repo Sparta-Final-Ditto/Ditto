@@ -1,14 +1,15 @@
 package com.sparta.ditto.notification.infrastructure.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.NotificationEventHandler;
 import com.sparta.ditto.notification.application.dto.ChatNotificationCommand;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -23,8 +24,12 @@ class ChatEventConsumerTest {
     @Mock
     private NotificationEventHandler handler;
 
-    @InjectMocks
     private ChatEventConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new ChatEventConsumer(new ObjectMapper().findAndRegisterModules(), handler);
+    }
 
     // ── 공통 고정 값 ──────────────────────────────────────────────────────────
     private static final String MESSAGE_ID        = "018f7b7a-4d3c-7c22-9f1b-2a3c4d5e6f70";

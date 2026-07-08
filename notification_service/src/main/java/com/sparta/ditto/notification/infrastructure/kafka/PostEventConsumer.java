@@ -16,13 +16,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PostEventConsumer {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
-
+    private final ObjectMapper objectMapper;
     private final NotificationEventHandler notificationEventHandler;
 
     @KafkaListener(topics = "post-events")
     public void consume(String message) throws Exception {
-        PostEventEnvelope envelope = OBJECT_MAPPER.readValue(message, PostEventEnvelope.class);
+        PostEventEnvelope envelope = objectMapper.readValue(message, PostEventEnvelope.class);
         PostNotificationCommand cmd = toCommand(envelope);
         notificationEventHandler.handlePostEvent(cmd);
     }

@@ -73,7 +73,7 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
             SELECT * FROM posts
             WHERE visibility IN (:#{#scopes.![name()]})
               AND deleted_at IS NULL
-              AND CAST(user_id AS text) NOT IN (:#{#excludeUserIds.![toString()]})
+              AND user_id NOT IN (:excludeUserIds)
               AND (
                 CAST(:cursorAt AS timestamptz) IS NULL
                 OR created_at < CAST(:cursorAt AS timestamptz)
@@ -109,7 +109,7 @@ public interface PostJpaRepository extends JpaRepository<Post, UUID> {
 
     @Query(value = """
             SELECT * FROM posts
-            WHERE CAST(user_id AS text) IN (:#{#userIds.![toString()]})
+            WHERE user_id IN (:userIds)
               AND visibility IN (:#{#scopes.![name()]})
               AND deleted_at IS NULL
               AND (

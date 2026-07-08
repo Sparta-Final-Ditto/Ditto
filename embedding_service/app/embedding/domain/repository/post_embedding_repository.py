@@ -55,3 +55,8 @@ class PostEmbeddingRepository(ABC):
     async def delete_by_post_id(self, post_id: UUID) -> None:
         """hard delete: 임베딩 레코드 물리 삭제."""
         ...
+
+    @abstractmethod
+    async def count_done_by_user_id(self, user_id: UUID) -> int:
+        """해당 유저의 DONE 상태 임베딩 개수를 반환."""
+        ...

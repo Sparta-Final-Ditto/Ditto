@@ -6,6 +6,7 @@ import com.sparta.ditto.feed.application.dto.result.PostDetailResult.CommentItem
 import com.sparta.ditto.feed.application.dto.result.PostDetailResult.MediaItem;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
+import com.sparta.ditto.feed.application.facade.PostQueryFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import com.sparta.ditto.feed.domain.exception.PostNotFoundException;
@@ -41,6 +42,9 @@ class PostControllerGetDetailTest {
     private PostInteractionFacade postInteractionFacade;
 
     @MockitoBean
+    private PostQueryFacade postQueryFacade;
+
+    @MockitoBean
     private PostInteractionService postInteractionService;
 
     @MockitoBean
@@ -68,14 +72,14 @@ class PostControllerGetDetailTest {
 
     @BeforeEach
     void setUp() {
-        when(postService.getPostDetail(any(UUID.class), any(UUID.class)))
+        when(postQueryFacade.getPostDetail(any(UUID.class), any(UUID.class)))
                 .thenReturn(buildResult(false));
     }
 
     @Test
     @DisplayName("타인의 글 조회 시 isMyPost = false")
     void getPostDetail_타인글_isMyPost_false() throws Exception {
-        when(postService.getPostDetail(postId, otherUserId)).thenReturn(buildResult(false));
+        when(postQueryFacade.getPostDetail(postId, otherUserId)).thenReturn(buildResult(false));
 
         mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", otherUserId)
@@ -87,7 +91,7 @@ class PostControllerGetDetailTest {
     @Test
     @DisplayName("본인 글 조회 시 isMyPost = true")
     void getPostDetail_본인글_isMyPost_true() throws Exception {
-        when(postService.getPostDetail(postId, authorId)).thenReturn(buildResult(true));
+        when(postQueryFacade.getPostDetail(postId, authorId)).thenReturn(buildResult(true));
 
         mockMvc.perform(get("/api/v1/posts/{postId}", postId)
                         .header("X-User-Id", authorId)
@@ -134,7 +138,7 @@ class PostControllerGetDetailTest {
     @Test
     @DisplayName("존재하지 않는 postId 조회 시 404 POST_NOT_FOUND 반환")
     void getPostDetail_없는게시글_404() throws Exception {
-        when(postService.getPostDetail(any(UUID.class), any(UUID.class)))
+        when(postQueryFacade.getPostDetail(any(UUID.class), any(UUID.class)))
                 .thenThrow(new PostNotFoundException());
 
         mockMvc.perform(get("/api/v1/posts/{postId}", UUID.randomUUID())
