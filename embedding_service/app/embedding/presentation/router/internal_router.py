@@ -1,4 +1,3 @@
-import asyncio
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,8 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.common.exception.business_exception import BusinessException
 from app.common.exception.error_code import EmbeddingErrorCode
 from app.common.response.api_response import ApiResponse
-from app.dependencies import get_embedding_service, get_model
-from app.embedding.application.port.embedding_model_port import EmbeddingModelPort
+from app.dependencies import get_embedding_service
 from app.embedding.application.service.embedding_service import EmbeddingService
 from app.embedding.presentation.dto.embedding_dto import (
     ActiveUserIdsResponse,
@@ -31,7 +29,7 @@ router = APIRouter(tags=["Internal"])
 async def get_active_user_ids(
         svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[ActiveUserIdsResponse]:
-    user_ids = await svc.profile_repo.find_active_user_ids()
+    user_ids = await svc.get_active_user_ids()
     return ApiResponse.success(
         ActiveUserIdsResponse(user_ids=user_ids, count=len(user_ids))
     )
@@ -94,7 +92,7 @@ async def get_profile_vector(
 )
 async def embed_text(
         body: EmbedTextRequest,
-        model: EmbeddingModelPort = Depends(get_model),
+        svc: EmbeddingService = Depends(get_embedding_service),
 ) -> ApiResponse[EmbedTextResponse]:
-    vector = await asyncio.to_thread(model.encode, body.text)
+    vector = await svc.embed_text(body.text)
     return ApiResponse.success(EmbedTextResponse(vector=vector, dimension=len(vector)))

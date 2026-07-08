@@ -1,13 +1,14 @@
 package com.sparta.ditto.notification.infrastructure.kafka;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.NotificationEventHandler;
 import com.sparta.ditto.notification.application.dto.PostNotificationCommand;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -22,8 +23,12 @@ class PostEventConsumerTest {
     @Mock
     private NotificationEventHandler handler;
 
-    @InjectMocks
     private PostEventConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new PostEventConsumer(new ObjectMapper().findAndRegisterModules(), handler);
+    }
 
     // ── 공통 고정 값 ──────────────────────────────────────────────────────────
     private static final String ACTOR_UUID   = "7b9f6e22-03e7-4b59-a9a4-95de4e2f1234";
@@ -143,14 +148,14 @@ class PostEventConsumerTest {
     // ── 4. JSON 파싱 불가 문자열 → 예외 throw (Consumer 재시도 정책 유도) ─────
 
     @Test
-    @DisplayName("JSON 파싱 불가 문자열 수신 시 예외를 던져 Consumer 재시도 정책을 태운다")
+    @DisplayName("JSON 파싱 불가 문자열 수신 시 예외를 던진다(not-retryable → 재시도 없이 즉시 DLT 전송)")
     void consume_invalidJson_throwsException() {
         assertThatThrownBy(() -> consumer.consume("{not-valid-json"))
                 .isInstanceOf(Exception.class);
     }
 
     @Test
-    @DisplayName("빈 문자열 수신 시 예외를 던져 Consumer 재시도 정책을 태운다")
+    @DisplayName("빈 문자열 수신 시 예외를 던진다(not-retryable → 재시도 없이 즉시 DLT 전송)")
     void consume_emptyString_throwsException() {
         assertThatThrownBy(() -> consumer.consume(""))
                 .isInstanceOf(Exception.class);

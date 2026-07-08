@@ -13,15 +13,14 @@ public class AssistantDocumentChunker {
     private static final int DOCUMENT_VERSION = 1;
 
     public Document chunk(FaqItem item, String sourceType) {
-        String content = "Q: %s\nA: %s".formatted(item.question(), item.answer());
         Map<String, Object> metadata = Map.of(
                 "sourceType", sourceType,
                 "title", item.title(),
                 "itemId", item.id(),
-
+                "question", item.question(),
                 "version", DOCUMENT_VERSION
         );
-        return new Document(toDocumentId(item.id()), content, metadata);
+        return new Document(toDocumentId(item.id()), item.answer(), metadata);
     }
 
     // FAQ/정책 원본 id로부터 결정적 UUID를 생성 — 재적재 시 upsert

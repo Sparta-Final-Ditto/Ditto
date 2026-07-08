@@ -14,13 +14,12 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ChatEventConsumer {
 
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper().findAndRegisterModules();
-
+    private final ObjectMapper objectMapper;
     private final NotificationEventHandler notificationEventHandler;
 
     @KafkaListener(topics = "chat-message-created")
     public void consume(String message) throws Exception {
-        ChatMessageEvent event = OBJECT_MAPPER.readValue(message, ChatMessageEvent.class);
+        ChatMessageEvent event = objectMapper.readValue(message, ChatMessageEvent.class);
         ChatNotificationCommand cmd = ChatNotificationCommand.of(
                 event.messageId(),
                 event.senderId(),

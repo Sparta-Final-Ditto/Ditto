@@ -13,6 +13,7 @@ import com.sparta.ditto.feed.application.dto.query.GetUserPostsQuery;
 import com.sparta.ditto.feed.application.dto.result.UserPostsResult;
 import com.sparta.ditto.feed.application.facade.PostCreateFacade;
 import com.sparta.ditto.feed.application.facade.PostInteractionFacade;
+import com.sparta.ditto.feed.application.facade.PostQueryFacade;
 import com.sparta.ditto.feed.application.service.PostInteractionService;
 import com.sparta.ditto.feed.application.service.PostService;
 import java.util.List;
@@ -44,6 +45,9 @@ class PostControllerGetUserPostsTest {
 
     @MockitoBean
     private PostInteractionFacade postInteractionFacade;
+
+    @MockitoBean
+    private PostQueryFacade postQueryFacade;
 
     @MockitoBean
     private PostInteractionService postInteractionService;

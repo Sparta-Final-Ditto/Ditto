@@ -11,7 +11,7 @@ import unittest
 import numpy as np
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.embedding.infrastructure.batch.batch_embedding import run_batch
+from app.embedding.infrastructure.batch.batch_embedding import BatchEmbeddingRunner, run_batch
 from app.config.settings import settings
 from tests.helpers import make_profile, make_vectors, FAKE_VECTOR
 
@@ -312,6 +312,19 @@ class TestNightlyBatch(unittest.IsolatedAsyncioTestCase):
 
         with patch(f"{_BATCH_MODULE}.reprocess_profile_embedding_dlq", new=AsyncMock(return_value=3)) as mocked:
             await run_batch()
+            mocked.assert_awaited_once()
+
+
+class TestBatchEmbeddingRunner(unittest.IsolatedAsyncioTestCase):
+
+    async def test_run_daily_delegates_to_run_batch(self):
+        with patch(f"{_BATCH_MODULE}.run_batch", new=AsyncMock()) as mocked:
+            await BatchEmbeddingRunner().run_daily()
+            mocked.assert_awaited_once()
+
+    async def test_run_monthly_delegates_to_run_monthly_batch(self):
+        with patch(f"{_BATCH_MODULE}.run_monthly_batch", new=AsyncMock()) as mocked:
+            await BatchEmbeddingRunner().run_monthly()
             mocked.assert_awaited_once()
 
 
