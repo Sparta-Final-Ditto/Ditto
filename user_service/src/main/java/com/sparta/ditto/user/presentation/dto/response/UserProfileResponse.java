@@ -13,8 +13,6 @@ public record UserProfileResponse(
         LocalDate birthdate,
         String profileImageUrl,
         String bio,
-        Double latitude,
-        Double longitude,
         String neighborhood
 ) {
     public static UserProfileResponse from(User user) {
@@ -26,8 +24,6 @@ public record UserProfileResponse(
                 user.getBirthdate(),
                 user.getProfileImageUrl(),
                 user.getBio(),
-                user.getLatitude(),
-                user.getLongitude(),
                 user.getNeighborhood()
         );
     }
