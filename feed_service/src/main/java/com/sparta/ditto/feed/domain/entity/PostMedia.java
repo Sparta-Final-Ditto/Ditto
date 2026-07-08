@@ -1,5 +1,6 @@
 package com.sparta.ditto.feed.domain.entity;
 
+import com.sparta.ditto.common.entity.GeneratedUuidV7;
 import com.sparta.ditto.feed.domain.exception.InvalidPostMediaTypeException;
 import com.sparta.ditto.feed.domain.type.MediaType;
 import jakarta.persistence.Column;
@@ -8,7 +9,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -42,7 +42,8 @@ import lombok.NoArgsConstructor;
 public class PostMedia {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @GeneratedUuidV7
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
 
