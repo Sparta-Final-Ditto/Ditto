@@ -125,6 +125,12 @@ public class User extends BaseEntity {
         this.interestRegistered = true;
     }
 
+    public void updateLocation(double latitude, double longitude, String neighborhood) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.neighborhood = neighborhood;
+    }
+
     public void updateProfile(String nickname, String bio, String profileImageUrl) {
         if (nickname != null && !nickname.isBlank()) {
             this.nickname = nickname;
