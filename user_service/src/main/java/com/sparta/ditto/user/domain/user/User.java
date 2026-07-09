@@ -9,19 +9,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UuidGenerator;
 
 @Getter
 @Entity
@@ -35,11 +31,6 @@ import org.hibernate.annotations.UuidGenerator;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
-
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
 
     @Column(nullable = false, unique = true, length = 255)
     private String email;
