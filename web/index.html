@@ -1,13 +1,390 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>web</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ditto — 같은 파장을 가진 사람을 찾다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#1f6f4a;--green-b:#35c281;--green-10:rgba(31,111,74,.1);--green-20:rgba(31,111,74,.2);
+  --bg:#fbfbf7;--bg2:#f4f6f0;--bg3:#eef1e9;
+  --border:rgba(18,20,15,.08);--border2:rgba(18,20,15,.14);
+  --ink:#12140f;--im:rgba(18,20,15,.55);--id:rgba(18,20,15,.28);
+  --fd:'Fraunces',serif;--fk:'Pretendard Variable',Pretendard,-apple-system,sans-serif;
+}
+html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--fk);-webkit-font-smoothing:antialiased}
+::selection{background:var(--green);color:#fff}
+
+/* ── TRACK / PANELS ── */
+#track{display:flex;flex-direction:row;height:100vh;will-change:transform}
+.panel{width:100vw;height:100vh;flex-shrink:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;justify-content:space-between;align-items:center;padding:20px 40px;opacity:0;pointer-events:none;background:var(--green);transition:opacity .35s}
+nav.vis{opacity:1;pointer-events:all}
+.nl{font-family:var(--fd);font-weight:800;font-size:26px;letter-spacing:-.03em;color:#fff;cursor:pointer;line-height:1;display:flex;align-items:center;gap:8px}
+.nl .mk{width:20px;height:20px;flex-shrink:0}
+.nv{display:flex;gap:26px;list-style:none}
+.nv a{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);cursor:pointer;transition:color .2s;user-select:none}
+.nv a:hover,.nv a.act{color:#fff}
+.nc{font-size:10px;font-weight:700;padding:9px 16px;border:1px solid #fff;border-radius:100px;color:var(--green);background:#fff;cursor:pointer;transition:all .2s;user-select:none;letter-spacing:.04em}
+.nc:hover{background:transparent;border-color:#fff;color:#fff}
+
+/* ── PROGRESS DOTS ── */
+#prog{position:fixed;bottom:44px;left:50%;transform:translateX(-50%);z-index:200;display:flex;gap:7px;align-items:center;opacity:0;pointer-events:none;transition:opacity .35s}
+#prog.vis{opacity:1;pointer-events:all}
+.pdot{width:5px;height:5px;border-radius:50%;background:var(--id);cursor:pointer;transition:background .3s,width .25s,border-radius .25s}
+.pdot.act{background:var(--green);width:20px;border-radius:3px}
+
+/* ── PANEL COUNTER ── */
+.pcnt{position:absolute;bottom:52px;left:40px;z-index:6;font-family:var(--fd);font-size:clamp(7px,.9vh,9px);font-weight:700;letter-spacing:.22em;color:var(--id);text-transform:uppercase}
+
+/* ── REVEAL ── */
+.rv{opacity:0;transform:translateY(16px);transition:opacity .55s cubic-bezier(.22,1,.36,1),transform .55s cubic-bezier(.22,1,.36,1)}
+.rv.on{opacity:1;transform:translateY(0)}
+
+/* ══════ PANEL 0 — ENTRY / HERO ══════ */
+#entry{background:var(--bg)}
+#entry canvas{position:absolute;inset:0;width:100%!important;height:100%!important;pointer-events:none}
+#entry-ui{position:absolute;inset:0;z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:18px}
+.e-mark{width:56px;height:56px;opacity:0;animation:efup 1s .2s ease forwards}
+.e-logo{font-family:var(--fd);font-weight:800;font-size:clamp(40px,6.4vw,88px);letter-spacing:-.04em;color:var(--ink);line-height:1;opacity:0;animation:efup 1.2s .4s ease forwards}
+.e-logo em{font-style:italic;color:var(--green)}
+.hh{font-family:var(--fd);font-weight:700;font-size:clamp(24px,3.4vw,38px);letter-spacing:-.02em;line-height:1.25;color:var(--ink);opacity:0;animation:efup 1.2s .7s ease forwards}
+.hh em{font-style:italic;font-weight:500;color:var(--green)}
+.e-sub{font-size:14px;line-height:1.7;color:var(--im);max-width:440px;opacity:0;animation:efup 1.2s .95s ease forwards;pointer-events:none}
+.hero-cta{display:flex;gap:12px;margin-top:4px;opacity:0;animation:efup 1.2s 1.2s ease forwards}
+@keyframes efup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.cm{position:absolute;width:18px;height:18px;z-index:6;pointer-events:none}
+.cm::before,.cm::after{content:'';position:absolute;background:var(--border2)}
+.cm::before{width:1px;height:100%}.cm::after{width:100%;height:1px}
+.cm.tl{top:26px;left:26px}.cm.tl::before,.cm.tl::after{top:0;left:0}
+.cm.tr{top:26px;right:26px}.cm.tr::before{top:0;right:0}.cm.tr::after{top:0;right:0}
+.cm.bl{bottom:26px;left:26px}.cm.bl::before{bottom:0;left:0}.cm.bl::after{bottom:0;left:0}
+.cm.br{bottom:26px;right:26px}.cm.br::before{bottom:0;right:0}.cm.br::after{bottom:0;right:0}
+.hint{position:absolute;right:44px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;gap:10px;pointer-events:none;opacity:0;animation:efup 1s 1.5s ease forwards}
+.hint span{font-size:8px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--id);writing-mode:vertical-rl}
+.hint-line{width:1px;height:40px;background:linear-gradient(to bottom,var(--green-20),transparent);animation:hpulse 2s ease-in-out infinite}
+@keyframes hpulse{0%,100%{opacity:.3;transform:scaleY(.5);transform-origin:top}50%{opacity:1;transform:scaleY(1)}}
+
+/* ══════ SHARED PANEL CONTENT ══════ */
+.pwrap{max-width:960px;padding:0 40px;display:flex;flex-direction:column;gap:20px}
+.sl{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--green)}
+.st{font-family:var(--fd);font-weight:700;font-size:clamp(28px,4vw,48px);letter-spacing:-.02em;line-height:1.18;color:var(--ink)}
+.sd{font-size:15px;line-height:1.75;color:var(--im);max-width:520px}
+.btn{font-size:14px;font-weight:700;padding:14px 28px;border-radius:100px;display:inline-flex;align-items:center;gap:8px;transition:all .22s cubic-bezier(.22,1,.36,1);cursor:pointer;border:1px solid transparent}
+.btn-p{background:var(--ink);color:#fff}
+.btn-p:hover{background:var(--green);transform:translateY(-2px)}
+.btn-g{background:transparent;color:var(--ink);border-color:var(--border2)}
+.btn-g:hover{border-color:var(--green);color:var(--green)}
+
+/* ── PANEL 1: HOW IT WORKS ── */
+#how{background:var(--bg2)}
+.feat-grid{max-width:1040px;padding:0 40px;display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:var(--border);border-radius:18px;overflow:hidden;margin-top:8px}
+.feat{background:var(--bg2);padding:34px 26px;display:flex;flex-direction:column;gap:12px}
+.feat-n{font-family:var(--fd);font-size:13px;font-weight:700;color:var(--green)}
+.feat h3{font-family:var(--fd);font-size:19px;font-weight:700;letter-spacing:-.01em}
+.feat p{font-size:13px;line-height:1.65;color:var(--im)}
+
+/* ── PANEL 2: WHY / EXPLAIN ── */
+#explain{background:var(--bg)}
+.exp-grid{display:grid;grid-template-columns:.95fr 1.05fr;gap:60px;align-items:center;max-width:1040px;padding:0 40px}
+.exp-copy{text-align:left;display:flex;flex-direction:column;gap:16px}
+.layers{display:flex;flex-direction:column;gap:2px;margin-top:6px;border-radius:14px;overflow:hidden;border:1px solid var(--border)}
+.layer{display:flex;align-items:center;gap:14px;padding:14px 18px;background:var(--bg)}
+.layer-n{font-family:var(--fd);font-weight:700;font-size:13px;color:var(--green);flex-shrink:0;width:22px}
+.layer-t{font-weight:600;font-size:13.5px;color:var(--ink)}
+.layer-d{font-size:11.5px;color:var(--im);margin-top:1px}
+.card{background:#fff;border:1px solid var(--border2);border-radius:20px;padding:28px;box-shadow:0 24px 60px -20px rgba(18,20,15,.14)}
+.card-head{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.avpair{display:flex}
+.av{width:32px;height:32px;border-radius:50%;border:2px solid #fff;background:linear-gradient(135deg,var(--green),var(--green-b))}
+.av:nth-child(2){margin-left:-10px;background:linear-gradient(135deg,#0d3d29,var(--green))}
+.score{margin-left:auto;font-family:var(--fd);font-size:19px;font-weight:700;color:var(--green)}
+.score span{font-size:11px;font-weight:600;color:var(--id);margin-left:2px}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.tag{font-size:11px;font-weight:700;color:var(--green);background:var(--green-10);border:1px solid var(--green-20);padding:4px 10px;border-radius:100px}
+.exp{font-size:13px;line-height:1.7;color:var(--im);padding-top:14px;border-top:1px dashed var(--border2)}
+.exp b{color:var(--ink);font-weight:600}
+
+/* ── PANEL 3: CTA (다크) ── */
+#cta{background:var(--ink)}
+#cta .sl{color:var(--green-b)}
+#cta .st{color:#fff}
+.cta-c{display:flex;flex-direction:column;align-items:center;gap:22px;text-align:center}
+.stats-mini{display:flex;gap:48px;margin-top:8px}
+#cta .snum{font-family:var(--fd);font-size:clamp(24px,3vw,32px);font-weight:700;color:var(--green-b);letter-spacing:-.02em}
+#cta .slabel{font-size:11px;color:rgba(255,255,255,.5);margin-top:4px}
+#cta .btn-p{background:var(--green-b);color:var(--ink)}
+#cta .btn-p:hover{background:#fff;transform:translateY(-2px)}
+#cta .pcnt{color:rgba(255,255,255,.25)}
+
+@media(max-width:840px){
+  .exp-grid{grid-template-columns:1fr;gap:32px}
+  .stats-mini{gap:28px}
+  .nv{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="nav">
+  <span class="nl" data-p="0">
+    <svg class="mk" viewBox="0 0 32 32"><circle cx="12" cy="16" r="10" fill="#fff" fill-opacity=".95"/><circle cx="20" cy="16" r="10" fill="#0d3d29" fill-opacity=".55"/></svg>
+    Ditto
+  </span>
+  <ul class="nv">
+    <li><a data-p="0">Home</a></li>
+    <li><a data-p="1">How it works</a></li>
+    <li><a data-p="2">Why Ditto</a></li>
+  </ul>
+  <a href="login.html" class="nc">시작하기</a>
+</nav>
+
+<!-- DOTS -->
+<div id="prog">
+  <div class="pdot" data-i="0"></div><div class="pdot" data-i="1"></div><div class="pdot" data-i="2"></div><div class="pdot" data-i="3"></div>
+</div>
+
+<!-- TRACK -->
+<div id="track">
+
+  <!-- 0 ENTRY / HERO -->
+  <div class="panel" id="entry">
+    <canvas id="entry-canvas"></canvas>
+    <div id="entry-ui">
+      <svg class="e-mark" viewBox="0 0 32 32"><circle cx="12" cy="16" r="10" fill="#1f6f4a" fill-opacity=".85"/><circle cx="20" cy="16" r="10" fill="#35c281" fill-opacity=".85" style="mix-blend-mode:multiply"/></svg>
+      <div class="e-logo">D<em>i</em>tto</div>
+      <h1 class="hh">당신과 <em>같은 파장</em>을 가진<br>사람을 찾아드려요</h1>
+      <p class="e-sub">취향과 관심사의 결을 읽어 매일 한 명, 진짜 통할 사람을 연결합니다.</p>
+    </div>
+    <div class="cm tl"></div><div class="cm tr"></div><div class="cm bl"></div><div class="cm br"></div>
+    <div class="hint"><span>Scroll</span><div class="hint-line"></div></div>
+    <div class="pcnt">01 — Home</div>
+  </div>
+
+  <!-- 1 HOW IT WORKS -->
+  <div class="panel" id="how">
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;margin-bottom:8px">
+      <div class="sl rv">How it works</div>
+      <h2 class="st rv" style="font-size:clamp(26px,3.4vw,38px)">세 단계면 충분해요</h2>
+    </div>
+    <div class="feat-grid">
+      <div class="feat rv"><div class="feat-n">01</div><h3>관심사를 남겨요</h3><p>취향, 활동, 최근 관심사를 자유롭게 기록하면 프로필 벡터가 자동으로 쌓여요.</p></div>
+      <div class="feat rv"><div class="feat-n">02</div><h3>정오에 매칭돼요</h3><p>벡터 유사도 기반으로 오늘 가장 결이 맞는 한 사람을 찾아 연결합니다.</p></div>
+      <div class="feat rv"><div class="feat-n">03</div><h3>이유를 확인해요</h3><p>왜 이 사람과 잘 맞는지, 공통 관심사를 근거로 AI가 직접 설명해드려요.</p></div>
+    </div>
+    <div class="pcnt">02 — How it works</div>
+  </div>
+
+  <!-- 2 WHY / EXPLAIN -->
+  <div class="panel" id="explain">
+    <div class="exp-grid">
+      <div class="exp-copy">
+        <div class="sl rv">Why Ditto</div>
+        <h2 class="st rv" style="font-size:clamp(24px,3vw,34px)">매칭을<br>블랙박스로<br>두지 않아요</h2>
+        <p class="sd rv">검색(과거 사례) → 증강(근거 조립) → 생성(설명 작성), 세 단계를 거쳐 왜 잘 맞는지 사람이 읽어도 납득되게 설명해요.</p>
+        <div class="layers rv">
+          <div class="layer"><span class="layer-n">01</span><div><div class="layer-t">검색</div><div class="layer-d">비슷한 취향의 후보와 과거 매칭 사례를 찾아요</div></div></div>
+          <div class="layer"><span class="layer-n">02</span><div><div class="layer-t">증강</div><div class="layer-d">찾은 사례를 근거로 맥락을 조립해요</div></div></div>
+          <div class="layer"><span class="layer-n">03</span><div><div class="layer-t">생성</div><div class="layer-d">납득되는 문장으로 이유를 설명해요</div></div></div>
+        </div>
+      </div>
+      <div class="card rv">
+        <div class="card-head">
+          <div class="avpair"><div class="av"></div><div class="av"></div></div>
+          <div class="score">87<span>% 일치</span></div>
+        </div>
+        <div class="tags"><span class="tag">#여행</span><span class="tag">#사진</span><span class="tag">#카페투어</span></div>
+        <div class="exp"><b>"여행과 사진을 함께 즐기는 감성이 잘 맞는 두 분이에요."</b><br>최근 방문한 도시, 저장한 카페 리스트, 촬영 스타일까지 세 가지 신호가 겹쳤어요.</div>
+      </div>
+    </div>
+    <div class="pcnt">03 — Why Ditto</div>
+  </div>
+
+  <!-- 2 CTA -->
+  <div class="panel" id="cta">
+    <div class="cta-c">
+      <div class="sl rv">Get started</div>
+      <h2 class="st rv" style="text-align:center">오늘, 같은 파장의<br>한 사람을 만나보세요</h2>
+      <a href="login.html" class="btn btn-p rv">무료로 시작하기 →</a>
+      <div class="stats-mini rv">
+        <div><div class="snum">12,400+</div><div class="slabel">누적 매칭 수</div></div>
+        <div><div class="snum">4.7 / 5</div><div class="slabel">평균 만족도</div></div>
+        <div><div class="snum">83%</div><div class="slabel">첫 대화 성사율</div></div>
+      </div>
+    </div>
+    <div class="pcnt">04 — Start</div>
+  </div>
+
+</div><!-- /track -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ─── THREE.JS (panel 0) — 파티클 필드 + 링만 사용 (구체 메쉬는 제거) ───
+const entryEl = document.getElementById('entry-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas: entryEl, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.z = 8;
+
+const C = 4200, pGeo = new THREE.BufferGeometry(),
+  pPos = new Float32Array(C * 3), pSz = new Float32Array(C), pPhase = new Float32Array(C);
+for (let i = 0; i < C; i++) {
+  const t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
+  const r = 1.0 + Math.random() * .35;
+  pPos[i*3]=r*Math.sin(p)*Math.cos(t); pPos[i*3+1]=r*Math.sin(p)*Math.sin(t); pPos[i*3+2]=r*Math.cos(p);
+  pSz[i]=Math.random()*5+2; pPhase[i]=Math.random()*Math.PI*2;
+}
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+pGeo.setAttribute('size', new THREE.BufferAttribute(pSz, 1));
+pGeo.setAttribute('aPhase', new THREE.BufferAttribute(pPhase, 1));
+
+const mat = new THREE.ShaderMaterial({
+  uniforms: { uTime: { value: 0 }, uMouse: { value: new THREE.Vector2() } },
+  vertexShader: `
+    attribute float size; attribute float aPhase; varying vec3 vColor;
+    uniform float uTime; uniform vec2 uMouse;
+    float hash(vec3 p){p=fract(p*vec3(443.897,397.297,491.187));p+=dot(p.zxy,p.yxz+19.19);return fract(p.x*p.y*p.z);}
+    float noise(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(mix(hash(i),hash(i+vec3(1,0,0)),f.x),mix(hash(i+vec3(0,1,0)),hash(i+vec3(1,1,0)),f.x),f.y),mix(mix(hash(i+vec3(0,0,1)),hash(i+vec3(1,0,1)),f.x),mix(hash(i+vec3(0,1,1)),hash(i+vec3(1,1,1)),f.x),f.y),f.z);}
+    float fbm(vec3 p){float v=0.;float a=.5;for(int i=0;i<4;i++){v+=a*noise(p);p*=2.;a*=.5;}return v;}
+    void main(){
+      vec3 n=normalize(position);
+      float disp=fbm(n*2.2+uTime*.18)*.35+fbm(n*4.+uTime*.12)*.15;
+      disp+=sin(uTime*.6+aPhase)*.06;
+      vec3 p=position+n*disp;
+      vec2 m=uMouse; float d=length(p.xy-m*3.5);
+      if(d<4.0){float f=smoothstep(4.0,0.,d);p.xy+=normalize(p.xy-m*3.5)*f*.7;p.z+=f*.25;}
+      float t=clamp(disp*1.8,0.,1.);
+      vec3 c1=vec3(.12,.44,.29); vec3 c2=vec3(.21,.76,.51); vec3 c3=vec3(.07,.08,.06);
+      vColor=t<.6?mix(c1,c2,t/.6):mix(c2,c3,(t-.6)/.4);
+      vec4 mv=modelViewMatrix*vec4(p,1.0);
+      gl_PointSize=size*(220.0/-mv.z);
+      gl_Position=projectionMatrix*mv;
+    }`,
+  fragmentShader: `
+    varying vec3 vColor;
+    void main(){
+      vec2 uv=gl_PointCoord-.5; float d=length(uv); if(d>.5)discard;
+      float a=exp(-d*d*12.)*1.15; a=clamp(a,0.,1.);
+      gl_FragColor=vec4(vColor,a*.8);
+    }`,
+  transparent: true, depthWrite: false
+});
+const pts = new THREE.Points(pGeo, mat); scene.add(pts);
+
+// 구체(SphereGeometry wireframe)는 제거하고, 얇은 링 두 개만 유지
+const ring = new THREE.Mesh(new THREE.TorusGeometry(1.65,.0025,2,180), new THREE.MeshBasicMaterial({color:0x1f6f4a,transparent:true,opacity:.35}));
+ring.rotation.x = Math.PI*.5; scene.add(ring);
+const ring2 = new THREE.Mesh(new THREE.TorusGeometry(2.1,.0015,2,180), new THREE.MeshBasicMaterial({color:0x12140f,transparent:true,opacity:.12}));
+ring2.rotation.x = Math.PI*.3; ring2.rotation.y = Math.PI*.2; scene.add(ring2);
+
+const tr=new THREE.Vector2(), cr=new THREE.Vector2(), smoothMouse=new THREE.Vector2(), targetMouse=new THREE.Vector2();
+document.addEventListener('mousemove', e=>{
+  const mx=(e.clientX/window.innerWidth)*2-1, my=-((e.clientY/window.innerHeight)*2-1);
+  targetMouse.set(mx,my); tr.x=my*.55; tr.y=mx*.55;
+});
+const clk = new THREE.Clock();
+let threeActive = true;
+new IntersectionObserver(e=>{threeActive=e[0].isIntersecting;},{threshold:.01}).observe(entryEl);
+(function loop(){
+  requestAnimationFrame(loop); if(!threeActive) return;
+  const t=clk.getElapsedTime(); mat.uniforms.uTime.value=t;
+  smoothMouse.x+=(targetMouse.x-smoothMouse.x)*.04; smoothMouse.y+=(targetMouse.y-smoothMouse.y)*.04;
+  mat.uniforms.uMouse.value.copy(smoothMouse);
+  cr.x+=(tr.x-cr.x)*.012; cr.y+=(tr.y-cr.y)*.012;
+  pts.rotation.x=cr.x+t*.05; pts.rotation.y=cr.y+t*.07;
+  ring.rotation.z=t*.07; ring2.rotation.z=-t*.04; ring2.rotation.x=Math.PI*.3+Math.sin(t*.3)*.08;
+  renderer.render(scene,camera);
+})();
+window.addEventListener('resize', ()=>{
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ─── HORIZONTAL SCROLL ENGINE (wheel lerp) ───
+const track = document.getElementById('track');
+const navEl = document.getElementById('nav');
+const panels = [...document.querySelectorAll('.panel')];
+const N = panels.length;
+const revealed = new Set([0]);
+let targetTX = 0, currentTX = 0;
+const maxTX = () => (N-1) * window.innerWidth;
+
+function setup(){ track.style.width = (N*window.innerWidth)+'px'; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+
+function tick(){
+  currentTX = lerp(currentTX, targetTX, 0.08);
+  if(Math.abs(currentTX-targetTX)<0.5) currentTX = targetTX;
+  track.style.transform = `translateX(-${currentTX}px)`;
+
+  const idx = Math.round(currentTX/window.innerWidth);
+  const past0 = idx > 0;
+  navEl.classList.toggle('vis', past0);
+  document.querySelectorAll('.nv a').forEach(a=>a.classList.toggle('act', parseInt(a.dataset.p)===idx));
+  const progEl = document.getElementById('prog');
+  progEl.classList.toggle('vis', past0);
+  document.querySelectorAll('.pdot').forEach((d,i)=>d.classList.toggle('act', i===idx));
+
+  triggerReveal(idx); if(idx<N-1) triggerReveal(idx+1);
+  requestAnimationFrame(tick);
+}
+
+function triggerReveal(idx){
+  if(idx<0||idx>=N) return;
+  if(revealed.has(idx)) return;
+  revealed.add(idx);
+  panels[idx].querySelectorAll('.rv').forEach((el,i)=>{
+    setTimeout(()=>el.classList.add('on'), i*90);
+  });
+}
+
+function goTo(idx){
+  idx = Math.max(0, Math.min(N-1, idx));
+  targetTX = idx * window.innerWidth;
+}
+
+setup(); triggerReveal(0); requestAnimationFrame(tick);
+
+window.addEventListener('wheel', e=>{
+  e.preventDefault();
+  targetTX = Math.max(0, Math.min(maxTX(), targetTX + (e.deltaY+e.deltaX)*1.2));
+}, { passive:false });
+
+let tx0=null;
+window.addEventListener('touchstart', e=>{ tx0=e.touches[0].clientX; }, { passive:true });
+window.addEventListener('touchmove', e=>{
+  if(tx0===null) return;
+  const dx = tx0-e.touches[0].clientX;
+  targetTX = Math.max(0, Math.min(maxTX(), targetTX+dx*1.5));
+  tx0 = e.touches[0].clientX;
+}, { passive:true });
+
+window.addEventListener('keydown', e=>{
+  const cur = Math.round(currentTX/window.innerWidth);
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') goTo(cur+1);
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') goTo(cur-1);
+});
+
+document.querySelectorAll('[data-p]').forEach(el=>{
+  el.addEventListener('click', ()=>{ goTo(parseInt(el.dataset.p)); });
+});
+document.querySelectorAll('.pdot').forEach((d,i)=>d.addEventListener('click', ()=>goTo(i)));
+
+window.addEventListener('resize', ()=>{
+  setup();
+  targetTX = Math.round(currentTX/(window.innerWidth||1)) * window.innerWidth;
+});
+</script>
+</body>
 </html>
