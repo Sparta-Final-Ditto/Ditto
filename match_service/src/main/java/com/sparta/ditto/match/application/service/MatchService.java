@@ -7,6 +7,7 @@ import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
 import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import com.sparta.ditto.match.infrastructure.redis.MatchCacheService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingBitmapService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingLockService;
@@ -30,6 +31,7 @@ public class MatchService {
     private final MatchCacheService matchCacheService;
     private final MatchingStatsService matchingStatsService;
     private final EmbeddingServiceClient embeddingServiceClient;
+    private final UserServiceClient userServiceClient;
     private final CosineSimilarityCalculator cosineSimilarityCalculator;
     private final MatchExplanationService matchExplanationService;
     private final HybridCandidateSearchService hybridCandidateSearchService;
@@ -63,16 +65,27 @@ public class MatchService {
             Set<String> myTags = matchCacheService.getUserTags(userId);
             if (myTags == null) myTags = Set.of();
 
-            // 2. HNSW 검색 시도 (성별/나이 필터 포함)
+            // 2. 위치 필터 활성화 시 내 동네 조회
+            String neighborhood = null;
+            if (Boolean.TRUE.equals(request.locationFilterOn())) {
+                try {
+                    UserNeighborhoodDto myProfile = userServiceClient.getMyProfile(userId).getData();
+                    neighborhood = myProfile != null ? myProfile.neighborhood() : null;
+                } catch (Exception e) {
+                    log.warn("[Match] 동네 정보 조회 실패, 위치 필터 미적용 userId={}", userId);
+                }
+            }
+
+            // 3. HNSW 검색 시도 (성별/나이/동네 필터 포함)
             LinkedHashMap<UUID, Float> hnswResults = hybridCandidateSearchService.searchCandidates(
-                    userId, myVector, request.genderFilter(), request.minAge(), request.maxAge(), 50);
+                    userId, myVector, request.genderFilter(), request.minAge(), request.maxAge(), neighborhood, 50);
             UUID bestMatchId = null;
             float bestSimilarityScore = 0f;
             float bestFinalScore = -1f;
             Set<String> bestMatchTags = new HashSet<>();
 
             if (!hnswResults.isEmpty()) {
-                // 3A. HNSW 결과가 있으면 → 태그 스코어링만 추가
+                // 4A. HNSW 결과가 있으면 → 태그 스코어링만 추가
                 for (Map.Entry<UUID, Float> entry : hnswResults.entrySet()) {
                     UUID candidateId = entry.getKey();
                     float cosineScore = entry.getValue();
@@ -91,7 +104,7 @@ public class MatchService {
                     }
                 }
             } else {
-                // 3B. Fallback: 기존 Feign 방식
+                // 4B. Fallback: 기존 Feign 방식
                 Set<UUID> excludeIds = hybridCandidateSearchService.buildExcludeIds(userId);
 
                 ActiveUserIdsDto activeIds;

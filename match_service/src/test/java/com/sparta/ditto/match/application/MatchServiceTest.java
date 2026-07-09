@@ -9,6 +9,7 @@ import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
 import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import com.sparta.ditto.match.infrastructure.redis.MatchCacheService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingBitmapService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingLockService;
@@ -42,6 +43,7 @@ class MatchServiceTest {
     @Mock private MatchCacheService matchCacheService;
     @Mock private MatchingStatsService matchingStatsService;
     @Mock private EmbeddingServiceClient embeddingServiceClient;
+    @Mock private UserServiceClient userServiceClient;
     @Mock private CosineSimilarityCalculator cosineSimilarityCalculator;
     @Mock private MatchExplanationService matchExplanationService;
     @Mock private HybridCandidateSearchService hybridCandidateSearchService;
@@ -121,7 +123,7 @@ class MatchServiceTest {
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행", "커피"));
 
         given(hybridCandidateSearchService.searchCandidates(
-                eq(userId), any(), any(), any(), any(), anyInt()))
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(hnswResults);
 
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("커피", "영화"));
@@ -168,7 +170,7 @@ class MatchServiceTest {
         given(matchCacheService.getUserTags(highScoreCandidate)).willReturn(Set.of());
 
         given(hybridCandidateSearchService.searchCandidates(
-                eq(userId), any(), any(), any(), any(), anyInt()))
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(hnswResults);
 
         given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
@@ -215,7 +217,7 @@ class MatchServiceTest {
 
         // HNSW 결과 없음 → fallback
         given(hybridCandidateSearchService.searchCandidates(
-                any(), any(), any(), any(), any(), anyInt()))
+                any(), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(new LinkedHashMap<>());
         given(hybridCandidateSearchService.buildExcludeIds(userId))
                 .willReturn(Set.of());
@@ -262,7 +264,7 @@ class MatchServiceTest {
 
         // HNSW 결과 없음 → fallback 진입
         given(hybridCandidateSearchService.searchCandidates(
-                any(), any(), any(), any(), any(), anyInt()))
+                any(), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(new LinkedHashMap<>());
         given(hybridCandidateSearchService.buildExcludeIds(userId))
                 .willReturn(Set.of());
@@ -307,7 +309,7 @@ class MatchServiceTest {
                 .willReturn(ApiResponse.success(myProfile));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행"));
         given(hybridCandidateSearchService.searchCandidates(
-                any(), any(), any(), any(), any(), anyInt()))
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(hnswResults);
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("여행"));
         given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
@@ -338,7 +340,7 @@ class MatchServiceTest {
 
         // HNSW 결과 없음 → fallback(3B) 경로로 진입
         given(hybridCandidateSearchService.searchCandidates(
-                any(), any(), any(), any(), any(), anyInt()))
+                any(), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(new LinkedHashMap<>());
         given(hybridCandidateSearchService.buildExcludeIds(userId))
                 .willReturn(Set.of());
@@ -650,7 +652,7 @@ class MatchServiceTest {
                 .willReturn(ApiResponse.success(myProfile));
 
         given(hybridCandidateSearchService.searchCandidates(
-                any(), any(), any(), any(), any(), anyInt()))
+                any(), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(new LinkedHashMap<>());
         given(hybridCandidateSearchService.buildExcludeIds(userId))
                 .willReturn(Set.of());
@@ -680,7 +682,7 @@ class MatchServiceTest {
                 .willReturn(ApiResponse.success(myProfile));
 
         given(hybridCandidateSearchService.searchCandidates(
-                any(), any(), any(), any(), any(), anyInt()))
+                any(), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(new LinkedHashMap<>());
         given(hybridCandidateSearchService.buildExcludeIds(userId))
                 .willReturn(Set.of());

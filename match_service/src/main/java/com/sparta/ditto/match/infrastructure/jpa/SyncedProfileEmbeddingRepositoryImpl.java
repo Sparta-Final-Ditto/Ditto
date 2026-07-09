@@ -57,7 +57,7 @@ public interface SyncedProfileEmbeddingRepositoryImpl
     );
 
     /**
-     * 성별 + 나이 필터 포함 HNSW 검색
+     * 성별 + 나이 + 동네 필터 포함 HNSW 검색
      */
     @Override
     @Query(value = """
@@ -69,6 +69,7 @@ public interface SyncedProfileEmbeddingRepositoryImpl
               AND (:gender IS NULL OR gender = :gender)
               AND (:minAge IS NULL OR EXTRACT(YEAR FROM AGE(birthdate)) >= :minAge)
               AND (:maxAge IS NULL OR EXTRACT(YEAR FROM AGE(birthdate)) <= :maxAge)
+              AND (:neighborhood IS NULL OR neighborhood = :neighborhood)
             ORDER BY vector <=> CAST(:queryVector AS vector)
             LIMIT :topK
             """, nativeQuery = true)
@@ -79,6 +80,7 @@ public interface SyncedProfileEmbeddingRepositoryImpl
             @Param("gender") String gender,
             @Param("minAge") Integer minAge,
             @Param("maxAge") Integer maxAge,
+            @Param("neighborhood") String neighborhood,
             @Param("topK") int topK
     );
 }
