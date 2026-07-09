@@ -5,10 +5,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.match.application.dto.ActiveUserIdsDto;
 import com.sparta.ditto.match.application.dto.ProfileBatchRequestDto;
 import com.sparta.ditto.match.application.dto.ProfileBatchResponseDto;
+import com.sparta.ditto.match.application.dto.UserNeighborhoodDto;
 import com.sparta.ditto.match.application.dto.UserProfileEmbeddingDto;
 import com.sparta.ditto.match.domain.entity.SyncedProfileEmbedding;
 import com.sparta.ditto.match.domain.repository.SyncedProfileEmbeddingRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -35,6 +37,7 @@ import java.util.UUID;
 public class EmbeddingSyncService {
 
     private final EmbeddingServiceClient embeddingServiceClient;
+    private final UserServiceClient userServiceClient;
     private final SyncedProfileEmbeddingRepository syncedRepository;
     private final ObjectMapper objectMapper;
 
@@ -66,7 +69,10 @@ public class EmbeddingSyncService {
                 vector[i] = (float) vectorNode.get(i).asDouble();
             }
 
-            upsertSyncedEmbedding(userId, vector, null, null, active);
+            // 동네 정보 조회
+            String neighborhood = fetchNeighborhood(userId);
+
+            upsertSyncedEmbedding(userId, vector, null, null, neighborhood, active);
             log.info("[Sync] 개별 동기화 완료 userId={}", userId);
 
         } catch (Exception e) {
@@ -141,8 +147,9 @@ public class EmbeddingSyncService {
 
                         if (vector == null) continue;
 
+                        String neighborhood = fetchNeighborhood(profile.userId());
                         upsertSyncedEmbedding(
-                                profile.userId(), vector, null, null, profile.active());
+                                profile.userId(), vector, null, null, neighborhood, profile.active());
                         totalSynced++;
                     }
                 } catch (Exception e) {
@@ -161,15 +168,25 @@ public class EmbeddingSyncService {
     // ── 공통 upsert ──────────────────────────
 
     private void upsertSyncedEmbedding(
-            UUID userId, float[] vector, String gender, LocalDate birthdate, boolean active
+            UUID userId, float[] vector, String gender, LocalDate birthdate, String neighborhood, boolean active
     ) {
         Optional<SyncedProfileEmbedding> existing = syncedRepository.findById(userId);
 
         if (existing.isPresent()) {
-            existing.get().updateVector(vector, gender, birthdate, active);
+            existing.get().updateVector(vector, gender, birthdate, neighborhood, active);
         } else {
             syncedRepository.save(
-                    SyncedProfileEmbedding.of(userId, vector, gender, birthdate, active));
+                    SyncedProfileEmbedding.of(userId, vector, gender, birthdate, neighborhood, active));
+        }
+    }
+
+    private String fetchNeighborhood(UUID userId) {
+        try {
+            UserNeighborhoodDto profile = userServiceClient.getMyProfile(userId).getData();
+            return profile != null ? profile.neighborhood() : null;
+        } catch (Exception e) {
+            log.warn("[Sync] 동네 정보 조회 실패 userId={}", userId);
+            return null;
         }
     }
 }
