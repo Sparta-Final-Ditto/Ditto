@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.never;
 
+import com.sparta.ditto.user.application.port.NeighborhoodPort;
 import com.sparta.ditto.user.domain.block.exception.BlockedUserException;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.enums.Gender;
@@ -19,9 +20,11 @@ import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
+import com.sparta.ditto.user.presentation.dto.request.UserLocationUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserLocationUpdateResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
@@ -59,6 +62,9 @@ class UserServiceTest {
 
     @Mock
     private UserEventProducer userEventProducer;
+
+    @Mock
+    private NeighborhoodPort neighborhoodPort;
 
     private User user;
     private UUID userId;
@@ -252,6 +258,45 @@ class UserServiceTest {
 
             assertThat(result.tokens()).isNull();
             then(tokenManager).shouldHaveNoInteractions();
+        }
+    }
+
+    @Nested
+    class UpdateLocation {
+
+        @Test
+        void 성공() {
+            UserLocationUpdateRequest request = new UserLocationUpdateRequest(37.5563, 127.0374);
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+            given(neighborhoodPort.resolveNeighborhood(37.5563, 127.0374)).willReturn("서울 성동구");
+
+            UserLocationUpdateResponse result = userService.updateLocation(userId, request);
+
+            assertThat(result.latitude()).isEqualTo(37.5563);
+            assertThat(result.longitude()).isEqualTo(127.0374);
+            assertThat(result.neighborhood()).isEqualTo("서울 성동구");
+        }
+
+        @Test
+        void 동네명_조회_실패해도_좌표는_저장() {
+            UserLocationUpdateRequest request = new UserLocationUpdateRequest(37.5563, 127.0374);
+            given(userRepository.findById(userId)).willReturn(Optional.of(user));
+            given(neighborhoodPort.resolveNeighborhood(37.5563, 127.0374)).willReturn(null);
+
+            UserLocationUpdateResponse result = userService.updateLocation(userId, request);
+
+            assertThat(result.latitude()).isEqualTo(37.5563);
+            assertThat(result.neighborhood()).isNull();
+        }
+
+        @Test
+        void 유저_없음_예외() {
+            UserLocationUpdateRequest request = new UserLocationUpdateRequest(37.5563, 127.0374);
+            given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+            assertThatThrownBy(() -> userService.updateLocation(userId, request))
+                    .isInstanceOf(UserNotFoundException.class);
+            then(neighborhoodPort).shouldHaveNoInteractions();
         }
     }
 

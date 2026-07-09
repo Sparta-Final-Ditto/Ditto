@@ -1,5 +1,6 @@
 package com.sparta.ditto.user.application;
 
+import com.sparta.ditto.user.application.port.NeighborhoodPort;
 import com.sparta.ditto.user.domain.block.exception.BlockedUserException;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.exception.InvalidPasswordException;
@@ -11,9 +12,11 @@ import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
 import com.sparta.ditto.user.infrastructure.security.TokenManager;
 import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
+import com.sparta.ditto.user.presentation.dto.request.UserLocationUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserLocationUpdateResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
@@ -36,6 +39,7 @@ public class UserService {
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
     private final UserEventProducer userEventProducer;
+    private final NeighborhoodPort neighborhoodPort;
 
     public UserProfileResponse getProfile(UUID userId) {
         User user = userRepository.findById(userId)
@@ -89,6 +93,20 @@ public class UserService {
 
         return new UserUpdateResponse(
                 user.getNickname(), user.getBio(), user.getProfileImageUrl(), tokens);
+    }
+
+    @Transactional
+    public UserLocationUpdateResponse updateLocation(
+            UUID userId, UserLocationUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(UserNotFoundException::new);
+
+        String neighborhood =
+                neighborhoodPort.resolveNeighborhood(request.latitude(), request.longitude());
+        user.updateLocation(request.latitude(), request.longitude(), neighborhood);
+
+        return new UserLocationUpdateResponse(
+                user.getLatitude(), user.getLongitude(), user.getNeighborhood());
     }
 
     @Transactional

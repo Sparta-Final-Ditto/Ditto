@@ -3,9 +3,11 @@ package com.sparta.ditto.user.presentation.controller;
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.user.application.UserService;
 import com.sparta.ditto.user.presentation.dto.request.UserInterestRequest;
+import com.sparta.ditto.user.presentation.dto.request.UserLocationUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserPasswordChangeRequest;
 import com.sparta.ditto.user.presentation.dto.request.UserUpdateRequest;
 import com.sparta.ditto.user.presentation.dto.response.AuthTokenResponse;
+import com.sparta.ditto.user.presentation.dto.response.UserLocationUpdateResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserUpdateResponse;
@@ -41,6 +43,13 @@ public class UserController {
             @RequestHeader("X-User-Id") UUID userId,
             @Valid @RequestBody UserUpdateRequest request) {
         return ResponseEntity.ok(ApiResponse.updated(userService.updateProfile(userId, request)));
+    }
+
+    @PatchMapping("/me/location")
+    public ResponseEntity<ApiResponse<UserLocationUpdateResponse>> updateLocation(
+            @RequestHeader("X-User-Id") UUID userId,
+            @Valid @RequestBody UserLocationUpdateRequest request) {
+        return ResponseEntity.ok(ApiResponse.updated(userService.updateLocation(userId, request)));
     }
 
     @PostMapping("/me/password")
