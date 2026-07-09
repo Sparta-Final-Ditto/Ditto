@@ -1,5 +1,6 @@
 package com.sparta.ditto.notification.infrastructure.sse;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.notification.application.NotificationRecorder;
 import com.sparta.ditto.notification.application.dto.NotificationPushPayload;
 import com.sparta.ditto.notification.application.dto.PostNotificationCommand;
@@ -49,6 +50,11 @@ class NotificationPushAfterCommitIntegrationTest extends AbstractPostgresContain
         @Bean
         AuditorAware<UUID> auditorAwareImpl() {
             return Optional::empty;
+        }
+
+        @Bean
+        ObjectMapper objectMapper() {
+            return new ObjectMapper();
         }
     }
 

@@ -1,5 +1,6 @@
 package com.sparta.ditto.user.application;
 
+import com.sparta.ditto.user.application.port.NeighborhoodPort;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.enums.UserStatus;
 import com.sparta.ditto.user.domain.user.exception.EmailAlreadyExistsException;
@@ -30,6 +31,7 @@ public class AuthService {
     private final TokenManager tokenManager;
     private final PasswordEncoder passwordEncoder;
     private final UserEventProducer userEventProducer;
+    private final NeighborhoodPort neighborhoodPort;
 
     @Transactional
     public void signup(AuthSignupRequest request) {
@@ -47,6 +49,11 @@ public class AuthService {
                 request.gender(),
                 request.birthdate()
         );
+
+        String neighborhood =
+                neighborhoodPort.resolveNeighborhood(request.latitude(), request.longitude());
+        user.updateLocation(request.latitude(), request.longitude(), neighborhood);
+
         userRepository.save(user);
 
         userEventProducer.sendUserCreated(

@@ -11,6 +11,7 @@ import unittest
 from datetime import datetime, timezone, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.embedding.application.service.embedding_service import EmbeddingService
 from app.embedding.domain.model.post_embedding import PostEmbedding
 from app.embedding.infrastructure.kafka.post_consumer import PostConsumer
 
@@ -106,19 +107,16 @@ class TestPostConsumerHandle(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.mock_svc = AsyncMock()
         self.mock_post_repo = AsyncMock()
-        self.mock_profile_repo = AsyncMock()
+        self.mock_svc.post_repo = self.mock_post_repo
 
         mock_db = MagicMock()
         mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
         p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
-        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
-        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
-        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
-        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=self.mock_svc)
+        p_factory = patch(f"{_CONSUMER_MODULE}.build_embedding_service", return_value=self.mock_svc)
 
-        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+        for p in [p_session, p_factory]:
             p.start()
             self.addCleanup(p.stop)
 
@@ -220,13 +218,17 @@ class TestPostConsumerPostDeleted(unittest.IsolatedAsyncioTestCase):
         mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
-        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
-        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
-        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
-        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
-        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=AsyncMock())
+        svc = EmbeddingService(
+            post_repo=self.mock_post_repo,
+            profile_repo=self.mock_profile_repo,
+            model=MagicMock(),
+            batch_runner=MagicMock(),
+        )
 
-        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
+        p_factory = patch(f"{_CONSUMER_MODULE}.build_embedding_service", return_value=svc)
+
+        for p in [p_session, p_factory]:
             p.start()
             self.addCleanup(p.stop)
 
@@ -287,13 +289,17 @@ class TestPostConsumerPostHardDeleted(unittest.IsolatedAsyncioTestCase):
         mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
-        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
-        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
-        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
-        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
-        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=AsyncMock())
+        svc = EmbeddingService(
+            post_repo=self.mock_post_repo,
+            profile_repo=self.mock_profile_repo,
+            model=MagicMock(),
+            batch_runner=MagicMock(),
+        )
 
-        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
+        p_factory = patch(f"{_CONSUMER_MODULE}.build_embedding_service", return_value=svc)
+
+        for p in [p_session, p_factory]:
             p.start()
             self.addCleanup(p.stop)
 
@@ -355,13 +361,17 @@ class TestPostConsumerPostRestored(unittest.IsolatedAsyncioTestCase):
         mock_db.__aenter__ = AsyncMock(return_value=MagicMock())
         mock_db.__aexit__ = AsyncMock(return_value=False)
 
-        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
-        p_post = patch(f"{_CONSUMER_MODULE}.PgPostEmbeddingRepository", return_value=self.mock_post_repo)
-        p_profile = patch(f"{_CONSUMER_MODULE}.PgUserProfileRepository", return_value=self.mock_profile_repo)
-        p_model = patch(f"{_CONSUMER_MODULE}.ModelLoader", return_value=MagicMock())
-        p_svc = patch(f"{_CONSUMER_MODULE}.EmbeddingService", return_value=AsyncMock())
+        svc = EmbeddingService(
+            post_repo=self.mock_post_repo,
+            profile_repo=self.mock_profile_repo,
+            model=MagicMock(),
+            batch_runner=MagicMock(),
+        )
 
-        for p in [p_session, p_post, p_profile, p_model, p_svc]:
+        p_session = patch(f"{_CONSUMER_MODULE}.AsyncSessionLocal", return_value=mock_db)
+        p_factory = patch(f"{_CONSUMER_MODULE}.build_embedding_service", return_value=svc)
+
+        for p in [p_session, p_factory]:
             p.start()
             self.addCleanup(p.stop)
 

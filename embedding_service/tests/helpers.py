@@ -1,6 +1,7 @@
 import numpy as np
 from unittest.mock import AsyncMock, MagicMock
 
+from app.embedding.application.port.batch_runner_port import BatchRunnerPort
 from app.embedding.application.port.embedding_model_port import EmbeddingModelPort
 
 _v = np.ones(768)
@@ -11,6 +12,19 @@ class FakeModel(EmbeddingModelPort):
     """실제 ML 모델 없이 항상 같은 768차원 단위 벡터를 반환."""
     def encode(self, text: str) -> list[float]:
         return FAKE_VECTOR
+
+
+class FakeBatchRunner(BatchRunnerPort):
+    """배치 트리거 테스트용 — 호출 횟수만 기록."""
+    def __init__(self):
+        self.daily_calls = 0
+        self.monthly_calls = 0
+
+    async def run_daily(self) -> None:
+        self.daily_calls += 1
+
+    async def run_monthly(self) -> None:
+        self.monthly_calls += 1
 
 
 def make_profile(

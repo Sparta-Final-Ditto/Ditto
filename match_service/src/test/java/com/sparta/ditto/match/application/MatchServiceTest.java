@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -52,13 +53,9 @@ class MatchServiceTest {
     private MatchService matchService;
 
     private MatchingHistory withId(MatchingHistory history) {
-        try {
-            Field f = MatchingHistory.class.getDeclaredField("id");
-            f.setAccessible(true);
-            f.set(history, UUID.randomUUID());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        Field f = ReflectionUtils.findField(MatchingHistory.class, "id");
+        ReflectionUtils.makeAccessible(f);
+        ReflectionUtils.setField(f, history, UUID.randomUUID());
         return history;
     }
 

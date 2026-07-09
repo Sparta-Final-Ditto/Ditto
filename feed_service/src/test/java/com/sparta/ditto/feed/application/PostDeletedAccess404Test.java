@@ -80,7 +80,7 @@ class PostDeletedAccess404Test {
     @DisplayName("삭제된 게시글 좋아요 목록 조회 → 404 POST_NOT_FOUND")
     void getLikes_삭제된게시글_PostNotFoundException() {
         assertPostNotFound(() ->
-                postInteractionService.getLikes(new GetLikesQuery(postId, null, 20)));
+                postInteractionService.getLikes(new GetLikesQuery(postId, userId, null, 20)));
     }
 
     @Test

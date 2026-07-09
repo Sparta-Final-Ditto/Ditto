@@ -17,29 +17,41 @@ jobs:
         include:
           - module: api-gateway
             image: ditto/api-gateway
+            runtime: java
           - module: user_service
             image: ditto/user-service
+            runtime: java
           - module: feed_service
             image: ditto/feed-service
+            runtime: java
           - module: match_service
             image: ditto/match-service
+            runtime: java
           - module: chat_service
             image: ditto/chat-service
+            runtime: java
           - module: notification_service
             image: ditto/notification-service
+            runtime: java
           - module: assistant_service
             image: ditto/assistant-service
+            runtime: java
+          - module: embedding_service
+            image: ditto/embedding-service
+            runtime: python
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
+        if: matrix.runtime == 'java'
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
 
       - name: Build JAR
+        if: matrix.runtime == 'java'
         run: ./gradlew :${{ matrix.module }}:bootJar -x test
 
       - name: Configure AWS Credentials
@@ -71,6 +83,18 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml and scripts to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml,scripts/init-db.sh"
+          target: "~/ditto"
+          strip_components: 0
+
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1
         with:
@@ -80,6 +104,6 @@ jobs:
           script: |
             cd ~/ditto
             echo "${{ secrets.ENV_PROD }}" > .env.prod
-            docker compose --env-file .env.prod pull
+            docker compose --env-file .env.prod --profile app pull
             docker compose --env-file .env.prod --profile app up -d --remove-orphans
             docker image prune -f
