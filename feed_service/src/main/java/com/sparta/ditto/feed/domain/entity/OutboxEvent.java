@@ -1,12 +1,12 @@
 package com.sparta.ditto.feed.domain.entity;
 
+import com.sparta.ditto.common.entity.GeneratedUuidV7;
 import com.sparta.ditto.feed.domain.type.OutboxStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
@@ -39,7 +39,8 @@ public class OutboxEvent {
     private static final int MAX_REPLAY_COUNT = 3;
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @GeneratedUuidV7
     @Column(columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID id;
 
