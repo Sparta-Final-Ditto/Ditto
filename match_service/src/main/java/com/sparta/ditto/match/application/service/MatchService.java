@@ -69,8 +69,8 @@ public class MatchService {
             String neighborhood = null;
             if (Boolean.TRUE.equals(request.locationFilterOn())) {
                 try {
-                    UserNeighborhoodDto myProfile = userServiceClient.getMyProfile(userId).getData();
-                    neighborhood = myProfile != null ? myProfile.neighborhood() : null;
+                    UserNeighborhoodDto neighborhoodDto = userServiceClient.getMyProfile(userId).getData();
+                    neighborhood = neighborhoodDto != null ? neighborhoodDto.neighborhood() : null;
                 } catch (Exception e) {
                     log.warn("[Match] 동네 정보 조회 실패, 위치 필터 미적용 userId={}", userId);
                 }
