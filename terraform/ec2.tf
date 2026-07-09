@@ -29,6 +29,13 @@ resource "aws_instance" "app" {
   key_name               = var.key_pair_name
   iam_instance_profile   = aws_iam_instance_profile.app.name
 
+  # ami/user_data는 다른 리소스(monitoring 등)의 -target apply에 의존성 때문에 딸려 들어와
+  # 운영 중인 이 인스턴스가 실수로 재생성/재부팅되지 않도록 보호. 의도적으로 반영하고 싶을 때만
+  # 이 lifecycle 블록을 잠깐 제거하고 apply할 것.
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
+
   root_block_device {
     volume_type           = "gp3"
     volume_size           = 30
