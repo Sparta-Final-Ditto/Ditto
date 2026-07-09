@@ -67,9 +67,9 @@ variable "db_private_ip" {
 }
 
 variable "monitoring_instance_type" {
-  description = "모니터링 서버 인스턴스 타입 (Prometheus + Grafana)"
+  description = "모니터링 서버 인스턴스 타입 (Prometheus + Grafana). t3.micro(1GB)는 OOM으로 다운된 이력이 있어 t3.small(2GB)로 상향."
   type        = string
-  default     = "t3.micro"
+  default     = "t3.small"
 }
 
 variable "key_pair_name" {
