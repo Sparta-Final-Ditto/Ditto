@@ -85,13 +85,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Copy docker-compose.yml and scripts to EC2
+      - name: Copy docker-compose.yml to EC2 (ditto-app)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,scripts/init-db.sh"
+          source: "docker-compose.yml"
           target: "~/ditto"
           strip_components: 0
 
@@ -104,6 +104,6 @@ jobs:
           script: |
             cd ~/ditto
             echo "${{ secrets.ENV_PROD }}" > .env.prod
-            docker compose --env-file .env.prod --profile app pull
-            docker compose --env-file .env.prod --profile app up -d --remove-orphans
+            docker compose --env-file .env.prod pull
+            docker compose --env-file .env.prod up -d --remove-orphans
             docker image prune -f

@@ -17,3 +17,14 @@ admin_cidr_blocks = [
 
 # S3 버킷명: 전 세계에서 유일해야 함 (소문자, 숫자, 하이픈만 허용)
 s3_media_bucket_name = "ditto-media-prod-change-me"
+
+# ditto-db 인스턴스 자격증명. GitHub Secret ENV_PROD의 DB_USERNAME/DB_PASSWORD/
+# MONGO_USERNAME/MONGO_PASSWORD 와 반드시 동일한 값으로 맞출 것.
+db_username    = "ditto"
+db_password    = "change-me-match-env-prod"
+mongo_username = "ditto"
+mongo_password = "change-me-match-env-prod"
+
+# ditto-db 프라이빗 서브넷(10.0.10.0/24) 내 고정 IP. ENV_PROD의 DB_HOST/REDIS_HOST/
+# MONGO_HOST/KAFKA_HOST 와 반드시 동일한 값으로 맞출 것.
+db_private_ip = "10.0.10.0"
