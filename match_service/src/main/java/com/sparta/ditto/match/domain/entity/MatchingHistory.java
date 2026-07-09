@@ -16,10 +16,6 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class MatchingHistory extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-
     @Column(nullable = false)
     private UUID userId;
 
@@ -75,7 +71,7 @@ public class MatchingHistory extends BaseEntity {
 
     public MatchResponseDto toDto(String explanation) {
         return new MatchResponseDto(
-                this.id,
+                this.getId(),
                 this.matchedUserId,
                 this.similarityScore,
                 this.finalScore,

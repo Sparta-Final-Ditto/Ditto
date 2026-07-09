@@ -1,5 +1,6 @@
 package com.sparta.ditto.chat.domain.participant;
 
+import com.sparta.ditto.common.entity.GeneratedUuidV7;
 import com.sparta.ditto.common.exception.BusinessException;
 import com.sparta.ditto.common.exception.CommonErrorCode;
 import jakarta.persistence.Column;
@@ -7,7 +8,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.PrePersist;
@@ -43,7 +43,8 @@ import lombok.NoArgsConstructor;
 public class ChatRoomParticipant {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
+    @GeneratedUuidV7
     private UUID id;
 
     @Column(name = "room_id", nullable = false)

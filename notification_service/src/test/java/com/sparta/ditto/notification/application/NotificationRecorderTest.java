@@ -12,6 +12,7 @@ import com.sparta.ditto.notification.domain.repository.NotificationRepository;
 import com.sparta.ditto.notification.domain.type.NotificationType;
 import com.sparta.ditto.notification.domain.type.TargetType;
 import java.lang.reflect.Field;
+import org.springframework.util.ReflectionUtils;
 import java.lang.reflect.RecordComponent;
 import java.time.Instant;
 import java.util.Arrays;
@@ -293,12 +294,8 @@ class NotificationRecorderTest {
     }
 
     private static void setField(Object target, Class<?> clazz, String name, Object value) {
-        try {
-            Field field = clazz.getDeclaredField(name);
-            field.setAccessible(true);
-            field.set(target, value);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
+        Field field = ReflectionUtils.findField(clazz, name);
+        ReflectionUtils.makeAccessible(field);
+        ReflectionUtils.setField(field, target, value);
     }
 }
