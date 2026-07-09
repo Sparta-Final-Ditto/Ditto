@@ -7,6 +7,7 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.never;
 import static org.mockito.BDDMockito.then;
 
+import com.sparta.ditto.user.application.port.NeighborhoodPort;
 import com.sparta.ditto.user.domain.user.User;
 import com.sparta.ditto.user.domain.user.enums.Gender;
 import com.sparta.ditto.user.domain.user.enums.UserStatus;
@@ -55,6 +56,9 @@ class AuthServiceTest {
     @Mock
     private UserEventProducer userEventProducer;
 
+    @Mock
+    private NeighborhoodPort neighborhoodPort;
+
     private User user;
     private UUID userId;
 
@@ -71,10 +75,13 @@ class AuthServiceTest {
         @Test
         void 성공() {
             AuthSignupRequest request = new AuthSignupRequest(
-                    "test@test.com", "password123", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
+                    "test@test.com", "password123", "testNick", Gender.MALE,
+                    LocalDate.of(1990, 1, 1), 37.5563, 127.0374);
             given(userRepository.existsByEmail(request.email())).willReturn(false);
             given(userRepository.existsByNickname(request.nickname())).willReturn(false);
             given(passwordEncoder.encode(request.password())).willReturn("encodedPassword");
+            given(neighborhoodPort.resolveNeighborhood(request.latitude(), request.longitude()))
+                    .willReturn("서울 성동구");
 
             authService.signup(request);
 
@@ -84,7 +91,9 @@ class AuthServiceTest {
 
         @Test
         void 이메일_중복_예외() {
-            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
+            AuthSignupRequest request = new AuthSignupRequest(
+                    "test@test.com", "password123", "testNick", Gender.MALE,
+                    LocalDate.of(1990, 1, 1), 37.5563, 127.0374);
             given(userRepository.existsByEmail(request.email())).willReturn(true);
 
             assertThatThrownBy(() -> authService.signup(request))
@@ -94,7 +103,9 @@ class AuthServiceTest {
 
         @Test
         void 닉네임_중복_예외() {
-            AuthSignupRequest request = new AuthSignupRequest("test@test.com", "password123", "testNick", Gender.MALE, LocalDate.of(1990, 1, 1));
+            AuthSignupRequest request = new AuthSignupRequest(
+                    "test@test.com", "password123", "testNick", Gender.MALE,
+                    LocalDate.of(1990, 1, 1), 37.5563, 127.0374);
             given(userRepository.existsByEmail(request.email())).willReturn(false);
             given(userRepository.existsByNickname(request.nickname())).willReturn(true);
 

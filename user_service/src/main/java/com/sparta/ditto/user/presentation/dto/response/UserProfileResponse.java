@@ -12,7 +12,8 @@ public record UserProfileResponse(
         Gender gender,
         LocalDate birthdate,
         String profileImageUrl,
-        String bio
+        String bio,
+        String neighborhood
 ) {
     public static UserProfileResponse from(User user) {
         return new UserProfileResponse(
@@ -22,7 +23,8 @@ public record UserProfileResponse(
                 user.getGender(),
                 user.getBirthdate(),
                 user.getProfileImageUrl(),
-                user.getBio()
+                user.getBio(),
+                user.getNeighborhood()
         );
     }
 }
