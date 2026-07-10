@@ -16,9 +16,11 @@ import org.springframework.stereotype.Component;
 /**
  * {@link UserBlockPort} 구현체.
  *
- * <p>user-service의 {@code chat-validation}(checkBlock=true)을 호출해 양방향 차단을 검증한다.
- * 응답이 403 + code "BLOCK-004"이면 차단으로 판정(true)하고, 그 외 오류(4xx/5xx/타임아웃)는
- * 삼키지 않고 {@link FeignException}을 그대로 전파한다. fail-open 여부는 Application이 결정한다.</p>
+ * <p>좋아요·댓글용 차단 검증은 user-service의 {@code chat-validation}(checkBlock=true)을 호출하며,
+ * 응답이 403 + code "BLOCK-004"이면 차단으로 판정(true)한다. 피드용 차단 관계 목록은
+ * {@code block-relations}를 호출해 {@code blockedUserIds}(내가 차단) ∪ {@code blockedByUserIds}
+ * (나를 차단)를 union(중복 제거)한 단일 목록으로 반환한다(양방향). 어느 경우든 오류(4xx/5xx/타임아웃)는
+ * 삼키지 않고 {@link FeignException}을 그대로 전파하며, fail-open 여부는 Application이 결정한다.</p>
  */
 @Component
 @RequiredArgsConstructor
