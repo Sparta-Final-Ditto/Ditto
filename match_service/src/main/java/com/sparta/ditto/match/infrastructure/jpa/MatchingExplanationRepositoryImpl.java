@@ -2,11 +2,10 @@ package com.sparta.ditto.match.infrastructure.jpa;
 
 import com.sparta.ditto.match.domain.entity.MatchingExplanation;
 import com.sparta.ditto.match.domain.repository.MatchingExplanationRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor
@@ -20,7 +19,8 @@ public class MatchingExplanationRepositoryImpl implements MatchingExplanationRep
     }
 
     @Override
-    public Optional<MatchingExplanation> findByUserIdAndMatchedUserId(UUID userId, UUID matchedUserId) {
+    public Optional<MatchingExplanation> findByUserIdAndMatchedUserId(
+            UUID userId, UUID matchedUserId) {
         return jpaRepository.findByUserIdAndMatchedUserId(userId, matchedUserId);
     }
 }

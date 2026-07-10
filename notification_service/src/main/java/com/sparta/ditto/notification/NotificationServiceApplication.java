@@ -3,7 +3,8 @@ package com.sparta.ditto.notification;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-@SpringBootApplication(scanBasePackages = {"com.sparta.ditto.notification", "com.sparta.ditto.common"})
+@SpringBootApplication(
+        scanBasePackages = {"com.sparta.ditto.notification", "com.sparta.ditto.common"})
 public class NotificationServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(NotificationServiceApplication.class, args);

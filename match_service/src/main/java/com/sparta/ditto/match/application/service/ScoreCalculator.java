@@ -1,12 +1,11 @@
 package com.sparta.ditto.match.application.service;
 
-import org.springframework.stereotype.Component;
-
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.stereotype.Component;
 
 /**
  * [Application Layer] 매칭 점수 계산기
@@ -52,7 +51,9 @@ public class ScoreCalculator {
             List<String> tagsA,
             List<String> tagsB
     ) {
-        if (tagsA.isEmpty() && tagsB.isEmpty()) return 0f;
+        if (tagsA.isEmpty() && tagsB.isEmpty()) {
+            return 0f;
+        }
 
         Set<String> intersection = new HashSet<>(tagsA);
         intersection.retainAll(new HashSet<>(tagsB)); // 교집합
@@ -70,9 +71,15 @@ public class ScoreCalculator {
      */
     public String categorizeTimeSlot(Instant instant) {
         int hour = instant.atZone(ZoneId.of("Asia/Seoul")).getHour();
-        if (hour >= 0 && hour < 6) return "새벽";
-        if (hour >= 6 && hour < 12) return "오전";
-        if (hour >= 12 && hour < 18) return "오후";
+        if (hour >= 0 && hour < 6) {
+            return "새벽";
+        }
+        if (hour >= 6 && hour < 12) {
+            return "오전";
+        }
+        if (hour >= 12 && hour < 18) {
+            return "오후";
+        }
         return "저녁";
     }
 

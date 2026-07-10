@@ -54,7 +54,8 @@ public class DataInitializer implements CommandLineRunner {
                     NotificationType.CHAT_MESSAGE, TargetType.CHAT_MESSAGE,
                     "msg-00" + i,
                     "메시지 " + i,
-                    "{\"roomId\":\"room-001\",\"senderNickname\":\"러너\",\"senderProfileImageUrl\":null}"
+                    "{\"roomId\":\"room-001\",\"senderNickname\":\"러너\","
+                            + "\"senderProfileImageUrl\":null}"
             ));
         }
 
@@ -69,6 +70,7 @@ public class DataInitializer implements CommandLineRunner {
         read.read();
         notificationRepository.save(read);
 
-        log.info("[DataInitializer] 더미 알림 6건 저장 완료 (receiver: {})", RECEIVER_ID);
+        log.info("[DataInitializer] 더미 알림 6건 저장 완료 (receiver: {})",
+                RECEIVER_ID);
     }
 }

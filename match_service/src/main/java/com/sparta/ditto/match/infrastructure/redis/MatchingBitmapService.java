@@ -1,13 +1,12 @@
 package com.sparta.ditto.match.infrastructure.redis;
 
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.time.LocalDate;
-import java.util.UUID;
 
 /**
  * [Infrastructure Layer] Bitmap으로 하루 1회 제한 체크

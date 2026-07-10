@@ -4,7 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "매칭 요청")
 public record MatchRequestDto(
-        @Schema(description = "성별 필터", example = "NONE", allowableValues = {"NONE", "MALE", "FEMALE"})
+        @Schema(description = "성별 필터", example = "NONE",
+                allowableValues = {"NONE", "MALE", "FEMALE"})
         String genderFilter,
 
         @Schema(description = "위치 필터 사용 여부", example = "false")

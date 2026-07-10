@@ -29,18 +29,18 @@
   <!-- ===== 파일명 규칙 (RegexpOnFilename) =====
        match=false : 해당 폴더 내 파일이 패턴에 불일치할 때 위반으로 처리
   -->
-  <!-- dto/request/ → 반드시 {도메인}{용도}Request.java -->
+  <!-- dto/request/ 바로 아래 파일만 대상 (하위 폴더인 validation/ 등은 제외) → 반드시 {도메인}{용도}Request.java -->
   <module name="RegexpOnFilename">
-    <property name="folderPattern" value=".*[/\\]dto[/\\]request[/\\]"/>
+    <property name="folderPattern" value="[/\\]dto[/\\]request$"/>
     <property name="fileNamePattern" value="^[A-Z][a-zA-Z]+Request\.java$"/>
     <property name="match" value="false"/>
     <message key="regexp.filename.mismatch"
         value="Request DTO 파일명은 '도메인+용도+Request.java' 형식이어야 합니다. (예: UserCreateRequest.java)"/>
   </module>
 
-  <!-- dto/response/ → 반드시 {도메인}{용도}Response.java -->
+  <!-- dto/response/ 바로 아래 파일만 대상 → 반드시 {도메인}{용도}Response.java -->
   <module name="RegexpOnFilename">
-    <property name="folderPattern" value=".*[/\\]dto[/\\]response[/\\]"/>
+    <property name="folderPattern" value="[/\\]dto[/\\]response$"/>
     <property name="fileNamePattern" value="^[A-Z][a-zA-Z]+Response\.java$"/>
     <property name="match" value="false"/>
     <message key="regexp.filename.mismatch"

@@ -1,12 +1,15 @@
 package com.sparta.ditto.match.application.service;
 
 import com.sparta.ditto.match.domain.repository.SyncedProfileEmbeddingRepository;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.*;
 
 /**
  * HNSW 인덱스 기반 벡터 검색 서비스
@@ -118,7 +121,9 @@ public class VectorSearchService {
     private String floatArrayToVectorString(float[] arr) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < arr.length; i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0) {
+                sb.append(",");
+            }
             sb.append(arr[i]);
         }
         sb.append("]");

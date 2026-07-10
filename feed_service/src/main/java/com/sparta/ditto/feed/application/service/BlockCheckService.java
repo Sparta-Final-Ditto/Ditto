@@ -36,13 +36,13 @@ public class BlockCheckService {
     }
 
     /**
-     * 피드 단방향 필터용: 요청자가 차단한 사용자 ID 목록을 조회한다.
+     * 피드 양방향 필터용: 요청자의 차단 관계 사용자 ID 목록(내가 차단 ∪ 나를 차단)을 조회한다.
      * fallback은 fail-open: 조회 실패(타임아웃/5xx/서킷 OPEN) 시 빈 목록을 반환한다.
      */
     @CircuitBreaker(name = "userServiceClient", fallbackMethod = "emptyBlockedList")
     @Retry(name = "userServiceClient")
     public List<UUID> blockedUserIds(UUID requesterId) {
-        return userBlockPort.findBlockedUserIds(requesterId);
+        return userBlockPort.findBlockRelationUserIds(requesterId);
     }
 
     @SuppressWarnings("unused")

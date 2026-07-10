@@ -3,8 +3,7 @@ package com.sparta.ditto.notification.infrastructure.sse;
 import com.sparta.ditto.notification.application.event.NotificationCreatedEvent;
 import com.sparta.ditto.notification.application.port.NotificationPushPort;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
@@ -15,11 +14,10 @@ import org.springframework.transaction.event.TransactionalEventListener;
  * 시점에 전용 executor에서 비동기로 push한다. 전송 실패는 알림 저장에 영향을 주지 않으므로
  * 내부에서 삼키고 warn 로그만 남긴다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class NotificationPushListener {
-
-    private static final Logger log = LoggerFactory.getLogger(NotificationPushListener.class);
 
     private final NotificationPushPort notificationPushPort;
 

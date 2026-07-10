@@ -2,10 +2,9 @@ package com.sparta.ditto.match.infrastructure.metrics;
 
 import com.sparta.ditto.match.domain.entity.MatchStatus;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.TimeUnit;
 
 @Component
 @RequiredArgsConstructor

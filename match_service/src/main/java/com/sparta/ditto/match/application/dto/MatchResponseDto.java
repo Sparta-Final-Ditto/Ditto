@@ -2,7 +2,6 @@ package com.sparta.ditto.match.application.dto;
 
 import com.sparta.ditto.match.domain.entity.MatchStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.time.Instant;
 import java.util.UUID;
 

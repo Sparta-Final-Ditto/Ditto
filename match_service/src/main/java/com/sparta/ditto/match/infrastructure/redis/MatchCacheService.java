@@ -2,14 +2,13 @@ package com.sparta.ditto.match.infrastructure.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.time.LocalDate;
-import java.util.UUID;
 
 /**
  * [Infrastructure Layer] 매칭 결과 캐시 서비스
@@ -61,7 +60,9 @@ public class MatchCacheService {
             String key = MATCH_RESULT_PREFIX + userId + ":" + LocalDate.now();
             String value = redisTemplate.opsForValue().get(key);
 
-            if (value == null) return null;
+            if (value == null) {
+                return null;
+            }
             return objectMapper.readValue(value, MatchResponseDto.class);
         } catch (Exception e) {
             log.error("매칭 결과 조회 실패: userId={}", userId, e);

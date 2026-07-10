@@ -1,14 +1,14 @@
 // infrastructure/redis/MatchingStatsService.java
-package com.sparta.ditto.match.infrastructure.redis;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.stereotype.Component;
+package com.sparta.ditto.match.infrastructure.redis;
 
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.stereotype.Component;
 
 /**
  * [Infrastructure Layer] HyperLogLog로 매칭 통계

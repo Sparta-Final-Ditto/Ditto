@@ -54,7 +54,9 @@ public class PostInteractionService {
 
         if (!userId.equals(post.getUserId())) {
             applicationEventPublisher.publishEvent(
-                    new PostLikedEvent(like.getId(), post.getId(), userId, userNickname, post.getUserId(), Instant.now()));
+                    new PostLikedEvent(
+                            like.getId(), post.getId(), userId, userNickname,
+                            post.getUserId(), Instant.now()));
         }
 
         return LikeResult.liked(post);
