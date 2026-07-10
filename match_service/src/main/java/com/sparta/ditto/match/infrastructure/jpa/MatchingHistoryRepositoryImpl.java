@@ -2,15 +2,14 @@ package com.sparta.ditto.match.infrastructure.jpa;
 
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
 import com.sparta.ditto.match.domain.repository.MatchingHistoryRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
-
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Repository;
 
 @Repository
 @RequiredArgsConstructor

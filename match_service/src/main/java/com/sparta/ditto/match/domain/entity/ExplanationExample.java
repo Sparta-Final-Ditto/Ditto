@@ -1,12 +1,14 @@
 package com.sparta.ditto.match.domain.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.Instant;
-import java.util.UUID;
 
 /**
  * 매칭 설명 RAG용 예시 (시드 골든셋 + 실제 LLM 생성 이력)
@@ -60,7 +62,9 @@ public class ExplanationExample {
     private static String floatArrayToVectorString(float[] arr) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < arr.length; i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0) {
+                sb.append(",");
+            }
             sb.append(arr[i]);
         }
         sb.append("]");

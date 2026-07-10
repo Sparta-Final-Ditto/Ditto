@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -18,11 +17,10 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * 전송 실패(IOException, 완료된 emitter의 IllegalStateException)는 해당 emitter만
  * 레지스트리에서 제거하며, 같은 사용자의 다른 emitter는 유지한다.
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class SseNotificationPushAdapter implements NotificationPushPort, SseHeartbeatPort {
-
-    private static final Logger log = LoggerFactory.getLogger(SseNotificationPushAdapter.class);
 
     private static final String NOTIFICATION_EVENT = "notification";
     private static final String HEARTBEAT_EVENT = "heartbeat";

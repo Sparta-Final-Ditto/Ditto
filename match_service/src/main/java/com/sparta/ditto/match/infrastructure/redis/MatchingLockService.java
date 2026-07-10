@@ -1,11 +1,10 @@
 package com.sparta.ditto.match.infrastructure.redis;
 
+import java.time.Duration;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.util.UUID;
 
 /**
  * [Infrastructure Layer] 매칭 분산 락 서비스

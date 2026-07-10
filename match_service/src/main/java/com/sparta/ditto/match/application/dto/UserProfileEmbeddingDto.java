@@ -1,7 +1,6 @@
 package com.sparta.ditto.match.application.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import java.util.UUID;
 
 public record UserProfileEmbeddingDto(
