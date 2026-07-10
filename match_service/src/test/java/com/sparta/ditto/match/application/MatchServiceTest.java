@@ -17,6 +17,7 @@ import com.sparta.ditto.match.infrastructure.redis.MatchingStatsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,6 +32,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -693,5 +695,146 @@ class MatchServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(e -> assertThat(((BusinessException) e).getErrorCode())
                         .isEqualTo(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE));
+    }
+
+    // ── createMatch 벡터/태그/위치 필터 세부 분기 ──────────────────────────
+
+    @Test
+    @DisplayName("오늘 작성한 기록이 있으면 todayVector를 사용해 매칭한다")
+    void createMatch_todayVectorPresent_usesTodayVector() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] profileVector = {0.1f, 0.2f, 0.3f};
+        float[] todayVector = {0.9f, 0.8f, 0.7f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, profileVector, todayVector, true, 5);
+
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(candidateId, 0.5f);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of());
+        given(hybridCandidateSearchService.searchCandidates(
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("설명");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null));
+
+        ArgumentCaptor<float[]> vectorCaptor = ArgumentCaptor.forClass(float[].class);
+        verify(hybridCandidateSearchService).searchCandidates(
+                eq(userId), vectorCaptor.capture(), any(), any(), any(), any(), anyInt());
+        assertThat(vectorCaptor.getValue()).isEqualTo(todayVector);
+    }
+
+    @Test
+    @DisplayName("내 태그 캐시가 null이면 빈 태그로 매칭을 진행한다")
+    void createMatch_myTagsNull_usesEmptyTags() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(candidateId, 0.6f);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(null);
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("여행"));
+        given(hybridCandidateSearchService.searchCandidates(
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("설명");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        MatchResponseDto result = matchService.createMatch(
+                userId, new MatchRequestDto("NONE", false, null, null));
+
+        assertThat(result).isNotNull();
+        assertThat(result.matchedUserId()).isEqualTo(candidateId);
+    }
+
+    @Test
+    @DisplayName("위치 필터가 켜져 있으면 내 동네 정보를 조회해 후보 검색에 반영한다")
+    void createMatch_locationFilterOn_resolvesNeighborhood() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+        UserNeighborhoodDto neighborhoodDto = new UserNeighborhoodDto(userId, "서울 성동구");
+
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(candidateId, 0.6f);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of());
+        given(userServiceClient.getMyProfile(userId))
+                .willReturn(ApiResponse.success(neighborhoodDto));
+        given(hybridCandidateSearchService.searchCandidates(
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("설명");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        matchService.createMatch(userId, new MatchRequestDto("NONE", true, null, null));
+
+        verify(hybridCandidateSearchService).searchCandidates(
+                eq(userId), any(), any(), any(), any(), eq("서울 성동구"), anyInt());
+    }
+
+    @Test
+    @DisplayName("위치 필터가 켜져 있어도 동네 정보 조회 실패 시 위치 필터 없이 매칭을 진행한다")
+    void createMatch_locationFilterOn_neighborhoodFetchFails_continuesWithoutFilter() {
+        UUID userId = UUID.randomUUID();
+        UUID candidateId = UUID.randomUUID();
+        float[] myVector = {0.1f, 0.2f, 0.3f};
+        UserProfileEmbeddingDto myProfile =
+                new UserProfileEmbeddingDto(userId, myVector, null, true, 5);
+
+        LinkedHashMap<UUID, Float> hnswResults = new LinkedHashMap<>();
+        hnswResults.put(candidateId, 0.6f);
+
+        given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
+        given(matchingLockService.acquireLock(userId)).willReturn(true);
+        given(embeddingServiceClient.getUserProfile(userId))
+                .willReturn(ApiResponse.success(myProfile));
+        given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
+        given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of());
+        given(userServiceClient.getMyProfile(userId))
+                .willThrow(new RuntimeException("user-service down"));
+        given(hybridCandidateSearchService.searchCandidates(
+                eq(userId), any(), any(), any(), any(), any(), anyInt()))
+                .willReturn(hnswResults);
+        given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
+                .willReturn("설명");
+        given(matchingHistoryRepository.save(any()))
+                .willAnswer(inv -> withId(inv.getArgument(0)));
+
+        MatchResponseDto result = matchService.createMatch(
+                userId, new MatchRequestDto("NONE", true, null, null));
+
+        assertThat(result).isNotNull();
+        verify(hybridCandidateSearchService).searchCandidates(
+                eq(userId), any(), any(), any(), any(), isNull(), anyInt());
     }
 }
