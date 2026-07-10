@@ -1,8 +1,9 @@
 package com.sparta.ditto.match.domain.repository;
 
 import com.sparta.ditto.match.domain.entity.SyncedProfileEmbedding;
-
-import java.util.*;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 /**
  * 동기화된 프로필 임베딩 Repository (도메인 인터페이스)
@@ -16,7 +17,8 @@ public interface SyncedProfileEmbeddingRepository {
     long countByActiveTrue();
 
     // HNSW 벡터 검색 - 기본
-    List<Object[]> findSimilarUsers(UUID userId, String queryVector, List<UUID> excludeIds, int topK);
+    List<Object[]> findSimilarUsers(
+            UUID userId, String queryVector, List<UUID> excludeIds, int topK);
 
     // HNSW 벡터 검색 - 성별 필터
     List<Object[]> findSimilarUsersWithGenderFilter(

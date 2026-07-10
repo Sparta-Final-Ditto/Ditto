@@ -1,7 +1,6 @@
 package com.sparta.ditto.match.application.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-
 import java.util.UUID;
 
 @Schema(description = "추천 유저")

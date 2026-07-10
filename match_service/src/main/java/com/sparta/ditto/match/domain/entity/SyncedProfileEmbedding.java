@@ -1,13 +1,15 @@
 package com.sparta.ditto.match.domain.entity;
 
-import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 /**
  * embedding_service의 user_profile_embeddings를 복제한 Read Model (CQRS 패턴)
@@ -58,7 +60,10 @@ public class SyncedProfileEmbedding {
         return entity;
     }
 
-    public void updateVector(float[] newVector, String gender, LocalDate birthdate, String neighborhood, boolean active) {
+    public void updateVector(
+            float[] newVector, String gender, LocalDate birthdate,
+            String neighborhood, boolean active
+    ) {
         this.vector = floatArrayToVectorString(newVector);
         this.gender = gender;
         this.birthdate = birthdate;
@@ -71,7 +76,9 @@ public class SyncedProfileEmbedding {
     private static String floatArrayToVectorString(float[] arr) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < arr.length; i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0) {
+                sb.append(",");
+            }
             sb.append(arr[i]);
         }
         sb.append("]");

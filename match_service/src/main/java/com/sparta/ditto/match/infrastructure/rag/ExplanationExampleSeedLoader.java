@@ -5,15 +5,14 @@ import com.sparta.ditto.match.application.dto.EmbedTextResponseDto;
 import com.sparta.ditto.match.domain.entity.ExplanationExample;
 import com.sparta.ditto.match.domain.repository.ExplanationExampleRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
-
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.UUID;
 
 /**
  * 매칭 설명 RAG의 콜드 스타트 대비용 시드 데이터.

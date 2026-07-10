@@ -1,4 +1,4 @@
-package com.sparta.ditto.match.infrastructure.Llm;
+package com.sparta.ditto.match.infrastructure.llm;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatModel;

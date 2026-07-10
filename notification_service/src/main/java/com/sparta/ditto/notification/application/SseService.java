@@ -3,8 +3,7 @@ package com.sparta.ditto.notification.application;
 import com.sparta.ditto.notification.application.port.SseConnectionPort;
 import java.io.IOException;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -14,10 +13,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
  * SseEmitter는 HTTP 상세이나 연결 생성의 프레임워크 계약상 격리가 불가능하므로,
  * Application 계층에서 이 클래스(및 연결 포트)에 한해 예외적으로 사용을 허용한다.
  */
+@Slf4j
 @Service
 public class SseService {
-
-    private static final Logger log = LoggerFactory.getLogger(SseService.class);
 
     private final SseConnectionPort connectionPort;
     private final long timeoutMs;
