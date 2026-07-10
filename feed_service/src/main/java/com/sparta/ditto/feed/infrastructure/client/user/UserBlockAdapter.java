@@ -3,7 +3,6 @@ package com.sparta.ditto.feed.infrastructure.client.user;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.feed.application.port.out.UserBlockPort;
-import com.sparta.ditto.feed.infrastructure.client.user.dto.BlockedUsersResponse;
 import com.sparta.ditto.feed.infrastructure.client.user.dto.ChatUserValidationRequest;
 import feign.FeignException;
 import java.util.List;
@@ -29,13 +28,8 @@ public class UserBlockAdapter implements UserBlockPort {
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<UUID> findBlockedUserIds(UUID requesterId) {
-        BlockedUsersResponse response = userServiceClient.getMyBlocks(requesterId);
-        return response.data() == null
-                ? List.of()
-                : response.data().stream()
-                        .map(BlockedUsersResponse.BlockedUser::id)
-                        .toList();
+    public List<UUID> findBlockRelationUserIds(UUID requesterId) {
+        throw new UnsupportedOperationException("RED skeleton");
     }
 
     @Override

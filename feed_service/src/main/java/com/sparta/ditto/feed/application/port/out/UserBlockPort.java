@@ -22,8 +22,9 @@ public interface UserBlockPort {
     boolean isBlockedEitherDirection(UUID requesterId, UUID targetUserId);
 
     /**
-     * 피드 단방향 필터용: 요청자가 차단한 사용자 ID 목록을 조회한다(me/blocks).
-     * 조회 실패 시 예외를 전파하며, fail-open은 Application이 결정한다.
+     * 피드 양방향 필터용: 요청자의 차단 관계 사용자 ID 목록을 조회한다.
+     * user-service {@code block-relations}의 "내가 차단한 사용자" ∪ "나를 차단한 사용자"를
+     * union(중복 제거)한 단일 목록이다. 조회 실패 시 예외를 전파하며, fail-open은 Application이 결정한다.
      */
-    List<UUID> findBlockedUserIds(UUID requesterId);
+    List<UUID> findBlockRelationUserIds(UUID requesterId);
 }
