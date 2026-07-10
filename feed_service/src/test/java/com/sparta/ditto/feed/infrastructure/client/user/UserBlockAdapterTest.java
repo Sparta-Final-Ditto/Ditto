@@ -8,7 +8,7 @@ import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.ditto.feed.infrastructure.client.user.dto.BlockedUsersResponse;
+import com.sparta.ditto.feed.infrastructure.client.user.dto.BlockRelationsResponse;
 import com.sparta.ditto.feed.infrastructure.client.user.dto.ChatUserValidationRequest;
 import feign.FeignException;
 import feign.Request;
@@ -33,8 +33,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
  * UserBlockAdapter 단위 테스트 (UserServiceClient Feign mock 격리, Spring 컨텍스트 없음).
  *
  * <p>차단 검증은 user-service 기존 internal API {@code chat-validation}(checkBlock=true)을,
- * 피드 차단 목록은 {@code me/blocks}를 재사용한다. 이 어댑터는 403 + code "BLOCK-004"만
- * "차단"으로 판정(true)하고, 그 외 오류는 삼키지 않고 그대로 전파한다.</p>
+ * 피드 차단 관계 목록은 internal API {@code block-relations}(양방향)를 사용한다. chat-validation은
+ * 403 + code "BLOCK-004"만 "차단"으로 판정(true)하고, block-relations는 응답의
+ * {@code blockedUserIds}(내가 차단) ∪ {@code blockedByUserIds}(나를 차단)를 union(중복 제거)한다.
+ * 어느 경우든 오류는 삼키지 않고 그대로 전파한다.</p>
  */
 @ExtendWith(MockitoExtension.class)
 class UserBlockAdapterTest {
@@ -67,6 +69,11 @@ class UserBlockAdapterTest {
         return FeignException.errorStatus("userService", builder.build());
     }
 
+    private BlockRelationsResponse blockRelations(List<UUID> blocked, List<UUID> blockedBy) {
+        return new BlockRelationsResponse(200, "SUCCESS",
+                new BlockRelationsResponse.Data(blocked, blockedBy));
+    }
+
     // ── 007-4: BLOCK-004 → 차단 판정, 2xx → 통과 + 요청 계약 ─────────────────────
 
     @Test
@@ -92,9 +99,9 @@ class UserBlockAdapterTest {
         assertThat(sent.checkBlock()).isTrue();
     }
 
-    // ── 예외 전파: validate/list × 404·5xx·403(BLOCK-004 아님) 모두 삼키지 않고 전파 ──
+    // ── 예외 전파: validate/relations × 404·5xx·403(BLOCK-004 아님) 모두 삼키지 않고 전파 ──
 
-    private enum Op { VALIDATE, LIST }
+    private enum Op { VALIDATE, RELATIONS }
 
     static Stream<Arguments> propagationCases() {
         return Stream.of(
@@ -103,8 +110,9 @@ class UserBlockAdapterTest {
                 Arguments.of("007-4 validate 403(BLOCK-004 아님) 전파", Op.VALIDATE, 403,
                         "{\"code\":\"SOME_OTHER\"}"),
                 Arguments.of("007-9 validate 5xx 전파", Op.VALIDATE, 500, null),
-                Arguments.of("004-8 list 404 전파", Op.LIST, 404, "{\"code\":\"USER_NOT_FOUND\"}"),
-                Arguments.of("004-8 list 5xx 전파", Op.LIST, 500, null)
+                Arguments.of("004-8 block-relations 404 전파", Op.RELATIONS, 404,
+                        "{\"code\":\"USER_NOT_FOUND\"}"),
+                Arguments.of("004-8 block-relations 5xx 전파", Op.RELATIONS, 500, null)
         );
     }
 
@@ -120,45 +128,107 @@ class UserBlockAdapterTest {
                     () -> userBlockAdapter.isBlockedEitherDirection(requesterId, ownerId))
                     .isInstanceOf(FeignException.class);
         } else {
-            given(userServiceClient.getMyBlocks(requesterId)).willThrow(error);
-            assertThatThrownBy(() -> userBlockAdapter.findBlockedUserIds(requesterId))
+            given(userServiceClient.getBlockRelations(requesterId)).willThrow(error);
+            assertThatThrownBy(() -> userBlockAdapter.findBlockRelationUserIds(requesterId))
                     .isInstanceOf(FeignException.class);
         }
     }
 
-    // ── 004-8/005-6/003-14/004-13: me/blocks 목록 조회 ─────────────────────────
+    // ── 003-6/004-8/005-6: block-relations 양방향 union ─────────────────────────
 
-    @Test
-    @DisplayName("004-8/005-6: me/blocks 응답에서 data[].id만 UUID 목록으로 추출")
-    void findBlockedUserIds_extractsIdsOnly() {
-        UUID blockedA = UUID.randomUUID();
-        UUID blockedB = UUID.randomUUID();
-        given(userServiceClient.getMyBlocks(requesterId))
-                .willReturn(new BlockedUsersResponse(200, "SUCCESS",
-                        List.of(new BlockedUsersResponse.BlockedUser(blockedA),
-                                new BlockedUsersResponse.BlockedUser(blockedB))));
+    static Stream<Arguments> directionCases() {
+        UUID target = UUID.randomUUID();
+        return Stream.of(
+                Arguments.of("내가 차단(blockedUserIds)만 존재", List.of(target), List.of(), target),
+                Arguments.of("나를 차단(blockedByUserIds)만 존재", List.of(), List.of(target), target)
+        );
+    }
 
-        assertThat(userBlockAdapter.findBlockedUserIds(requesterId))
-                .containsExactly(blockedA, blockedB);
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("directionCases")
+    @DisplayName("003-6/004-8/005-6: 어느 방향이든 차단 관계 ID가 결과에 포함된다")
+    void findBlockRelationUserIds_includesEitherDirection(
+            String desc, List<UUID> blocked, List<UUID> blockedBy, UUID target) {
+        given(userServiceClient.getBlockRelations(requesterId))
+                .willReturn(blockRelations(blocked, blockedBy));
+
+        assertThat(userBlockAdapter.findBlockRelationUserIds(requesterId)).contains(target);
     }
 
     @Test
-    @DisplayName("003-14/004-13: data가 빈 배열이면 빈 목록 반환")
-    void findBlockedUserIds_emptyData() {
-        given(userServiceClient.getMyBlocks(requesterId))
-                .willReturn(new BlockedUsersResponse(200, "SUCCESS", List.of()));
+    @DisplayName("맞차단: 두 목록에 동일 ID → 중복 제거된 union")
+    void findBlockRelationUserIds_dedupesUnion() {
+        UUID mutual = UUID.randomUUID();
+        given(userServiceClient.getBlockRelations(requesterId))
+                .willReturn(blockRelations(List.of(mutual), List.of(mutual)));
 
-        assertThat(userBlockAdapter.findBlockedUserIds(requesterId)).isEmpty();
+        assertThat(userBlockAdapter.findBlockRelationUserIds(requesterId))
+                .containsExactly(mutual);
     }
 
     @Test
-    @DisplayName("004-8: X-User-Id로 요청자 ID가 전달된다")
-    void findBlockedUserIds_sendsRequesterId() {
-        given(userServiceClient.getMyBlocks(requesterId))
-                .willReturn(new BlockedUsersResponse(200, "SUCCESS", List.of()));
+    @DisplayName("003-6/004-8/005-6: 양방향 서로 다른 ID → 합집합으로 모두 포함")
+    void findBlockRelationUserIds_unionOfBothLists() {
+        UUID iBlocked = UUID.randomUUID();
+        UUID blockedMe = UUID.randomUUID();
+        given(userServiceClient.getBlockRelations(requesterId))
+                .willReturn(blockRelations(List.of(iBlocked), List.of(blockedMe)));
 
-        userBlockAdapter.findBlockedUserIds(requesterId);
+        assertThat(userBlockAdapter.findBlockRelationUserIds(requesterId))
+                .containsExactlyInAnyOrder(iBlocked, blockedMe);
+    }
 
-        verify(userServiceClient).getMyBlocks(requesterId);
+    @Test
+    @DisplayName("003-14/004-13: data가 null이면 빈 목록 반환")
+    void findBlockRelationUserIds_nullData() {
+        given(userServiceClient.getBlockRelations(requesterId))
+                .willReturn(new BlockRelationsResponse(200, "SUCCESS", null));
+
+        assertThat(userBlockAdapter.findBlockRelationUserIds(requesterId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("003-14/004-13: 두 목록 모두 빈 배열이면 빈 목록 반환")
+    void findBlockRelationUserIds_emptyLists() {
+        given(userServiceClient.getBlockRelations(requesterId))
+                .willReturn(blockRelations(List.of(), List.of()));
+
+        assertThat(userBlockAdapter.findBlockRelationUserIds(requesterId)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("004-8: block-relations 조회 시 요청자 ID(userId)가 전달된다")
+    void findBlockRelationUserIds_sendsRequesterId() {
+        given(userServiceClient.getBlockRelations(requesterId))
+                .willReturn(blockRelations(List.of(), List.of()));
+
+        userBlockAdapter.findBlockRelationUserIds(requesterId);
+
+        verify(userServiceClient).getBlockRelations(requesterId);
+    }
+
+    // ── JSON 계약 고정(API_SPEC 2.16 예시): 역직렬화로 두 목록 파싱 검증 ────────────
+
+    @Test
+    @DisplayName("JSON 계약: API_SPEC 2.16 예시 JSON이 두 목록으로 역직렬화된다")
+    void blockRelationsResponse_deserializesBothLists() throws Exception {
+        String json = """
+                {
+                  "status": 200,
+                  "message": "SUCCESS",
+                  "data": {
+                    "blockedUserIds": ["7b9f6e22-03e7-4b59-a9a4-95de4e2f1234"],
+                    "blockedByUserIds": ["1caa0424-5b1e-4f8a-90b5-bc1d6e2a5678"]
+                  }
+                }
+                """;
+
+        BlockRelationsResponse response =
+                new ObjectMapper().readValue(json, BlockRelationsResponse.class);
+
+        assertThat(response.data().blockedUserIds())
+                .containsExactly(UUID.fromString("7b9f6e22-03e7-4b59-a9a4-95de4e2f1234"));
+        assertThat(response.data().blockedByUserIds())
+                .containsExactly(UUID.fromString("1caa0424-5b1e-4f8a-90b5-bc1d6e2a5678"));
     }
 }
