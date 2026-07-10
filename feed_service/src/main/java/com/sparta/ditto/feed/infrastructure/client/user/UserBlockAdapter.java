@@ -3,10 +3,13 @@ package com.sparta.ditto.feed.infrastructure.client.user;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparta.ditto.feed.application.port.out.UserBlockPort;
+import com.sparta.ditto.feed.infrastructure.client.user.dto.BlockRelationsResponse;
 import com.sparta.ditto.feed.infrastructure.client.user.dto.ChatUserValidationRequest;
 import feign.FeignException;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -29,7 +32,21 @@ public class UserBlockAdapter implements UserBlockPort {
 
     @Override
     public List<UUID> findBlockRelationUserIds(UUID requesterId) {
-        throw new UnsupportedOperationException("RED skeleton");
+        BlockRelationsResponse.Data data =
+                userServiceClient.getBlockRelations(requesterId).data();
+        if (data == null) {
+            return List.of();
+        }
+        return Stream.concat(
+                        safe(data.blockedUserIds()).stream(),
+                        safe(data.blockedByUserIds()).stream())
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+    }
+
+    private static List<UUID> safe(List<UUID> ids) {
+        return ids == null ? List.of() : ids;
     }
 
     @Override
