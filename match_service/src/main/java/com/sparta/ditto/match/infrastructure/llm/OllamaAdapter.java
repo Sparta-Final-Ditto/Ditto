@@ -1,4 +1,4 @@
-package com.sparta.ditto.match.infrastructure.Llm;
+package com.sparta.ditto.match.infrastructure.llm;
 
 import com.sparta.ditto.match.application.port.LlmPort;
 import lombok.RequiredArgsConstructor;

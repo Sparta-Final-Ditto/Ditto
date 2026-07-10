@@ -21,7 +21,15 @@ public record PostCreatedEvent(
             Instant createdAt
     ) {}
 
-    public UUID getUserId() { return payload().userId(); }
-    public List<String> getTags() { return payload().tags(); }
-    public Instant getCreatedAt() { return payload().createdAt(); }
+    public UUID getUserId() {
+        return payload().userId();
+    }
+
+    public List<String> getTags() {
+        return payload().tags();
+    }
+
+    public Instant getCreatedAt() {
+        return payload().createdAt();
+    }
 }

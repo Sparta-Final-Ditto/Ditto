@@ -3,13 +3,12 @@ package com.sparta.ditto.match.infrastructure.feign;
 import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.UserNeighborhoodDto;
 import com.sparta.ditto.match.application.dto.UserPublicProfileDto;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
-
-import java.util.List;
-import java.util.UUID;
 
 @FeignClient(name = "user-service", url = "${feign.client.config.user-service.url}")
 public interface UserServiceClient {

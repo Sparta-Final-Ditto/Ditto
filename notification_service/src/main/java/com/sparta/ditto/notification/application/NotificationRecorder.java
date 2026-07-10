@@ -70,7 +70,8 @@ public class NotificationRecorder {
                 continue;
             }
             Notification notification = Notification.create(
-                    receiverId, cmd.senderId(), NotificationType.CHAT_MESSAGE, TargetType.CHAT_MESSAGE,
+                    receiverId, cmd.senderId(),
+                    NotificationType.CHAT_MESSAGE, TargetType.CHAT_MESSAGE,
                     cmd.messageId(), cmd.preview(), metaData);
             saveAndPublish(notification);
         }
@@ -79,6 +80,7 @@ public class NotificationRecorder {
     private void saveAndPublish(Notification notification) {
         Notification saved = notificationRepository.save(notification);
         eventPublisher.publishEvent(
-                new NotificationCreatedEvent(saved.getReceiverId(), NotificationPushPayload.from(saved)));
+                new NotificationCreatedEvent(
+                        saved.getReceiverId(), NotificationPushPayload.from(saved)));
     }
 }

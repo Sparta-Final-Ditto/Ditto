@@ -55,7 +55,8 @@ public class NotificationRepositoryImpl implements NotificationRepository {
 
     @Override
     public List<Notification> findUnreadChatByReceiverId(UUID receiverId) {
-        return jpaRepository.findUnreadByReceiverIdAndType(receiverId, NotificationType.CHAT_MESSAGE);
+        return jpaRepository.findUnreadByReceiverIdAndType(
+                receiverId, NotificationType.CHAT_MESSAGE);
     }
 
     @Override

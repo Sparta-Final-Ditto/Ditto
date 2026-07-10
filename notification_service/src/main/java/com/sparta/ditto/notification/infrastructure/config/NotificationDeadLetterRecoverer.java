@@ -1,8 +1,7 @@
 package com.sparta.ditto.notification.infrastructure.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.kafka.listener.ConsumerRecordRecoverer;
 import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
@@ -15,9 +14,8 @@ import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
  * 여기까지 오면 DLT가 아니라 "이미 처리됨"으로 간주하는 것이 옳다. 예외 타입 분기를 단위 테스트할 수
  * 있도록 {@link #isIdempotentSuccessSkip(Throwable)}로 분리한다.
  */
+@Slf4j
 public class NotificationDeadLetterRecoverer implements ConsumerRecordRecoverer {
-
-    private static final Logger log = LoggerFactory.getLogger(NotificationDeadLetterRecoverer.class);
 
     private final DeadLetterPublishingRecoverer delegate;
 
