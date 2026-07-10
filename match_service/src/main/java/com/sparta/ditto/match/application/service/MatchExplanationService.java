@@ -9,14 +9,13 @@ import com.sparta.ditto.match.domain.entity.MatchingExplanation;
 import com.sparta.ditto.match.domain.repository.ExplanationExampleRepository;
 import com.sparta.ditto.match.domain.repository.MatchingExplanationRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
@@ -74,7 +73,8 @@ public class MatchExplanationService {
             generatedByLlm = true;
             log.info("[Explanation] LLM 생성 완료 userId={}", userId);
         } catch (Exception e) {
-            log.warn("[Explanation] LLM 호출 실패, fallback 사용 userId={} error={}", userId, e.getMessage());
+            log.warn("[Explanation] LLM 호출 실패, fallback 사용 userId={} error={}",
+                    userId, e.getMessage());
             explanation = buildFallback(commonTags, score);
             generatedByLlm = false;
         }
@@ -152,7 +152,8 @@ public class MatchExplanationService {
     private String formatExamples(List<String> examples) {
         if (examples.isEmpty()) {
             // 벡터스토어 검색 결과가 없을 때(장애 등 극단적 콜드 스타트)의 최소 안전장치
-            return "Q: 공통태그=여행,사진 / 점수=82%\nA: 여행과 사진을 함께 즐기는 감성이 딱 맞는 두 분이에요! 서로의 여행 사진 이야기로 대화가 끊이지 않을 것 같아요.";
+            return "Q: 공통태그=여행,사진 / 점수=82%\nA: 여행과 사진을 함께 즐기는 감성이 딱 맞는 두 분이에요! "
+                    + "서로의 여행 사진 이야기로 대화가 끊이지 않을 것 같아요.";
         }
         return String.join("\n\n", examples);
     }
@@ -162,11 +163,13 @@ public class MatchExplanationService {
      * userId+matchedUserId 조합으로 결정론적 ID를 만들어, 같은 쌍에 대한 재생성 시 upsert되게 함
      */
     private void indexGeneratedExplanation(UUID userId, UUID matchedUserId,
-                                           List<String> commonTags, float score, String explanation) {
+                                           List<String> commonTags, float score,
+                                           String explanation) {
         try {
             String tagStr = commonTags.isEmpty() ? "공통 관심사 없음" : String.join(",", commonTags);
             int scorePercent = (int) (score * 100);
-            String content = "Q: 공통태그=%s / 점수=%d%%\nA: %s".formatted(tagStr, scorePercent, explanation);
+            String content = "Q: 공통태그=%s / 점수=%d%%\nA: %s"
+                    .formatted(tagStr, scorePercent, explanation);
 
             float[] vector = embedText(content);
 
@@ -201,7 +204,9 @@ public class MatchExplanationService {
     private String floatArrayToVectorString(float[] arr) {
         StringBuilder sb = new StringBuilder("[");
         for (int i = 0; i < arr.length; i++) {
-            if (i > 0) sb.append(",");
+            if (i > 0) {
+                sb.append(",");
+            }
             sb.append(arr[i]);
         }
         sb.append("]");

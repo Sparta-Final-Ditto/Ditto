@@ -22,7 +22,8 @@ public class MetaDataAdapter implements MetaDataPort {
     }
 
     @Override
-    public String buildChatMetaData(String roomId, String senderNickname, String senderProfileImageUrl) {
+    public String buildChatMetaData(
+            String roomId, String senderNickname, String senderProfileImageUrl) {
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("roomId", roomId);
         meta.put("senderNickname", senderNickname);

@@ -2,11 +2,14 @@ package com.sparta.ditto.match.application.service;
 
 import com.sparta.ditto.match.application.dto.UserPublicProfileDto;
 import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-
-import java.util.*;
 
 /**
  * 하이브리드 매칭 후보 검색 전략
@@ -48,7 +51,8 @@ public class HybridCandidateSearchService {
 
             if (gender != null || minAge != null || maxAge != null || neighborhood != null) {
                 results = vectorSearchService.searchWithAllFilters(
-                        userId, queryVector, excludeIds, gender, minAge, maxAge, neighborhood, topK);
+                        userId, queryVector, excludeIds, gender, minAge, maxAge,
+                        neighborhood, topK);
             } else {
                 results = vectorSearchService.searchSimilarUsers(
                         userId, queryVector, excludeIds, topK);
