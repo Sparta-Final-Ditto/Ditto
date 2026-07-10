@@ -17,4 +17,10 @@ public interface BlockRepository extends JpaRepository<Block, UUID> {
 
     @Query("SELECT b.blocked FROM Block b WHERE b.blocker.id = :blockerId")
     List<User> findBlockedUsersByBlockerId(@Param("blockerId") UUID blockerId);
+
+    @Query("SELECT b.blocked.id FROM Block b WHERE b.blocker.id = :userId")
+    List<UUID> findBlockedUserIdsByBlockerId(@Param("userId") UUID userId);
+
+    @Query("SELECT b.blocker.id FROM Block b WHERE b.blocked.id = :userId")
+    List<UUID> findBlockerUserIdsByBlockedId(@Param("userId") UUID userId);
 }
