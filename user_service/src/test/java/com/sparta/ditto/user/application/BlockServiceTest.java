@@ -18,6 +18,7 @@ import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.FollowRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
+import com.sparta.ditto.user.presentation.dto.response.BlockRelationsResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import java.time.LocalDate;
 import java.util.List;
@@ -191,6 +192,34 @@ class BlockServiceTest {
             List<UserPublicProfileResponse> result = blockService.getBlockedUsers(blockerId);
 
             assertThat(result).isEmpty();
+        }
+    }
+
+    @Nested
+    class GetBlockRelations {
+
+        @Test
+        void 성공() {
+            given(blockRepository.findBlockedUserIdsByBlockerId(blockerId))
+                    .willReturn(List.of(blockedId));
+            given(blockRepository.findBlockerUserIdsByBlockedId(blockerId))
+                    .willReturn(List.of());
+
+            BlockRelationsResponse result = blockService.getBlockRelations(blockerId);
+
+            assertThat(result.blockedUserIds()).containsExactly(blockedId);
+            assertThat(result.blockedByUserIds()).isEmpty();
+        }
+
+        @Test
+        void 차단_관계_없음_빈_목록() {
+            given(blockRepository.findBlockedUserIdsByBlockerId(blockerId)).willReturn(List.of());
+            given(blockRepository.findBlockerUserIdsByBlockedId(blockerId)).willReturn(List.of());
+
+            BlockRelationsResponse result = blockService.getBlockRelations(blockerId);
+
+            assertThat(result.blockedUserIds()).isEmpty();
+            assertThat(result.blockedByUserIds()).isEmpty();
         }
     }
 }

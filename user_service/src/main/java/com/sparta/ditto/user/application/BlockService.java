@@ -9,6 +9,7 @@ import com.sparta.ditto.user.domain.user.exception.UserNotFoundException;
 import com.sparta.ditto.user.infrastructure.repository.BlockRepository;
 import com.sparta.ditto.user.infrastructure.repository.FollowRepository;
 import com.sparta.ditto.user.infrastructure.repository.UserRepository;
+import com.sparta.ditto.user.presentation.dto.response.BlockRelationsResponse;
 import com.sparta.ditto.user.presentation.dto.response.UserPublicProfileResponse;
 import java.util.List;
 import java.util.UUID;
@@ -61,5 +62,11 @@ public class BlockService {
         return blockRepository.findBlockedUsersByBlockerId(blockerId).stream()
                 .map(UserPublicProfileResponse::from)
                 .toList();
+    }
+
+    public BlockRelationsResponse getBlockRelations(UUID userId) {
+        List<UUID> blockedUserIds = blockRepository.findBlockedUserIdsByBlockerId(userId);
+        List<UUID> blockedByUserIds = blockRepository.findBlockerUserIdsByBlockedId(userId);
+        return BlockRelationsResponse.of(blockedUserIds, blockedByUserIds);
     }
 }

@@ -30,6 +30,9 @@ public class SyncedProfileEmbedding {
 
     private LocalDate birthdate;
 
+    @Column(length = 100)
+    private String neighborhood;
+
     @Column(nullable = false)
     private Boolean active;
 
@@ -41,6 +44,7 @@ public class SyncedProfileEmbedding {
             float[] vector,
             String gender,
             LocalDate birthdate,
+            String neighborhood,
             boolean active
     ) {
         SyncedProfileEmbedding entity = new SyncedProfileEmbedding();
@@ -48,15 +52,17 @@ public class SyncedProfileEmbedding {
         entity.vector = floatArrayToVectorString(vector);
         entity.gender = gender;
         entity.birthdate = birthdate;
+        entity.neighborhood = neighborhood;
         entity.active = active;
         entity.syncedAt = Instant.now();
         return entity;
     }
 
-    public void updateVector(float[] newVector, String gender, LocalDate birthdate, boolean active) {
+    public void updateVector(float[] newVector, String gender, LocalDate birthdate, String neighborhood, boolean active) {
         this.vector = floatArrayToVectorString(newVector);
         this.gender = gender;
         this.birthdate = birthdate;
+        this.neighborhood = neighborhood;
         this.active = active;
         this.syncedAt = Instant.now();
     }

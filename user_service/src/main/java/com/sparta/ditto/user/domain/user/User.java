@@ -9,19 +9,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Objects;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.SQLRestriction;
-import org.hibernate.annotations.UuidGenerator;
 
 @Getter
 @Entity
@@ -35,11 +31,6 @@ import org.hibernate.annotations.UuidGenerator;
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
-
-    @Id
-    @GeneratedValue
-    @UuidGenerator
-    private UUID id;
 
     @Column(nullable = false, unique = true, length = 255)
     private String email;
@@ -81,6 +72,15 @@ public class User extends BaseEntity {
     @Column(name = "interest_registered", nullable = false)
     private boolean interestRegistered = false;
 
+    @Column
+    private Double latitude;
+
+    @Column
+    private Double longitude;
+
+    @Column(length = 100)
+    private String neighborhood;
+
     private User(String email, String password, String nickname,
                  Gender gender, LocalDate birthdate, LoginProvider loginProvider) {
         this.email = Objects.requireNonNull(email, "email must not be null");
@@ -114,6 +114,12 @@ public class User extends BaseEntity {
 
     public void completeInterestRegistration() {
         this.interestRegistered = true;
+    }
+
+    public void updateLocation(double latitude, double longitude, String neighborhood) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.neighborhood = neighborhood;
     }
 
     public void updateProfile(String nickname, String bio, String profileImageUrl) {

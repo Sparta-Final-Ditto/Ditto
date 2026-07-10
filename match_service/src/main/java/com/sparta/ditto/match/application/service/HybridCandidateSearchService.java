@@ -25,6 +25,7 @@ public class HybridCandidateSearchService {
     /**
      * 후보 검색 (HNSW 우선, Feign Fallback)
      *
+     * @param neighborhood null이면 위치 필터 미적용
      * @return candidateId → similarity score (유사도 높은 순), 빈 맵이면 Fallback 필요
      */
     public LinkedHashMap<UUID, Float> searchCandidates(
@@ -33,6 +34,7 @@ public class HybridCandidateSearchService {
             String genderFilter,
             Integer minAge,
             Integer maxAge,
+            String neighborhood,
             int topK
     ) {
         Set<UUID> excludeIds = buildExcludeIds(userId);
@@ -44,10 +46,9 @@ public class HybridCandidateSearchService {
 
             LinkedHashMap<UUID, Float> results;
 
-            // 필터 조건에 따라 적절한 검색 메서드 선택
-            if (gender != null || minAge != null || maxAge != null) {
+            if (gender != null || minAge != null || maxAge != null || neighborhood != null) {
                 results = vectorSearchService.searchWithAllFilters(
-                        userId, queryVector, excludeIds, gender, minAge, maxAge, topK);
+                        userId, queryVector, excludeIds, gender, minAge, maxAge, neighborhood, topK);
             } else {
                 results = vectorSearchService.searchSimilarUsers(
                         userId, queryVector, excludeIds, topK);

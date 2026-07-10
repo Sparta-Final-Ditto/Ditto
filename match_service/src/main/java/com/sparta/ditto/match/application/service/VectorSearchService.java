@@ -67,7 +67,7 @@ public class VectorSearchService {
     }
 
     /**
-     * 성별 + 나이 필터 포함 HNSW 검색
+     * 성별 + 나이 + 동네 필터 포함 HNSW 검색
      */
     @Transactional(readOnly = true)
     public LinkedHashMap<UUID, Float> searchWithAllFilters(
@@ -77,13 +77,14 @@ public class VectorSearchService {
             String gender,
             Integer minAge,
             Integer maxAge,
+            String neighborhood,
             int topK
     ) {
         String vectorStr = floatArrayToVectorString(queryVector);
         List<UUID> excludeList = safeExcludeList(excludeIds);
 
         List<Object[]> results = syncedRepository.findSimilarUsersWithFilters(
-                userId, vectorStr, excludeList, gender, minAge, maxAge, topK);
+                userId, vectorStr, excludeList, gender, minAge, maxAge, neighborhood, topK);
 
         return parseResults(results);
     }

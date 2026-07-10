@@ -29,6 +29,13 @@ resource "aws_instance" "app" {
   key_name               = var.key_pair_name
   iam_instance_profile   = aws_iam_instance_profile.app.name
 
+  # ami/user_data는 다른 리소스(monitoring 등)의 -target apply에 의존성 때문에 딸려 들어와
+  # 운영 중인 이 인스턴스가 실수로 재생성/재부팅되지 않도록 보호. 의도적으로 반영하고 싶을 때만
+  # 이 lifecycle 블록을 잠깐 제거하고 apply할 것.
+  lifecycle {
+    ignore_changes = [ami, user_data]
+  }
+
   root_block_device {
     volume_type           = "gp3"
     volume_size           = 30
@@ -62,9 +69,14 @@ resource "aws_instance" "db" {
   ami                    = data.aws_ami.ubuntu.id
   instance_type          = var.db_instance_type
   subnet_id              = aws_subnet.private[0].id
+  private_ip             = var.db_private_ip
   vpc_security_group_ids = [aws_security_group.db.id]
   key_name               = var.key_pair_name
   iam_instance_profile   = aws_iam_instance_profile.db.name
+
+  # user_data 변경 시 실제로 재생성되도록 강제 (기본값은 in-place 업데이트인데,
+  # cloud-init은 최초 부팅에만 user_data를 실행하므로 재생성 없이는 변경 사항이 반영되지 않음)
+  user_data_replace_on_change = true
 
   root_block_device {
     volume_type           = "gp3"
@@ -73,7 +85,13 @@ resource "aws_instance" "db" {
     encrypted             = true
   }
 
-  user_data  = base64encode(file("${path.module}/scripts/db_userdata.sh"))
+  user_data = base64encode(templatefile("${path.module}/scripts/db_userdata.sh", {
+    db_username    = var.db_username
+    db_password    = var.db_password
+    mongo_username = var.mongo_username
+    mongo_password = var.mongo_password
+    init_db_sql    = file("${path.module}/../scripts/init-db.sh")
+  }))
   depends_on = [aws_instance.nat, aws_route_table_association.private]
 
   tags = { Name = "${var.project_name}-db" }
