@@ -11,17 +11,16 @@ import com.sparta.ditto.match.domain.entity.SyncedProfileEmbedding;
 import com.sparta.ditto.match.domain.repository.SyncedProfileEmbeddingRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
 import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 /**
  * embedding_service → match_service DB 동기화 서비스 (CQRS 패턴)
@@ -56,7 +55,9 @@ public class EmbeddingSyncService {
             JsonNode root = objectMapper.readTree(message);
             String eventType = root.get("eventType").asText();
 
-            if (!"PROFILE_EMBEDDING_UPDATED".equals(eventType)) return;
+            if (!"PROFILE_EMBEDDING_UPDATED".equals(eventType)) {
+                return;
+            }
 
             JsonNode payload = root.get("payload");
             UUID userId = UUID.fromString(payload.get("userId").asText());
@@ -94,7 +95,9 @@ public class EmbeddingSyncService {
             JsonNode root = objectMapper.readTree(message);
             String eventType = root.get("eventType").asText();
 
-            if (!"PROFILE_EMBEDDING_BULK_COMPLETED".equals(eventType)) return;
+            if (!"PROFILE_EMBEDDING_BULK_COMPLETED".equals(eventType)) {
+                return;
+            }
 
             JsonNode payload = root.get("payload");
             String batchType = payload.get("batchType").asText();
@@ -145,11 +148,14 @@ public class EmbeddingSyncService {
                                 ? profile.todayVector()
                                 : profile.profileVector();
 
-                        if (vector == null) continue;
+                        if (vector == null) {
+                            continue;
+                        }
 
                         String neighborhood = fetchNeighborhood(profile.userId());
                         upsertSyncedEmbedding(
-                                profile.userId(), vector, null, null, neighborhood, profile.active());
+                                profile.userId(), vector, null, null,
+                                neighborhood, profile.active());
                         totalSynced++;
                     }
                 } catch (Exception e) {
@@ -168,7 +174,8 @@ public class EmbeddingSyncService {
     // ── 공통 upsert ──────────────────────────
 
     private void upsertSyncedEmbedding(
-            UUID userId, float[] vector, String gender, LocalDate birthdate, String neighborhood, boolean active
+            UUID userId, float[] vector, String gender, LocalDate birthdate,
+            String neighborhood, boolean active
     ) {
         Optional<SyncedProfileEmbedding> existing = syncedRepository.findById(userId);
 
@@ -176,7 +183,8 @@ public class EmbeddingSyncService {
             existing.get().updateVector(vector, gender, birthdate, neighborhood, active);
         } else {
             syncedRepository.save(
-                    SyncedProfileEmbedding.of(userId, vector, gender, birthdate, neighborhood, active));
+                    SyncedProfileEmbedding.of(
+                            userId, vector, gender, birthdate, neighborhood, active));
         }
     }
 

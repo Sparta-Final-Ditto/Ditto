@@ -1,4 +1,4 @@
-package com.sparta.ditto.match.infrastructure.Llm;
+package com.sparta.ditto.match.infrastructure.llm;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

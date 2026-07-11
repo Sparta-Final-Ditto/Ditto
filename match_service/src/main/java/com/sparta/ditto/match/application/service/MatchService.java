@@ -1,7 +1,15 @@
 package com.sparta.ditto.match.application.service;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.match.application.dto.*;
+import com.sparta.ditto.match.application.dto.ActiveUserIdsDto;
+import com.sparta.ditto.match.application.dto.MatchRequestDto;
+import com.sparta.ditto.match.application.dto.MatchResponseDto;
+import com.sparta.ditto.match.application.dto.MatchStatusRequestDto;
+import com.sparta.ditto.match.application.dto.ProfileBatchRequestDto;
+import com.sparta.ditto.match.application.dto.ProfileBatchResponseDto;
+import com.sparta.ditto.match.application.dto.RecommendationResponseDto;
+import com.sparta.ditto.match.application.dto.UserNeighborhoodDto;
+import com.sparta.ditto.match.application.dto.UserProfileEmbeddingDto;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
 import com.sparta.ditto.match.domain.entity.MatchStatus;
 import com.sparta.ditto.match.domain.entity.MatchingHistory;
@@ -12,13 +20,18 @@ import com.sparta.ditto.match.infrastructure.redis.MatchCacheService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingBitmapService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingLockService;
 import com.sparta.ditto.match.infrastructure.redis.MatchingStatsService;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.util.*;
 
 @Slf4j
 @Service
@@ -53,7 +66,7 @@ public class MatchService {
             // 1. 내 프로필 벡터 가져오기
             UserProfileEmbeddingDto myProfile;
             try {
-                myProfile = embeddingServiceClient.getUserProfile(userId).data();
+                myProfile = embeddingServiceClient.getUserProfile(userId).getData();
             } catch (Exception e) {
                 throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
             }
@@ -63,13 +76,16 @@ public class MatchService {
                     : myProfile.profileVector();
 
             Set<String> myTags = matchCacheService.getUserTags(userId);
-            if (myTags == null) myTags = Set.of();
+            if (myTags == null) {
+                myTags = Set.of();
+            }
 
             // 2. 위치 필터 활성화 시 내 동네 조회
             String neighborhood = null;
             if (Boolean.TRUE.equals(request.locationFilterOn())) {
                 try {
-                    UserNeighborhoodDto neighborhoodDto = userServiceClient.getMyProfile(userId).data();
+                    UserNeighborhoodDto neighborhoodDto = userServiceClient
+                            .getMyProfile(userId).getData();
                     neighborhood = neighborhoodDto != null ? neighborhoodDto.neighborhood() : null;
                 } catch (Exception e) {
                     log.warn("[Match] 동네 정보 조회 실패, 위치 필터 미적용 userId={}", userId);
@@ -78,7 +94,8 @@ public class MatchService {
 
             // 3. HNSW 검색 시도 (성별/나이/동네 필터 포함)
             LinkedHashMap<UUID, Float> hnswResults = hybridCandidateSearchService.searchCandidates(
-                    userId, myVector, request.genderFilter(), request.minAge(), request.maxAge(), neighborhood, 50);
+                    userId, myVector, request.genderFilter(), request.minAge(),
+                    request.maxAge(), neighborhood, 50);
             UUID bestMatchId = null;
             float bestSimilarityScore = 0f;
             float bestFinalScore = -1f;
@@ -91,7 +108,9 @@ public class MatchService {
                     float cosineScore = entry.getValue();
 
                     Set<String> candidateTags = matchCacheService.getUserTags(candidateId);
-                    if (candidateTags == null) candidateTags = Set.of();
+                    if (candidateTags == null) {
+                        candidateTags = Set.of();
+                    }
 
                     float tagScore = calculateTagSimilarity(myTags, candidateTags);
                     float finalScore = cosineScore * 0.5f + tagScore * 0.5f;
@@ -109,7 +128,7 @@ public class MatchService {
 
                 ActiveUserIdsDto activeIds;
                 try {
-                    activeIds = embeddingServiceClient.getActiveUserIds().data();
+                    activeIds = embeddingServiceClient.getActiveUserIds().getData();
                 } catch (Exception e) {
                     throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
                 }
@@ -127,7 +146,7 @@ public class MatchService {
                 ProfileBatchResponseDto batchResponse;
                 try {
                     batchResponse = embeddingServiceClient
-                            .getProfilesBatch(new ProfileBatchRequestDto(candidateIds)).data();
+                            .getProfilesBatch(new ProfileBatchRequestDto(candidateIds)).getData();
                 } catch (Exception e) {
                     throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
                 }
@@ -137,10 +156,13 @@ public class MatchService {
                             ? candidate.todayVector()
                             : candidate.profileVector();
 
-                    float cosineScore = cosineSimilarityCalculator.calculate(myVector, candidateVector);
+                    float cosineScore = cosineSimilarityCalculator
+                            .calculate(myVector, candidateVector);
 
                     Set<String> candidateTags = matchCacheService.getUserTags(candidate.userId());
-                    if (candidateTags == null) candidateTags = Set.of();
+                    if (candidateTags == null) {
+                        candidateTags = Set.of();
+                    }
 
                     float tagScore = calculateTagSimilarity(myTags, candidateTags);
                     float finalScore = cosineScore * 0.5f + tagScore * 0.5f;
@@ -244,8 +266,12 @@ public class MatchService {
 
         Set<String> myTags = matchCacheService.getUserTags(userId);
         Set<String> matchedTags = matchCacheService.getUserTags(history.getMatchedUserId());
-        if (myTags == null) myTags = Set.of();
-        if (matchedTags == null) matchedTags = Set.of();
+        if (myTags == null) {
+            myTags = Set.of();
+        }
+        if (matchedTags == null) {
+            matchedTags = Set.of();
+        }
 
         List<String> commonTags = new ArrayList<>(myTags);
         commonTags.retainAll(matchedTags);
@@ -259,8 +285,12 @@ public class MatchService {
     }
 
     private float calculateTagSimilarity(Set<String> tagsA, Set<String> tagsB) {
-        if (tagsA == null || tagsB == null) return 0f;
-        if (tagsA.isEmpty() && tagsB.isEmpty()) return 0f;
+        if (tagsA == null || tagsB == null) {
+            return 0f;
+        }
+        if (tagsA.isEmpty() && tagsB.isEmpty()) {
+            return 0f;
+        }
         Set<String> intersection = new HashSet<>(tagsA);
         intersection.retainAll(tagsB);
         Set<String> union = new HashSet<>(tagsA);

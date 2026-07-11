@@ -13,6 +13,7 @@ public record PostNotificationCommand(
     public static PostNotificationCommand of(
             String eventType, String targetId, String postId,
             UUID actorId, String actorNickname, UUID ownerId) {
-        return new PostNotificationCommand(eventType, targetId, postId, actorId, actorNickname, ownerId);
+        return new PostNotificationCommand(
+                eventType, targetId, postId, actorId, actorNickname, ownerId);
     }
 }

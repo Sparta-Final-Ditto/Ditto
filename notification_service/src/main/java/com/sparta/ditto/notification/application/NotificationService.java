@@ -93,7 +93,8 @@ public class NotificationService {
     // ── 단건 알림 읽음 처리 ────
     @Transactional
     public ReadNotificationResult read(UUID userId, UUID notificationId) {
-        Notification notification = notificationRepository.findByIdAndReceiverId(notificationId, userId)
+        Notification notification = notificationRepository
+                .findByIdAndReceiverId(notificationId, userId)
                 .orElseThrow(NotificationNotFoundException::new);
         notification.read();
         return ReadNotificationResult.from(notification);

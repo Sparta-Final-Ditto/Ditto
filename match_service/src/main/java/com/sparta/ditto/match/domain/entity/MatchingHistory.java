@@ -2,13 +2,16 @@ package com.sparta.ditto.match.domain.entity;
 
 import com.sparta.ditto.common.entity.BaseEntity;
 import com.sparta.ditto.match.application.dto.MatchResponseDto;
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.Table;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "matching_history")

@@ -13,12 +13,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.sparta.ditto.feed.application.port.out.FollowServicePort;
 import com.sparta.ditto.feed.application.port.out.MatchServicePort;
-import com.sparta.ditto.feed.application.port.out.UserBlockPort;
 import com.sparta.ditto.feed.application.port.out.dto.FollowingResult;
 import com.sparta.ditto.feed.application.port.out.dto.RecommendationResult;
 import com.sparta.ditto.feed.domain.entity.Post;
 import com.sparta.ditto.feed.domain.repository.PostRepository;
 import com.sparta.ditto.feed.domain.type.Visibility;
+import com.sparta.ditto.feed.infrastructure.client.user.UserServiceClient;
+import com.sparta.ditto.feed.infrastructure.client.user.dto.BlockRelationsResponse;
 import com.sparta.ditto.feed.support.AbstractIntegrationTest;
 import feign.FeignException;
 import feign.Request;
@@ -42,9 +43,15 @@ import org.springframework.test.web.servlet.MockMvc;
 /**
  * 피드 3종(랜덤/팔로우/매칭) 차단 필터 배선 통합 테스트.
  *
- * <p>차단 목록 조회({@link UserBlockPort#findBlockedUserIds})와 외부 피드 소스를
- * {@code @MockitoBean}으로 통제한다. DB에 다른 테스트가 커밋한 게시글이 남을 수 있으므로,
- * 노출/제외는 총 개수가 아니라 postId 포함/미포함(hasItem/not)으로 단언한다.</p>
+ * <p>차단 관계 조회를 {@code UserBlockPort}가 아니라 <b>{@link UserServiceClient}</b>를
+ * {@code @MockitoBean}으로 통제해, 실제 {@code UserBlockAdapter}(양방향 union)와
+ * {@code BlockCheckService}(fail-open fallback)를 경로에 포함시킨다. 이렇게 해야
+ * "내가 차단(blockedUserIds)"과 "나를 차단(blockedByUserIds)" 두 방향 제외를 통합 레벨에서
+ * 의미 있게 검증할 수 있다. 외부 피드 소스({@link FollowServicePort}/{@link MatchServicePort})는
+ * 계속 {@code @MockitoBean}으로 통제한다.</p>
+ *
+ * <p>DB에 다른 테스트가 커밋한 게시글이 남을 수 있으므로, 노출/제외는 총 개수가 아니라
+ * postId 포함/미포함(hasItem/not)으로 단언한다.</p>
  */
 class FeedBlockIntegrationTest extends AbstractIntegrationTest {
 
@@ -52,7 +59,7 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
     private static final String FEED_IDS = "$.data.feeds[*].postId";
 
     @MockitoBean
-    private UserBlockPort userBlockPort;
+    private UserServiceClient userServiceClient;
 
     @MockitoBean
     private FollowServicePort followServicePort;
@@ -78,37 +85,46 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
         return postRepository.save(post);
     }
 
+    /** block-relations 응답 스텁 팩토리(blocked=내가 차단, blockedBy=나를 차단). */
+    private BlockRelationsResponse blockRelations(List<UUID> blocked, List<UUID> blockedBy) {
+        return new BlockRelationsResponse(200, "SUCCESS",
+                new BlockRelationsResponse.Data(blocked, blockedBy));
+    }
+
     private FeignException feignServerError() {
         Request request = Request.create(
-                Request.HttpMethod.GET, "/api/v1/users/me/blocks",
+                Request.HttpMethod.GET, "/api/v1/internal/users/{userId}/block-relations",
                 Collections.emptyMap(), null, StandardCharsets.UTF_8, null);
-        return FeignException.errorStatus("getMyBlocks",
+        return FeignException.errorStatus("getBlockRelations",
                 Response.builder().status(500).reason("error").request(request)
                         .headers(Collections.emptyMap()).build());
     }
 
-    // ── 004-8: 팔로우 피드 차단 제외 + 빈 목록 전체노출 (차단 조회 요청당 1회) ───────
+    // ── 004-8: 팔로우 피드 양방향 차단 제외 + 빈 목록 전체노출 (차단 조회 요청당 1회) ──
 
     static Stream<Arguments> followBlockCases() {
         return Stream.of(
-                Arguments.of("004-8 차단 제외 (내가 차단한 작성자 글 미노출)", true, false),
-                Arguments.of("004-8 차단 목록 빈 경우 전체노출", false, true)
+                Arguments.of("004-8 내가 차단(blockedUserIds)한 작성자 글 미노출", true, false, false),
+                Arguments.of("004-8 나를 차단(blockedByUserIds)한 작성자 글 미노출", false, true, false),
+                Arguments.of("004-8 차단 관계 목록 빈 경우 전체노출", false, false, true)
         );
     }
 
     @ParameterizedTest(name = "{0}")
     @MethodSource("followBlockCases")
-    @DisplayName("팔로우 피드: 차단 제외/빈 목록 + 차단 조회 요청당 1회")
+    @DisplayName("팔로우 피드: 양방향 차단 제외/빈 목록 + 차단 조회 요청당 1회")
     void followFeed_blockFilter(
-            String desc, boolean applyBlock, boolean otherVisible) throws Exception {
+            String desc, boolean iBlockB, boolean bBlocksMe, boolean otherVisible)
+            throws Exception {
         UUID authorA = UUID.randomUUID();
         UUID authorB = UUID.randomUUID();
         Post pa = savedPublicPost(authorA, BASE.plusSeconds(20));
         Post pb = savedPublicPost(authorB, BASE.plusSeconds(10));
         given(followServicePort.getFollowingIds(me))
                 .willReturn(new FollowingResult(List.of(authorA, authorB)));
-        given(userBlockPort.findBlockedUserIds(me))
-                .willReturn(applyBlock ? List.of(authorB) : List.of());
+        given(userServiceClient.getBlockRelations(me)).willReturn(blockRelations(
+                iBlockB ? List.of(authorB) : List.of(),
+                bBlocksMe ? List.of(authorB) : List.of()));
 
         var result = mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())
@@ -119,7 +135,7 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
             result.andExpect(jsonPath(FEED_IDS, not(hasItem(pb.getId().toString()))));
         }
 
-        verify(userBlockPort, times(1)).findBlockedUserIds(me);
+        verify(userServiceClient, times(1)).getBlockRelations(me);
     }
 
     @Test
@@ -129,7 +145,8 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
         savedPublicPost(authorA, BASE.plusSeconds(20));
         given(followServicePort.getFollowingIds(me))
                 .willReturn(new FollowingResult(List.of(authorA)));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of(authorA));
+        given(userServiceClient.getBlockRelations(me))
+                .willReturn(blockRelations(List.of(authorA), List.of()));
 
         mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())
@@ -137,18 +154,29 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.data.hasNext").value(false));
     }
 
-    // ── 005-6: 매칭 피드 차단 제외 + 추천 전원 차단 시 빈 피드 ─────────────────────
+    // ── 005-6: 매칭 피드 양방향 차단 제외 + 추천 전원 차단 시 빈 피드 ────────────────
 
-    @Test
-    @DisplayName("005-6: 매칭 피드 — 내가 차단한 추천 작성자 글 제외")
-    void matchFeed_excludesBlocked() throws Exception {
+    static Stream<Arguments> matchBlockCases() {
+        return Stream.of(
+                Arguments.of("005-6 내가 차단(blockedUserIds)한 추천 작성자 글 제외", true, false),
+                Arguments.of("005-6 나를 차단(blockedByUserIds)한 추천 작성자 글 제외", false, true)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("matchBlockCases")
+    @DisplayName("005-6: 매칭 피드 — 양방향 차단 관계 추천 작성자 글 제외")
+    void matchFeed_excludesBlocked(String desc, boolean iBlockB, boolean bBlocksMe)
+            throws Exception {
         UUID authorA = UUID.randomUUID();
         UUID authorB = UUID.randomUUID();
         Post pa = savedPublicPost(authorA, BASE.plusSeconds(20));
         Post pb = savedPublicPost(authorB, BASE.plusSeconds(10));
         given(matchServicePort.getRecommendations(eq(me), any(Integer.class)))
                 .willReturn(new RecommendationResult(List.of(authorA, authorB)));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of(authorB));
+        given(userServiceClient.getBlockRelations(me)).willReturn(blockRelations(
+                iBlockB ? List.of(authorB) : List.of(),
+                bBlocksMe ? List.of(authorB) : List.of()));
 
         mockMvc.perform(get("/api/v1/feeds/match").header("X-User-Id", me))
                 .andExpect(status().isOk())
@@ -163,23 +191,25 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
         savedPublicPost(authorA, BASE.plusSeconds(20));
         given(matchServicePort.getRecommendations(eq(me), any(Integer.class)))
                 .willReturn(new RecommendationResult(List.of(authorA)));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of(authorA));
+        given(userServiceClient.getBlockRelations(me))
+                .willReturn(blockRelations(List.of(authorA), List.of()));
 
         mockMvc.perform(get("/api/v1/feeds/match").header("X-User-Id", me))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.feeds.length()").value(0));
     }
 
-    // ── 003-6: 랜덤 피드 배선 (차단 목록이 excludeUserIds 쿼리로 전달) ──────────────
+    // ── 003-6: 랜덤 피드 배선 (차단 관계 목록이 excludeUserIds 쿼리로 전달) ──────────
 
     @Test
-    @DisplayName("003-6: 랜덤 피드 — 차단 목록이 excludeUserIds 쿼리로 전달되어 제외")
+    @DisplayName("003-6: 랜덤 피드 — 차단 관계 목록이 excludeUserIds 쿼리로 전달되어 제외")
     void randomFeed_wiresBlockedToExcludeQuery() throws Exception {
         UUID blockedAuthor = UUID.randomUUID();
         UUID normalAuthor = UUID.randomUUID();
         Post blockedPost = savedPublicPost(blockedAuthor, BASE.plusSeconds(20));
         Post visiblePost = savedPublicPost(normalAuthor, BASE.plusSeconds(10));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of(blockedAuthor));
+        given(userServiceClient.getBlockRelations(me))
+                .willReturn(blockRelations(List.of(), List.of(blockedAuthor)));
 
         mockMvc.perform(get("/api/v1/feeds/random").header("X-User-Id", me))
                 .andExpect(status().isOk())
@@ -197,7 +227,7 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
     void failOpen_allFeeds(Feed feed) throws Exception {
         UUID author = UUID.randomUUID();
         Post post = savedPublicPost(author, BASE.plusSeconds(20));
-        given(userBlockPort.findBlockedUserIds(me)).willThrow(feignServerError());
+        given(userServiceClient.getBlockRelations(me)).willThrow(feignServerError());
 
         String path;
         switch (feed) {
@@ -227,7 +257,8 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
         UUID nonFollowed = UUID.randomUUID();
         Post randomOnly = savedPublicPost(nonFollowed, BASE.plusSeconds(20));
         given(followServicePort.getFollowingIds(me)).willThrow(new RuntimeException("down"));
-        given(userBlockPort.findBlockedUserIds(me)).willReturn(List.of());
+        given(userServiceClient.getBlockRelations(me))
+                .willReturn(blockRelations(List.of(), List.of()));
 
         mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())
@@ -243,7 +274,7 @@ class FeedBlockIntegrationTest extends AbstractIntegrationTest {
         Post nonFollowedPost = savedPublicPost(nonFollowed, BASE.plusSeconds(10));
         given(followServicePort.getFollowingIds(me))
                 .willReturn(new FollowingResult(List.of(authorA)));
-        given(userBlockPort.findBlockedUserIds(me)).willThrow(feignServerError());
+        given(userServiceClient.getBlockRelations(me)).willThrow(feignServerError());
 
         mockMvc.perform(get("/api/v1/feeds/follow").header("X-User-Id", me))
                 .andExpect(status().isOk())

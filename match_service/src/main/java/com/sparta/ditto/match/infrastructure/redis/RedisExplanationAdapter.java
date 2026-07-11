@@ -1,14 +1,13 @@
 package com.sparta.ditto.match.infrastructure.redis;
 
 import com.sparta.ditto.match.application.port.ExplanationCachePort;
+import java.time.Duration;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Component;
-
-import java.time.Duration;
-import java.util.Optional;
-import java.util.UUID;
 
 @Slf4j
 @Component

@@ -1,7 +1,6 @@
 package com.sparta.ditto.match.domain.repository;
 
 import com.sparta.ditto.match.domain.entity.ExplanationExample;
-
 import java.util.List;
 
 /**

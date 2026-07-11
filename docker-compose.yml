@@ -1,78 +1,12 @@
+# 앱 서버(ditto-app) 전용 스택. postgres/redis/mongodb/kafka는 ditto-db 인스턴스에서
+# 별도로 구동되며(terraform/scripts/db_userdata.sh), 아래 서비스들은 DB_HOST/REDIS_HOST/
+# MONGO_HOST/KAFKA_HOST 환경변수로 그 위치를 바라본다.
+#   - 로컬 개발: .env 미설정 시 기본값(postgres/redis/mongodb/kafka)이 docker-compose.infra.yml의
+#     서비스명과 일치하므로 `docker compose -f docker-compose.infra.yml up -d` 로 인프라를 먼저 띄운 뒤
+#     `docker compose up -d` 실행
+#   - 운영: ENV_PROD 시크릿에 DB_HOST/REDIS_HOST/MONGO_HOST/KAFKA_HOST=<ditto-db private ip> 설정
 services:
-  postgres:
-    image: pgvector/pgvector:pg15
-    container_name: ditto-postgres
-    environment:
-      POSTGRES_USER: ${DB_USERNAME}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ditto_chat
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: ditto-redis
-    ports:
-      - "6379:6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  mongodb:
-    image: mongo:7
-    container_name: ditto-mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
-      MONGO_INITDB_DATABASE: ditto_chat
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  kafka:
-    image: apache/kafka:3.7.0
-    container_name: ditto-kafka
-    environment:
-      KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,EXTERNAL://0.0.0.0:9094
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
-      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    ports:
-      # 컨테이너 내부 EXTERNAL 리스너는 9094지만, 각 서비스의 application-local.yml이
-      # 전부 localhost:9092를 기대하므로 호스트 포트를 9092로 매핑한다.
-      - "9092:9094"
-    healthcheck:
-      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list"]
-      interval: 15s
-      timeout: 10s
-      retries: 10
-
   api-gateway:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/api-gateway:${IMAGE_TAG:-latest}
     container_name: ditto-api-gateway
     ports:
@@ -94,7 +28,6 @@ services:
       - assistant-service
 
   user-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/user-service:${IMAGE_TAG:-latest}
     container_name: ditto-user-service
     ports:
@@ -102,134 +35,87 @@ services:
       # 운영 환경에서는 user-service를 외부에 직접 노출하지 않고 gateway/internal network로만 접근해야 합니다.
       - "8081:8081"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/ditto_user
+      DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_user
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_HOST: redis
+      REDIS_HOST: ${REDIS_HOST:-redis}
       JWT_SECRET: ${JWT_SECRET}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      APP_KAKAO_API_KEY: ${APP_KAKAO_API_KEY}
 
   feed-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/feed-service:${IMAGE_TAG:-latest}
     container_name: ditto-feed-service
     ports:
       - "8082:8082"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/ditto_feed
+      DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_feed
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_HOST: redis
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
       S3_BUCKET: ${S3_BUCKET}
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
       AWS_SECRET_KEY: ${AWS_SECRET_KEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
 
   match-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/match-service:${IMAGE_TAG:-latest}
     container_name: ditto-match-service
     ports:
       - "8083:8083"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/ditto_match
+      DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_match
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      REDIS_HOST: redis
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
       EMBEDDING_SERVICE_URL: http://embedding-service:8090
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
       embedding-service:
         condition: service_started
 
   chat-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/chat-service:${IMAGE_TAG:-latest}
     container_name: ditto-chat-service
     ports:
       - "8084:8084"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/ditto_chat
+      DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_chat
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
-      MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@mongodb:27017/ditto_chat?authSource=admin
-      REDIS_HOST: redis
+      MONGODB_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST:-mongodb}:27017/ditto_chat?authSource=admin
+      REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: 6379
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
       USER_SERVICE_URL: http://user-service:8081
     depends_on:
-      postgres:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
+      - user-service
 
   notification-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/notification-service:${IMAGE_TAG:-latest}
     container_name: ditto-notification-service
     ports:
       - "8085:8085"
     environment:
-      REDIS_HOST: redis
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    depends_on:
-      redis:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
 
   embedding-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/embedding-service:${IMAGE_TAG:-latest}
     container_name: ditto-embedding-service
     ports:
       - "8090:8090"
     environment:
-      DB_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@postgres:5432/ditto_embedding
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-    depends_on:
-      postgres:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
+      DB_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST:-postgres}:5432/ditto_embedding
+      KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
 
   assistant-service:
-    profiles: [app]
     image: ${ECR_REGISTRY:-}ditto/assistant-service:${IMAGE_TAG:-latest}
     container_name: ditto-assistant-service
     ports:
       - "8086:8086"
     environment:
-      DB_URL: jdbc:postgresql://postgres:5432/ditto_assistant
+      DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_assistant
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       ASSISTANT_LLM_PROVIDER: ${ASSISTANT_LLM_PROVIDER}
       LLM_API_KEY: ${LLM_API_KEY}
-    depends_on:
-      postgres:
-        condition: service_healthy
-
-volumes:
-  postgres_data:
-  mongo_data:

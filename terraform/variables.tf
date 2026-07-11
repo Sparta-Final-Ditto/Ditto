@@ -61,10 +61,15 @@ variable "db_instance_type" {
   default     = "t3.medium"
 }
 
-variable "monitoring_instance_type" {
-  description = "모니터링 서버 인스턴스 타입 (Prometheus + Grafana)"
+variable "db_private_ip" {
+  description = "DB 서버 프라이빗 IP 고정값. 인스턴스 교체 후에도 앱(.env.prod)/모니터링 설정이 깨지지 않도록 고정한다. (terraform.tfvars에서 설정)"
   type        = string
-  default     = "t3.micro"
+}
+
+variable "monitoring_instance_type" {
+  description = "모니터링 서버 인스턴스 타입 (Prometheus + Grafana). t3.micro(1GB)는 OOM으로 다운된 이력이 있어 t3.small(2GB)로 상향."
+  type        = string
+  default     = "t3.small"
 }
 
 variable "key_pair_name" {
@@ -75,6 +80,34 @@ variable "key_pair_name" {
 variable "admin_cidr_blocks" {
   description = "SSH 및 Grafana/Prometheus UI 접근을 허용할 팀원 IP CIDR 목록"
   type        = list(string)
+}
+
+# ─── DB 자격증명 (ditto-db 인스턴스 compose에 주입) ────────────────────────────
+# 앱이 실제로 연결하려면 CD 파이프라인의 ENV_PROD 시크릿에 설정하는
+# DB_USERNAME/DB_PASSWORD/MONGO_USERNAME/MONGO_PASSWORD 와 반드시 동일한 값이어야 한다.
+
+variable "db_username" {
+  description = "PostgreSQL 사용자 이름 (ENV_PROD의 DB_USERNAME과 일치해야 함)"
+  type        = string
+  default     = "ditto"
+}
+
+variable "db_password" {
+  description = "PostgreSQL 비밀번호 (ENV_PROD의 DB_PASSWORD와 일치해야 함)"
+  type        = string
+  sensitive   = true
+}
+
+variable "mongo_username" {
+  description = "MongoDB 사용자 이름 (ENV_PROD의 MONGO_USERNAME과 일치해야 함)"
+  type        = string
+  default     = "ditto"
+}
+
+variable "mongo_password" {
+  description = "MongoDB 비밀번호 (ENV_PROD의 MONGO_PASSWORD와 일치해야 함)"
+  type        = string
+  sensitive   = true
 }
 
 # ─── ECR ───────────────────────────────────────────────────────────────────────
