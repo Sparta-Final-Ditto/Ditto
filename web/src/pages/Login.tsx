@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import * as THREE from 'three';
 import './Login.css';
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
+import { decodeJwtPayload } from '../lib/jwt';
 
 export default function Login() {
     const navigate = useNavigate();
@@ -77,7 +76,7 @@ export default function Login() {
         setError(null);
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE}/api/v1/auth/login`, {
+            const res = await fetch('/api/v1/auth/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password }),
@@ -87,13 +86,17 @@ export default function Login() {
                 throw new Error('이메일 또는 비밀번호가 올바르지 않아요.');
             }
 
+            // AuthTokenResponse: { accessToken, refreshToken }
             const data = await res.json();
-            // ApiResponse<AuthTokenResponse> 형태 가정: { data: { accessToken, refreshToken, userId } }
-            const { accessToken, refreshToken, userId } = data.data;
+            const { accessToken, refreshToken } = data.data as { accessToken: string; refreshToken: string };
 
             localStorage.setItem('accessToken', accessToken);
             if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
-            if (userId) localStorage.setItem('userId', userId);
+
+            // JWT payload sub = userId, nickname claim
+            const payload = decodeJwtPayload(accessToken);
+            if (payload.sub) localStorage.setItem('userId', payload.sub);
+            if (payload.nickname) localStorage.setItem('userName', payload.nickname);
 
             navigate('/app');
         } catch (err) {

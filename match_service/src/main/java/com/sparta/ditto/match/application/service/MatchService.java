@@ -53,7 +53,7 @@ public class MatchService {
             // 1. 내 프로필 벡터 가져오기
             UserProfileEmbeddingDto myProfile;
             try {
-                myProfile = embeddingServiceClient.getUserProfile(userId).getData();
+                myProfile = embeddingServiceClient.getUserProfile(userId).data();
             } catch (Exception e) {
                 throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
             }
@@ -69,7 +69,7 @@ public class MatchService {
             String neighborhood = null;
             if (Boolean.TRUE.equals(request.locationFilterOn())) {
                 try {
-                    UserNeighborhoodDto neighborhoodDto = userServiceClient.getMyProfile(userId).getData();
+                    UserNeighborhoodDto neighborhoodDto = userServiceClient.getMyProfile(userId).data();
                     neighborhood = neighborhoodDto != null ? neighborhoodDto.neighborhood() : null;
                 } catch (Exception e) {
                     log.warn("[Match] 동네 정보 조회 실패, 위치 필터 미적용 userId={}", userId);
@@ -109,7 +109,7 @@ public class MatchService {
 
                 ActiveUserIdsDto activeIds;
                 try {
-                    activeIds = embeddingServiceClient.getActiveUserIds().getData();
+                    activeIds = embeddingServiceClient.getActiveUserIds().data();
                 } catch (Exception e) {
                     throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
                 }
@@ -127,7 +127,7 @@ public class MatchService {
                 ProfileBatchResponseDto batchResponse;
                 try {
                     batchResponse = embeddingServiceClient
-                            .getProfilesBatch(new ProfileBatchRequestDto(candidateIds)).getData();
+                            .getProfilesBatch(new ProfileBatchRequestDto(candidateIds)).data();
                 } catch (Exception e) {
                     throw new BusinessException(MatchErrorCode.EMBEDDING_SERVICE_UNAVAILABLE);
                 }

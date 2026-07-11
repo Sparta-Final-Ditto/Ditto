@@ -1,6 +1,5 @@
 package com.sparta.ditto.match.infrastructure.feign;
 
-import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.UserNeighborhoodDto;
 import com.sparta.ditto.match.application.dto.UserPublicProfileDto;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -16,19 +15,19 @@ public interface UserServiceClient {
 
     // 팔로잉 목록
     @GetMapping("/api/v1/users/{userId}/followings")
-    ApiResponse<List<UserPublicProfileDto>> getFollowings(
+    FeignEnvelope<List<UserPublicProfileDto>> getFollowings(
             @PathVariable UUID userId
     );
 
     // 차단 유저 목록
     @GetMapping("/api/v1/users/me/blocks")
-    ApiResponse<List<UserPublicProfileDto>> getBlockedUsers(
+    FeignEnvelope<List<UserPublicProfileDto>> getBlockedUsers(
             @RequestHeader("X-User-Id") UUID userId
     );
 
     // 내 프로필 조회 (동네 정보 포함)
     @GetMapping("/api/v1/users/me")
-    ApiResponse<UserNeighborhoodDto> getMyProfile(
+    FeignEnvelope<UserNeighborhoodDto> getMyProfile(
             @RequestHeader("X-User-Id") UUID userId
     );
 }

@@ -1,0 +1,61 @@
+{
+  "_comment": "matching/follow/feed 로컬 동작 확인용 테스터 계정. scripts/seed_and_verify.py 에서 이 파일을 읽어 실제 API로 시딩한다.",
+  "testers": [
+    {
+      "nickname": "테스터E",
+      "email": "tester.e@ditto.test",
+      "password": "testerpass1",
+      "gender": "FEMALE",
+      "birthdate": "1998-03-14",
+      "location": { "latitude": 37.5172, "longitude": 127.0473, "label": "서울 강남구" },
+      "interests": ["여행", "사진"],
+      "posts": [
+        { "content": "주말에 강남에서 필름사진 찍었어요", "tags": ["여행", "사진"] },
+        { "content": "다음 여행지 고민 중... 교토 vs 오사카?", "tags": ["여행"] }
+      ],
+      "follows": ["테스터F"]
+    },
+    {
+      "nickname": "테스터F",
+      "email": "tester.f@ditto.test",
+      "password": "testerpass1",
+      "gender": "MALE",
+      "birthdate": "1996-07-22",
+      "location": { "latitude": 37.5133, "longitude": 127.0592, "label": "서울 강남구 역삼동" },
+      "interests": ["여행", "사진"],
+      "posts": [
+        { "content": "필름카메라 추천 좀 해주세요", "tags": ["사진"] },
+        { "content": "이번 연휴에 부산 여행 다녀왔어요", "tags": ["여행"] }
+      ],
+      "follows": ["테스터E"]
+    },
+    {
+      "nickname": "테스터G",
+      "email": "tester.g@ditto.test",
+      "password": "testerpass1",
+      "gender": "FEMALE",
+      "birthdate": "2000-11-02",
+      "location": { "latitude": 37.3595, "longitude": 127.1052, "label": "경기 성남시 분당구" },
+      "interests": ["운동", "헬스"],
+      "posts": [
+        { "content": "오늘도 헬스장 인증", "tags": ["운동", "헬스"] },
+        { "content": "분당 러닝 코스 공유해요", "tags": ["운동"] }
+      ],
+      "follows": ["테스터E"]
+    },
+    {
+      "nickname": "테스터D",
+      "email": "tester.d@ditto.test",
+      "password": "testerpass1",
+      "gender": "MALE",
+      "birthdate": "1995-01-30",
+      "location": { "latitude": 37.3488, "longitude": 127.1086, "label": "경기 성남시 분당구 정자동" },
+      "interests": ["운동", "헬스"],
+      "posts": [
+        { "content": "PT 3개월차 변화 기록", "tags": ["헬스"] },
+        { "content": "분당 헬스장 어디가 좋을까요", "tags": ["운동", "헬스"] }
+      ],
+      "follows": []
+    }
+  ]
+}

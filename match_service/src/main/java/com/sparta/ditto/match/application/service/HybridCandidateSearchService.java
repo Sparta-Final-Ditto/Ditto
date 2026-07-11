@@ -75,7 +75,7 @@ public class HybridCandidateSearchService {
 
         try {
             List<UserPublicProfileDto> followings = userServiceClient
-                    .getFollowings(userId).getData();
+                    .getFollowings(userId).data();
             if (followings != null) {
                 followings.forEach(f -> excludeIds.add(f.id()));
             }
@@ -85,7 +85,7 @@ public class HybridCandidateSearchService {
 
         try {
             List<UserPublicProfileDto> blocked = userServiceClient
-                    .getBlockedUsers(userId).getData();
+                    .getBlockedUsers(userId).data();
             if (blocked != null) {
                 blocked.forEach(b -> excludeIds.add(b.id()));
             }
