@@ -6,6 +6,18 @@
 #     `docker compose up -d` 실행
 #   - 운영: ENV_PROD 시크릿에 DB_HOST/REDIS_HOST/MONGO_HOST/KAFKA_HOST=<ditto-db private ip> 설정
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ditto-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web-dist:/usr/share/nginx/html:ro
+    depends_on:
+      - api-gateway
+
   api-gateway:
     image: ${ECR_REGISTRY:-}ditto/api-gateway:${IMAGE_TAG:-latest}
     container_name: ditto-api-gateway
