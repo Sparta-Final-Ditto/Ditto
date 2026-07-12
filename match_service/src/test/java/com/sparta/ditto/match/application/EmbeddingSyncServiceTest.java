@@ -1,7 +1,6 @@
 package com.sparta.ditto.match.application;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.ActiveUserIdsDto;
 import com.sparta.ditto.match.application.dto.ProfileBatchResponseDto;
 import com.sparta.ditto.match.application.dto.UserNeighborhoodDto;
@@ -10,6 +9,7 @@ import com.sparta.ditto.match.application.service.EmbeddingSyncService;
 import com.sparta.ditto.match.domain.entity.SyncedProfileEmbedding;
 import com.sparta.ditto.match.domain.repository.SyncedProfileEmbeddingRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import com.sparta.ditto.match.infrastructure.feign.FeignEnvelope;
 import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import java.util.List;
 import java.util.Optional;
@@ -66,7 +66,7 @@ class EmbeddingSyncServiceTest {
 
             given(syncedRepository.findById(userId)).willReturn(Optional.empty());
             given(userServiceClient.getMyProfile(userId))
-                    .willReturn(ApiResponse.success(new UserNeighborhoodDto(userId, "서울 성동구")));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", new UserNeighborhoodDto(userId, "서울 성동구"), null));
 
             embeddingSyncService.onProfileEmbeddingUpdated(message);
 
@@ -131,7 +131,7 @@ class EmbeddingSyncServiceTest {
                     + "\"payload\":{\"batchType\":\"DAILY\",\"totalUpdated\":10}}";
 
             given(embeddingServiceClient.getActiveUserIds())
-                    .willReturn(ApiResponse.success(new ActiveUserIdsDto(List.of(), 0)));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", new ActiveUserIdsDto(List.of(), 0), null));
 
             embeddingSyncService.onBulkCompleted(message);
 
@@ -164,7 +164,7 @@ class EmbeddingSyncServiceTest {
         @DisplayName("active 유저 목록이 비어있으면 동기화 없이 종료된다")
         void emptyActiveUsers_doesNothing() {
             given(embeddingServiceClient.getActiveUserIds())
-                    .willReturn(ApiResponse.success(new ActiveUserIdsDto(List.of(), 0)));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", new ActiveUserIdsDto(List.of(), 0), null));
 
             embeddingSyncService.syncAll();
 
@@ -175,7 +175,7 @@ class EmbeddingSyncServiceTest {
         @DisplayName("active 유저 응답이 null이면 동기화 없이 종료된다")
         void nullActiveUsers_doesNothing() {
             given(embeddingServiceClient.getActiveUserIds())
-                    .willReturn(ApiResponse.success(null));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", null, null));
 
             embeddingSyncService.syncAll();
 
@@ -203,12 +203,12 @@ class EmbeddingSyncServiceTest {
                     List.of(withProfileVector, withTodayVector, withoutVector));
 
             given(embeddingServiceClient.getActiveUserIds())
-                    .willReturn(ApiResponse.success(activeIds));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", activeIds, null));
             given(embeddingServiceClient.getProfilesBatch(any()))
-                    .willReturn(ApiResponse.success(batchResponse));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", batchResponse, null));
             given(syncedRepository.findById(any())).willReturn(Optional.empty());
             given(userServiceClient.getMyProfile(any()))
-                    .willReturn(ApiResponse.success(new UserNeighborhoodDto(userId, "동네")));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", new UserNeighborhoodDto(userId, "동네"), null));
 
             embeddingSyncService.syncAll();
 
@@ -222,7 +222,7 @@ class EmbeddingSyncServiceTest {
             ActiveUserIdsDto activeIds = new ActiveUserIdsDto(List.of(userId), 1);
 
             given(embeddingServiceClient.getActiveUserIds())
-                    .willReturn(ApiResponse.success(activeIds));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", activeIds, null));
             given(embeddingServiceClient.getProfilesBatch(any()))
                     .willThrow(new RuntimeException("batch failed"));
 

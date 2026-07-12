@@ -1,0 +1,158 @@
+.profile-page{display:flex;flex-direction:column;gap:28px}
+
+.profile-back{
+  align-self:flex-start;font-size:13px;font-weight:600;color:var(--im);cursor:pointer;
+  margin-bottom:-14px;transition:color .15s;
+}
+.profile-back:hover{color:var(--green)}
+
+/* ── 헤더 ── */
+.profile-header{display:flex;gap:28px;align-items:flex-start}
+.profile-avatar-lg{
+  width:104px;height:104px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--green),var(--green-b));
+  background-size:cover;background-position:center;
+  box-shadow:0 0 0 4px var(--bg2);
+}
+.profile-header-info{flex:1;min-width:0;padding-top:4px}
+.profile-name-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.profile-name-row h1{font-family:var(--fd);font-size:24px;font-weight:700;margin:0}
+.profile-edit-btn{
+  font-family:var(--fk);font-size:12.5px;font-weight:600;color:var(--green);
+  background:rgba(31,111,74,.08);border:1px solid rgba(31,111,74,.18);
+  border-radius:100px;padding:7px 14px;cursor:pointer;transition:background .15s;
+}
+.profile-edit-btn:hover{background:rgba(31,111,74,.15)}
+.profile-bio{margin-top:8px;font-size:14px;color:var(--im);line-height:1.55;max-width:480px}
+.profile-neighborhood{margin-top:6px;font-size:12.5px;color:var(--id)}
+
+.profile-stats{display:flex;gap:28px;margin-top:18px}
+.profile-stat{cursor:pointer;padding-bottom:6px;border-bottom:2px solid transparent;transition:border-color .15s}
+.profile-stat b{font-size:16px;font-weight:700;margin-right:5px}
+.profile-stat span{font-size:13px;color:var(--im)}
+.profile-stat.act{border-color:var(--green)}
+.profile-stat.act b,.profile-stat.act span{color:var(--green)}
+
+/* ── 서브 탭 ── */
+.profile-subnav{display:flex;gap:4px;border-bottom:1px solid var(--border)}
+.profile-subnav div{
+  padding:12px 18px;font-size:13.5px;font-weight:600;color:var(--im);cursor:pointer;
+  border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;
+}
+.profile-subnav div:hover{color:var(--ink)}
+.profile-subnav div.act{color:var(--green);border-color:var(--green)}
+
+/* ── 게시물 3x3 그리드 ── */
+.profile-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3px}
+.profile-grid-item{
+  position:relative;aspect-ratio:1;background:var(--bg2);overflow:hidden;
+  border-radius:6px;cursor:pointer;
+}
+.profile-grid-item img{width:100%;height:100%;object-fit:cover;display:block}
+.profile-grid-text{
+  padding:10px;font-size:11.5px;line-height:1.5;color:var(--im);
+  display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;
+}
+.profile-grid-video-badge{
+  position:absolute;top:6px;right:8px;color:#fff;font-size:11px;
+  text-shadow:0 0 4px rgba(0,0,0,.5);
+}
+
+/* ── 팔로워/팔로잉 목록 ── */
+.profile-user-list{display:flex;flex-direction:column;gap:2px}
+.profile-user-row{display:flex;align-items:center;gap:14px;padding:12px 6px;border-radius:12px;transition:background .15s}
+.profile-user-row:hover{background:var(--bg2)}
+.profile-user-avatar{
+  width:44px;height:44px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--green),var(--green-b));
+  background-size:cover;background-position:center;
+}
+.profile-user-info{min-width:0;flex:1}
+.profile-user-name{font-size:13.5px;font-weight:600}
+.profile-user-bio{font-size:12px;color:var(--im);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.profile-follow-btn{
+  flex-shrink:0;font-family:var(--fk);font-size:12.5px;font-weight:600;
+  padding:7px 16px;border-radius:100px;cursor:pointer;transition:all .15s;
+  border:1px solid var(--green);background:var(--green);color:#fff;
+}
+.profile-follow-btn.following{background:#fff;color:var(--im);border-color:var(--border)}
+.profile-follow-btn.following:hover{border-color:#b3402b;color:#b3402b}
+.profile-follow-btn:disabled{opacity:.6;cursor:not-allowed}
+
+.profile-empty{
+  padding:56px 20px;text-align:center;font-size:13.5px;color:var(--im);line-height:1.7;
+}
+.profile-empty span{color:var(--id);font-size:12.5px}
+
+/* ── 편집 오버레이 ── */
+.profile-edit-overlay{
+  position:fixed;inset:0;background:rgba(18,20,15,.4);
+  display:flex;align-items:center;justify-content:center;z-index:100;
+  animation:profile-fade .15s ease-out;
+}
+@keyframes profile-fade{from{opacity:0}to{opacity:1}}
+.profile-edit-card{
+  background:#fff;border-radius:18px;padding:28px;width:100%;max-width:400px;
+  box-shadow:0 20px 60px rgba(18,20,15,.2);
+}
+.profile-edit-head h2{font-family:var(--fd);font-size:19px;font-weight:700;margin:0 0 4px}
+.profile-edit-head p{font-size:12.5px;color:var(--im);margin:0 0 20px}
+.profile-edit-card .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.profile-edit-avatar{
+  width:88px;height:88px;border-radius:50%;margin:0 auto 6px;cursor:pointer;position:relative;
+  background:linear-gradient(135deg,var(--green),var(--green-b));background-size:cover;background-position:center;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+}
+.profile-edit-avatar span{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+  background:rgba(18,20,15,.5);color:#fff;font-size:11px;font-weight:600;opacity:0;transition:opacity .15s;
+}
+.profile-edit-avatar:hover span{opacity:1}
+.profile-edit-card label{font-size:12.5px;font-weight:600;color:var(--im)}
+.profile-edit-card input,.profile-edit-card textarea{
+  font-family:var(--fk);font-size:13.5px;padding:10px 12px;
+  border:1px solid var(--border);border-radius:10px;outline:none;resize:none;
+}
+.profile-edit-card input:focus,.profile-edit-card textarea:focus{border-color:var(--green)}
+.profile-edit-err{
+  background:rgba(179,64,43,.08);color:#b3402b;font-size:12.5px;
+  padding:10px 12px;border-radius:10px;margin-bottom:14px;
+}
+.profile-edit-actions{display:flex;gap:8px;margin-top:6px}
+.profile-edit-cancel,.profile-edit-save{
+  flex:1;font-family:var(--fk);font-size:13.5px;font-weight:600;padding:11px;
+  border-radius:10px;border:none;cursor:pointer;transition:opacity .15s;
+}
+.profile-edit-cancel{background:var(--bg2);color:var(--im)}
+.profile-edit-save{background:var(--green);color:#fff}
+.profile-edit-save:disabled{opacity:.6;cursor:not-allowed}
+
+/* ── 게시물 상세 모달 ── */
+.post-detail-card{
+  position:relative;background:#fff;border-radius:18px;overflow:hidden;
+  width:100%;max-width:420px;max-height:82vh;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(18,20,15,.2);
+}
+.post-detail-media{width:100%;max-height:360px;background:#000;flex-shrink:0}
+.post-detail-media img,.post-detail-media video{width:100%;max-height:360px;object-fit:contain;display:block;margin:0 auto}
+.post-detail-body{padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.post-detail-content{font-size:14px;line-height:1.6;color:var(--ink);white-space:pre-wrap;margin:0}
+.post-detail-actions{display:flex;align-items:center;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--border)}
+.post-detail-like{
+  font-family:var(--fk);font-size:13px;font-weight:600;color:var(--im);
+  background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:6px;padding:0;
+  transition:color .15s;
+}
+.post-detail-like:hover{color:#b3402b}
+.post-detail-like.act{color:#e0523a}
+.post-detail-like:disabled{opacity:.6;cursor:not-allowed}
+.post-detail-comment-count{font-size:12.5px;color:var(--im)}
+.post-detail-comments{display:flex;flex-direction:column;gap:10px}
+.post-detail-comment{font-size:13px;line-height:1.5;color:var(--ink)}
+.post-detail-comment b{margin-right:6px;color:var(--green)}
+.post-detail-close{
+  position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:50%;
+  background:rgba(0,0,0,.35);color:#fff;border:none;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;line-height:1;z-index:1;
+}

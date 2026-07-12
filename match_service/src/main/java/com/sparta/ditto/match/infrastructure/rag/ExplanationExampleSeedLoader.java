@@ -84,7 +84,7 @@ public class ExplanationExampleSeedLoader implements ApplicationRunner {
 
         EmbedTextResponseDto embedded = embeddingServiceClient
                 .embedText(new EmbedTextRequestDto(content))
-                .getData();
+                .data();
 
         float[] vector = toFloatArray(embedded.vector());
 

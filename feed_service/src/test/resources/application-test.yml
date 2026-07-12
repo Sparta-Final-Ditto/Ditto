@@ -8,7 +8,7 @@ spring:
       ddl-auto: create-drop
     show-sql: true
   kafka:
-    bootstrap-servers: localhost:9094
+    bootstrap-servers: localhost:9092
     producer:
       properties:
         max.block.ms: 1000          # 브로커 부재 시 메타데이터 조회 블로킹 상한

@@ -1,7 +1,7 @@
 package com.sparta.ditto.match.application;
 
 import com.sparta.ditto.common.exception.BusinessException;
-import com.sparta.ditto.common.response.ApiResponse;
+import com.sparta.ditto.match.infrastructure.feign.FeignEnvelope;
 import com.sparta.ditto.match.application.dto.*;
 import com.sparta.ditto.match.application.exception.MatchErrorCode;
 import com.sparta.ditto.match.application.service.*;
@@ -118,7 +118,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행", "커피"));
 
         given(hybridCandidateSearchService.searchCandidates(
@@ -163,7 +163,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
         given(matchCacheService.getUserTags(lowScoreCandidate)).willReturn(Set.of());
         given(matchCacheService.getUserTags(highScoreCandidate)).willReturn(Set.of());
@@ -209,7 +209,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
         given(matchCacheService.getUserTags(lowScoreCandidate)).willReturn(Set.of());
         given(matchCacheService.getUserTags(highScoreCandidate)).willReturn(Set.of());
@@ -222,9 +222,9 @@ class MatchServiceTest {
                 .willReturn(Set.of());
 
         given(embeddingServiceClient.getActiveUserIds())
-                .willReturn(ApiResponse.success(activeIds));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", activeIds, null));
         given(embeddingServiceClient.getProfilesBatch(any()))
-                .willReturn(ApiResponse.success(batchResponse));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", batchResponse, null));
 
         given(cosineSimilarityCalculator.calculate(myVector, lowVector)).willReturn(0.2f);
         given(cosineSimilarityCalculator.calculate(myVector, highVector)).willReturn(0.95f);
@@ -258,7 +258,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행", "커피"));
 
         // HNSW 결과 없음 → fallback 진입
@@ -269,9 +269,9 @@ class MatchServiceTest {
                 .willReturn(Set.of());
 
         given(embeddingServiceClient.getActiveUserIds())
-                .willReturn(ApiResponse.success(activeIds));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", activeIds, null));
         given(embeddingServiceClient.getProfilesBatch(any()))
-                .willReturn(ApiResponse.success(batchResponse));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", batchResponse, null));
         given(cosineSimilarityCalculator.calculate(any(), any())).willReturn(0.6f);
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("커피", "영화"));
         given(matchExplanationService.generateExplanation(any(), any(), any(), anyFloat()))
@@ -305,7 +305,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of("여행"));
         given(hybridCandidateSearchService.searchCandidates(
                 eq(userId), any(), any(), any(), any(), any(), anyInt()))
@@ -335,7 +335,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
 
         // HNSW 결과 없음 → fallback(3B) 경로로 진입
         given(hybridCandidateSearchService.searchCandidates(
@@ -345,7 +345,7 @@ class MatchServiceTest {
                 .willReturn(Set.of());
 
         given(embeddingServiceClient.getActiveUserIds())
-                .willReturn(ApiResponse.success(activeIds));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", activeIds, null));
 
         assertThatThrownBy(() -> matchService.createMatch(userId, new MatchRequestDto("NONE", false, null, null)))
                 .isInstanceOf(BusinessException.class)
@@ -648,7 +648,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
 
         given(hybridCandidateSearchService.searchCandidates(
                 any(), any(), any(), any(), any(), any(), anyInt()))
@@ -678,7 +678,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
 
         given(hybridCandidateSearchService.searchCandidates(
                 any(), any(), any(), any(), any(), any(), anyInt()))
@@ -687,7 +687,7 @@ class MatchServiceTest {
                 .willReturn(Set.of());
 
         given(embeddingServiceClient.getActiveUserIds())
-                .willReturn(ApiResponse.success(activeIds));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", activeIds, null));
         given(embeddingServiceClient.getProfilesBatch(any()))
                 .willThrow(new RuntimeException("connection refused"));
 
@@ -715,7 +715,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of());
         given(hybridCandidateSearchService.searchCandidates(
@@ -749,7 +749,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(null);
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of("여행"));
         given(hybridCandidateSearchService.searchCandidates(
@@ -783,11 +783,11 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of());
         given(userServiceClient.getMyProfile(userId))
-                .willReturn(ApiResponse.success(neighborhoodDto));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", neighborhoodDto, null));
         given(hybridCandidateSearchService.searchCandidates(
                 eq(userId), any(), any(), any(), any(), any(), anyInt()))
                 .willReturn(hnswResults);
@@ -817,7 +817,7 @@ class MatchServiceTest {
         given(matchingBitmapService.hasMatchedToday(userId)).willReturn(false);
         given(matchingLockService.acquireLock(userId)).willReturn(true);
         given(embeddingServiceClient.getUserProfile(userId))
-                .willReturn(ApiResponse.success(myProfile));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", myProfile, null));
         given(matchCacheService.getUserTags(userId)).willReturn(Set.of());
         given(matchCacheService.getUserTags(candidateId)).willReturn(Set.of());
         given(userServiceClient.getMyProfile(userId))

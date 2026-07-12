@@ -34,6 +34,8 @@ import com.sparta.ditto.feed.presentation.dto.response.UserPostsResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -97,9 +99,10 @@ public class PostController {
     @PostMapping
     public ResponseEntity<ApiResponse<CreatePostResponse>> createPost(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Nickname") String nickname,
+            @RequestHeader("X-User-Nickname") String encodedNickname,
             @Valid @RequestBody CreatePostRequest request
     ) {
+        String nickname = decodeNickname(encodedNickname);
         List<CreatePostCommand.MediaFileItem> mediaFileItems = request.mediaFiles() != null
                 ? request.mediaFiles().stream()
                         .map(m -> new CreatePostCommand.MediaFileItem(
@@ -128,10 +131,10 @@ public class PostController {
     @PostMapping("/{postId}/likes")
     public ResponseEntity<ApiResponse<LikeResponse>> addLike(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Nickname") String nickname,
+            @RequestHeader("X-User-Nickname") String encodedNickname,
             @PathVariable UUID postId
     ) {
-        LikeResult result = postInteractionFacade.addLike(userId, postId, nickname);
+        LikeResult result = postInteractionFacade.addLike(userId, postId, decodeNickname(encodedNickname));
         return ResponseEntity.ok(ApiResponse.success(LikeResponse.from(result)));
     }
 
@@ -239,13 +242,18 @@ public class PostController {
     @PostMapping("/{postId}/comments")
     public ResponseEntity<ApiResponse<CommentResponse>> createComment(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestHeader("X-User-Nickname") String nickname,
+            @RequestHeader("X-User-Nickname") String encodedNickname,
             @PathVariable UUID postId,
             @Valid @RequestBody CreateCommentRequest request
     ) {
         CommentResult result = postInteractionFacade.createComment(
-                userId, nickname, postId, new CreateCommentCommand(request.content()));
+                userId, decodeNickname(encodedNickname), postId, new CreateCommentCommand(request.content()));
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.created(CommentResponse.from(result)));
+    }
+
+    // 게이트웨이가 HTTP 헤더로 넘기며 URL 인코딩한 닉네임을 원래 문자열로 복원한다.
+    private static String decodeNickname(String encodedNickname) {
+        return URLDecoder.decode(encodedNickname, StandardCharsets.UTF_8);
     }
 }

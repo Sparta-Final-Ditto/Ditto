@@ -2,6 +2,8 @@ package com.sparta.ditto.gateway.filter;
 
 import com.sparta.ditto.gateway.util.JwtUtil;
 import io.jsonwebtoken.Claims;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -53,12 +55,17 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         Claims claims = jwtUtil.parseClaims(token);
+        String nickname = claims.get(JwtUtil.CLAIM_NICKNAME, String.class);
 
         ServerWebExchange modifiedExchange = exchange.mutate()
                 .request(r -> {
                     r.header("X-User-Id", claims.getSubject());
                     r.header("X-User-Role", claims.get(JwtUtil.CLAIM_ROLE, String.class));
-                    r.header("X-User-Nickname", claims.get(JwtUtil.CLAIM_NICKNAME, String.class));
+                    // HTTP 헤더는 기본적으로 ISO-8859-1로 처리되어 한글 등 non-ASCII 닉네임이
+                    // 깨지므로, URL 인코딩해서 전달하고 수신 측(feed_service)에서 디코딩한다.
+                    if (nickname != null) {
+                        r.header("X-User-Nickname", URLEncoder.encode(nickname, StandardCharsets.UTF_8));
+                    }
                 })
                 .build();
 
