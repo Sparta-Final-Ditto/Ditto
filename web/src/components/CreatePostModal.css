@@ -1,0 +1,29 @@
+.create-post-card{
+  background:#fff;border-radius:18px;padding:26px;width:100%;max-width:460px;
+  max-height:86vh;overflow-y:auto;box-shadow:0 20px 60px rgba(18,20,15,.2);
+}
+.create-post-card h2{font-family:var(--fd);font-size:19px;font-weight:700;margin:0 0 4px}
+.create-post-card > p{font-size:12.5px;color:var(--im);margin:0 0 20px}
+.create-post-card .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+.create-post-card label{font-size:12.5px;font-weight:600;color:var(--im)}
+.create-post-card textarea,.create-post-card input[type="text"],.create-post-card select{
+  font-family:var(--fk);font-size:13.5px;padding:10px 12px;
+  border:1px solid var(--border);border-radius:10px;outline:none;resize:none;
+}
+.create-post-card textarea:focus,.create-post-card input[type="text"]:focus{border-color:var(--green)}
+.create-post-card .checkbox-row{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink)}
+.create-post-loc-status{font-size:12px;margin-top:2px}
+.create-post-loc-status.ok{color:var(--green)}
+.create-post-loc-status.denied{color:#b3402b}
+.create-post-err{
+  background:rgba(179,64,43,.08);color:#b3402b;font-size:12.5px;
+  padding:10px 12px;border-radius:10px;margin-bottom:14px;
+}
+.create-post-actions{display:flex;gap:8px;margin-top:6px}
+.create-post-cancel,.create-post-submit{
+  flex:1;font-family:var(--fk);font-size:13.5px;font-weight:600;padding:11px;
+  border-radius:10px;border:none;cursor:pointer;transition:opacity .15s;
+}
+.create-post-cancel{background:var(--bg2);color:var(--im)}
+.create-post-submit{background:var(--green);color:#fff}
+.create-post-submit:disabled,.create-post-cancel:disabled{opacity:.6;cursor:not-allowed}

@@ -191,7 +191,7 @@ public class MatchExplanationService {
     private float[] embedText(String text) {
         EmbedTextResponseDto response = embeddingServiceClient
                 .embedText(new EmbedTextRequestDto(text))
-                .getData();
+                .data();
 
         List<Float> vectorList = response.vector();
         float[] vector = new float[vectorList.size()];

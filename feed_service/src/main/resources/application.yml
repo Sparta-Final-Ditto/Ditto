@@ -1,6 +1,15 @@
 server:
   port: 8082
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, circuitbreakers, metrics
+  health:
+    circuitbreakers:
+      enabled: true
+
 spring:
   application:
     name: feed-service
@@ -15,16 +24,37 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_batch_fetch_size: 100 # LAZY 컬렉션(mediaList, tags) N+1 방지 — IN 절 일괄 로딩
     show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   data:
     redis:
       host: ${REDIS_HOST}
       port: 6379
+      timeout: 500ms # Redis 지연 장애 시 빠른 Feign fall-through (Lettuce 기본 60초 방지)
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all # Outbox 이벤트 유실 방지 — 리더+ISR 팔로워 확인 후 성공 처리
+      retries: 3
+      properties:
+        enable.idempotence: true # 재시도 시 중복 발행 방지
+        delivery.timeout.ms: 10000
+        request.timeout.ms: 5000
+  cloud:
+    openfeign:
+      client:
+        config:
+          match-service:
+            connect-timeout: 500
+            read-timeout: 1000
+          user-service:
+            connect-timeout: 500
+            read-timeout: 1000
 
 cloud:
   aws:
@@ -35,3 +65,69 @@ cloud:
     credentials:
       access-key: ${AWS_ACCESS_KEY}
       secret-key: ${AWS_SECRET_KEY}
+
+app:
+  cache:
+    followings-ttl: 3m
+    recommendations-ttl: 10m
+  cloudfront:
+    domain: ${CLOUDFRONT_DOMAIN}
+  kakao:
+    api-key: ${APP_KAKAO_API_KEY}
+  matching-service:
+    base-url: ${MATCHING_SERVICE_URL:http://match-service:8083}
+    timeout-ms: 1000
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://user-service:8081}
+    timeout-ms: 1000
+  outbox:
+    publish:
+      interval-ms: 5000
+      batch-size: 100
+    monitor:
+      interval-ms: 60000
+    replay:
+      interval-ms: 3600000
+      batch-size: 100
+  post-hard-delete:
+    retention-days: 30
+    chunk-size: 100
+    cron: "0 0 4 * * *"
+
+resilience4j:
+  circuitbreaker:
+    circuit-breaker-aspect-order: 1
+    instances:
+      matchServiceClient:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 30
+        minimum-number-of-calls: 20
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 700ms
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+      userServiceClient:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 30
+        minimum-number-of-calls: 20
+        failure-rate-threshold: 50
+        slow-call-rate-threshold: 50
+        slow-call-duration-threshold: 700ms
+        wait-duration-in-open-state: 15s
+        permitted-number-of-calls-in-half-open-state: 5
+        automatic-transition-from-open-to-half-open-enabled: true
+  retry:
+    retry-aspect-order: 2
+    instances:
+      matchServiceClient:
+        max-attempts: 2
+        wait-duration: 100ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+      userServiceClient:
+        max-attempts: 2
+        wait-duration: 100ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
