@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://www.notion.so/1-Ditto-bd197cddd34783638bfa018174019d09">
+  <a href="https://www.notion.so/teamsparta/1-Ditto-3962dc3ef51480aead30eb1c9cf6c0f5?pvs=25">
     <img src="https://img.shields.io/badge/Project%20Brochure-Notion-000000?style=for-the-badge&logo=notion&logoColor=white" alt="Project Brochure">
   </a>
 </p>
@@ -78,8 +78,6 @@ Ditto는 스펙이나 외형 중심의 매칭이 아니라, 사용자가 직접 
 ## 🏗️ 아키텍처
 
 ### 배포/인프라 구성도
-
-> 브로셔 기준 인프라 구성도입니다. 서비스별 로컬 포트와 최신 실행 기준은 위의 [서비스 구성](#서비스-구성) 표를 기준으로 확인합니다.
 
 <p align="center">
   <img src="docs/assets/infra_architecture.png" alt="Infrastructure Architecture" width="850">
