@@ -26,6 +26,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         default_batch_fetch_size: 100 # LAZY 컬렉션(mediaList, tags) N+1 방지 — IN 절 일괄 로딩
     show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   data:
     redis:
       host: ${REDIS_HOST}
@@ -70,12 +73,12 @@ app:
   cloudfront:
     domain: ${CLOUDFRONT_DOMAIN}
   kakao:
-    api-key: ${KAKAO_API_KEY}
+    api-key: ${APP_KAKAO_API_KEY}
   matching-service:
-    base-url: ${MATCHING_SERVICE_URL}
+    base-url: ${MATCHING_SERVICE_URL:http://match-service:8083}
     timeout-ms: 1000
   user-service:
-    base-url: ${USER_SERVICE_URL}
+    base-url: ${USER_SERVICE_URL:http://user-service:8081}
     timeout-ms: 1000
   outbox:
     publish:
