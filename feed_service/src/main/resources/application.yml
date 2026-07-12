@@ -67,6 +67,9 @@ cloud:
       secret-key: ${AWS_SECRET_KEY}
 
 app:
+  cache:
+    followings-ttl: 3m
+    recommendations-ttl: 10m
   cloudfront:
     domain: ${CLOUDFRONT_DOMAIN}
   kakao:
@@ -76,33 +79,6 @@ app:
     timeout-ms: 1000
   user-service:
     base-url: ${USER_SERVICE_URL:http://user-service:8081}
-  outbox:
-    publish:
-      interval-ms: 5000
-      batch-size: 100
-    monitor:
-      interval-ms: 60000
-    replay:
-      interval-ms: 3600000
-      batch-size: 100
-  post-hard-delete:
-    retention-days: 30
-    chunk-size: 100
-    cron: "0 0 4 * * *"
-
-app:
-  cache:
-    followings-ttl: 3m
-    recommendations-ttl: 10m
-  cloudfront:
-    domain: ${CLOUDFRONT_DOMAIN}
-  kakao:
-    api-key: ${KAKAO_API_KEY}
-  matching-service:
-    base-url: ${MATCHING_SERVICE_URL}
-    timeout-ms: 1000
-  user-service:
-    base-url: ${USER_SERVICE_URL}
     timeout-ms: 1000
   outbox:
     publish:
