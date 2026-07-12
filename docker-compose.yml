@@ -131,7 +131,7 @@ services:
       - "8090:8090"
     restart: unless-stopped
     environment:
-      DB_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST:-postgres}:5432/ditto_embedding
+      DATABASE_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST:-postgres}:5432/ditto_embedding
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
 
   assistant-service:
