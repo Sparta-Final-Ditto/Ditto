@@ -6,6 +6,18 @@
 #     `docker compose up -d` 실행
 #   - 운영: ENV_PROD 시크릿에 DB_HOST/REDIS_HOST/MONGO_HOST/KAFKA_HOST=<ditto-db private ip> 설정
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: ditto-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web-dist:/usr/share/nginx/html:ro
+    depends_on:
+      - api-gateway
+
   api-gateway:
     image: ${ECR_REGISTRY:-}ditto/api-gateway:${IMAGE_TAG:-latest}
     container_name: ditto-api-gateway
@@ -133,3 +145,26 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       ASSISTANT_LLM_PROVIDER: ${ASSISTANT_LLM_PROVIDER}
       LLM_API_KEY: ${LLM_API_KEY}
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ditto-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 5; ollama pull embeddinggemma; wait"]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q embeddinggemma"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 60s
+
+volumes:
+  ollama_data:
