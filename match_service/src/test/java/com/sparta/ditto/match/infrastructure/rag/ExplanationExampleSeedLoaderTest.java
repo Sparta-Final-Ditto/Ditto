@@ -1,11 +1,11 @@
 package com.sparta.ditto.match.infrastructure.rag;
 
-import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.EmbedTextRequestDto;
 import com.sparta.ditto.match.application.dto.EmbedTextResponseDto;
 import com.sparta.ditto.match.domain.entity.ExplanationExample;
 import com.sparta.ditto.match.domain.repository.ExplanationExampleRepository;
 import com.sparta.ditto.match.infrastructure.feign.EmbeddingServiceClient;
+import com.sparta.ditto.match.infrastructure.feign.FeignEnvelope;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -34,7 +34,7 @@ class ExplanationExampleSeedLoaderTest {
     @DisplayName("시드 데이터가 정상적으로 로드되고 저장된다")
     void run_loadsAndSavesSeeds() {
         given(embeddingServiceClient.embedText(any(EmbedTextRequestDto.class)))
-                .willReturn(ApiResponse.success(new EmbedTextResponseDto(FAKE_VECTOR, 3)));
+                .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", new EmbedTextResponseDto(FAKE_VECTOR, 3), null));
         given(explanationExampleRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
         seedLoader.run(null);

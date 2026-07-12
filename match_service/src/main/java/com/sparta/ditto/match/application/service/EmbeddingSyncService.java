@@ -125,7 +125,7 @@ public class EmbeddingSyncService {
 
         try {
             ActiveUserIdsDto activeIds = embeddingServiceClient
-                    .getActiveUserIds().getData();
+                    .getActiveUserIds().data();
 
             if (activeIds == null || activeIds.userIds().isEmpty()) {
                 log.info("[Sync] 동기화할 active 유저 없음");
@@ -141,7 +141,7 @@ public class EmbeddingSyncService {
 
                 try {
                     ProfileBatchResponseDto response = embeddingServiceClient
-                            .getProfilesBatch(new ProfileBatchRequestDto(batch)).getData();
+                            .getProfilesBatch(new ProfileBatchRequestDto(batch)).data();
 
                     for (UserProfileEmbeddingDto profile : response.profiles()) {
                         float[] vector = profile.todayVector() != null
@@ -190,7 +190,7 @@ public class EmbeddingSyncService {
 
     private String fetchNeighborhood(UUID userId) {
         try {
-            UserNeighborhoodDto profile = userServiceClient.getMyProfile(userId).getData();
+            UserNeighborhoodDto profile = userServiceClient.getMyProfile(userId).data();
             return profile != null ? profile.neighborhood() : null;
         } catch (Exception e) {
             log.warn("[Sync] 동네 정보 조회 실패 userId={}", userId);

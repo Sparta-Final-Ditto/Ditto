@@ -1,9 +1,9 @@
 package com.sparta.ditto.match.application;
 
-import com.sparta.ditto.common.response.ApiResponse;
 import com.sparta.ditto.match.application.dto.UserPublicProfileDto;
 import com.sparta.ditto.match.application.service.HybridCandidateSearchService;
 import com.sparta.ditto.match.application.service.VectorSearchService;
+import com.sparta.ditto.match.infrastructure.feign.FeignEnvelope;
 import com.sparta.ditto.match.infrastructure.feign.UserServiceClient;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,9 +46,9 @@ class HybridCandidateSearchServiceTest {
             UUID userId = UUID.randomUUID();
             given(vectorSearchService.hasSyncedData()).willReturn(false);
             given(userServiceClient.getFollowings(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(userServiceClient.getBlockedUsers(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
 
             LinkedHashMap<UUID, Float> result = hybridCandidateSearchService.searchCandidates(
                     userId, new float[]{0.1f}, "NONE", null, null, null, 50);
@@ -70,9 +70,9 @@ class HybridCandidateSearchServiceTest {
 
             given(vectorSearchService.hasSyncedData()).willReturn(true);
             given(userServiceClient.getFollowings(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(userServiceClient.getBlockedUsers(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(vectorSearchService.searchSimilarUsers(eq(userId), any(), any(), eq(50)))
                     .willReturn(hnswResults);
 
@@ -94,9 +94,9 @@ class HybridCandidateSearchServiceTest {
 
             given(vectorSearchService.hasSyncedData()).willReturn(true);
             given(userServiceClient.getFollowings(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(userServiceClient.getBlockedUsers(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(vectorSearchService.searchWithAllFilters(
                     eq(userId), any(), any(), eq("MALE"), eq(20), eq(30), eq("서울 성동구"), eq(50)))
                     .willReturn(hnswResults);
@@ -116,9 +116,9 @@ class HybridCandidateSearchServiceTest {
 
             given(vectorSearchService.hasSyncedData()).willReturn(true);
             given(userServiceClient.getFollowings(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(userServiceClient.getBlockedUsers(userId))
-                    .willReturn(ApiResponse.success(List.<UserPublicProfileDto>of()));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", List.<UserPublicProfileDto>of(), null));
             given(vectorSearchService.searchSimilarUsers(eq(userId), any(), any(), eq(50)))
                     .willReturn(new LinkedHashMap<>());
 
@@ -141,11 +141,11 @@ class HybridCandidateSearchServiceTest {
             UUID blocked = UUID.randomUUID();
 
             given(userServiceClient.getFollowings(userId)).willReturn(
-                    ApiResponse.success(List.of(new UserPublicProfileDto(
-                            following, "nick", null, null))));
+                    new FeignEnvelope<>(200, null, "SUCCESS", List.of(new UserPublicProfileDto(
+                            following, "nick", null, null)), null));
             given(userServiceClient.getBlockedUsers(userId)).willReturn(
-                    ApiResponse.success(List.of(new UserPublicProfileDto(
-                            blocked, "nick2", null, null))));
+                    new FeignEnvelope<>(200, null, "SUCCESS", List.of(new UserPublicProfileDto(
+                            blocked, "nick2", null, null)), null));
 
             Set<UUID> result = hybridCandidateSearchService.buildExcludeIds(userId);
 
@@ -161,8 +161,8 @@ class HybridCandidateSearchServiceTest {
             given(userServiceClient.getFollowings(userId))
                     .willThrow(new RuntimeException("user-service down"));
             given(userServiceClient.getBlockedUsers(userId)).willReturn(
-                    ApiResponse.success(List.of(new UserPublicProfileDto(
-                            blocked, "nick", null, null))));
+                    new FeignEnvelope<>(200, null, "SUCCESS", List.of(new UserPublicProfileDto(
+                            blocked, "nick", null, null)), null));
 
             Set<UUID> result = hybridCandidateSearchService.buildExcludeIds(userId);
 
@@ -176,8 +176,8 @@ class HybridCandidateSearchServiceTest {
             UUID following = UUID.randomUUID();
 
             given(userServiceClient.getFollowings(userId)).willReturn(
-                    ApiResponse.success(List.of(new UserPublicProfileDto(
-                            following, "nick", null, null))));
+                    new FeignEnvelope<>(200, null, "SUCCESS", List.of(new UserPublicProfileDto(
+                            following, "nick", null, null)), null));
             given(userServiceClient.getBlockedUsers(userId))
                     .willThrow(new RuntimeException("user-service down"));
 
@@ -192,9 +192,9 @@ class HybridCandidateSearchServiceTest {
             UUID userId = UUID.randomUUID();
 
             given(userServiceClient.getFollowings(userId))
-                    .willReturn(ApiResponse.success(null));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", null, null));
             given(userServiceClient.getBlockedUsers(userId))
-                    .willReturn(ApiResponse.success(null));
+                    .willReturn(new FeignEnvelope<>(200, null, "SUCCESS", null, null));
 
             Set<UUID> result = hybridCandidateSearchService.buildExcludeIds(userId);
 
