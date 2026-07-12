@@ -62,6 +62,7 @@ services:
       POSTGRES_USER: ${db_username}
       POSTGRES_PASSWORD: ${db_password}
       POSTGRES_DB: ditto_chat
+    command: postgres -c max_connections=200 -c shared_buffers=256MB
     volumes:
       - /data/postgresql:/var/lib/postgresql/data
       - /opt/ditto-db/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
