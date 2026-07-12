@@ -1,0 +1,36 @@
+# 로컬 개발용 오버라이드. docker-compose.yml과 같은 디렉토리에 있으면 자동으로 병합됩니다.
+# `docker compose up --build` 실행 시 ECR pull 대신 로컬 소스로 이미지를 빌드합니다.
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: api-gateway/Dockerfile
+
+  user-service:
+    build:
+      context: .
+      dockerfile: user_service/Dockerfile
+
+  feed-service:
+    build:
+      context: .
+      dockerfile: feed_service/Dockerfile
+
+  match-service:
+    build:
+      context: .
+      dockerfile: match_service/Dockerfile
+
+  chat-service:
+    build:
+      context: .
+      dockerfile: chat_service/Dockerfile
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: notification_service/Dockerfile
+
+  embedding-service:
+    build:
+      context: ./embedding_service
