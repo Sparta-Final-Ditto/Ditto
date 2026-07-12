@@ -11,12 +11,14 @@ services:
     container_name: ditto-api-gateway
     ports:
       - "8080:8080"
+    restart: unless-stopped
     environment:
       JWT_SECRET: ${JWT_SECRET}
       USER_SERVICE_URL: http://user-service:8081
       FEED_SERVICE_URL: http://feed-service:8082
       MATCH_SERVICE_URL: http://match-service:8083
       CHAT_SERVICE_URL: http://chat-service:8084
+      CHAT_WEBSOCKET_URL: ws://chat-service:8084
       NOTIFICATION_SERVICE_URL: http://notification-service:8085
       ASSISTANT_SERVICE_URL: http://assistant-service:8086
     depends_on:
@@ -34,6 +36,7 @@ services:
       # 로컬 개발 편의용 포트 공개입니다.
       # 운영 환경에서는 user-service를 외부에 직접 노출하지 않고 gateway/internal network로만 접근해야 합니다.
       - "8081:8081"
+    restart: unless-stopped
     environment:
       DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_user
       DB_USERNAME: ${DB_USERNAME}
@@ -47,6 +50,7 @@ services:
     container_name: ditto-feed-service
     ports:
       - "8082:8082"
+    restart: unless-stopped
     environment:
       DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_feed
       DB_USERNAME: ${DB_USERNAME}
@@ -56,12 +60,15 @@ services:
       S3_BUCKET: ${S3_BUCKET}
       AWS_ACCESS_KEY: ${AWS_ACCESS_KEY}
       AWS_SECRET_KEY: ${AWS_SECRET_KEY}
+      CLOUDFRONT_DOMAIN: ${CLOUDFRONT_DOMAIN}
+      APP_KAKAO_API_KEY: ${APP_KAKAO_API_KEY}
 
   match-service:
     image: ${ECR_REGISTRY:-}ditto/match-service:${IMAGE_TAG:-latest}
     container_name: ditto-match-service
     ports:
       - "8083:8083"
+    restart: unless-stopped
     environment:
       DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_match
       DB_USERNAME: ${DB_USERNAME}
@@ -78,6 +85,7 @@ services:
     container_name: ditto-chat-service
     ports:
       - "8084:8084"
+    restart: unless-stopped
     environment:
       DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_chat
       DB_USERNAME: ${DB_USERNAME}
@@ -95,7 +103,11 @@ services:
     container_name: ditto-notification-service
     ports:
       - "8085:8085"
+    restart: unless-stopped
     environment:
+      DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_notification
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: ${REDIS_HOST:-redis}
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
 
@@ -104,6 +116,7 @@ services:
     container_name: ditto-embedding-service
     ports:
       - "8090:8090"
+    restart: unless-stopped
     environment:
       DB_URL: postgresql+asyncpg://${DB_USERNAME}:${DB_PASSWORD}@${DB_HOST:-postgres}:5432/ditto_embedding
       KAFKA_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka}:9092
@@ -113,6 +126,7 @@ services:
     container_name: ditto-assistant-service
     ports:
       - "8086:8086"
+    restart: unless-stopped
     environment:
       DB_URL: jdbc:postgresql://${DB_HOST:-postgres}:5432/ditto_assistant
       DB_USERNAME: ${DB_USERNAME}
