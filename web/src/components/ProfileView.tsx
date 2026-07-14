@@ -41,6 +41,7 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
   const [blockBusyIds, setBlockBusyIds] = useState<Set<string>>(new Set());
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const [headerFollowBusy, setHeaderFollowBusy] = useState(false);
+  const [followActionError, setFollowActionError] = useState<string | null>(null);
 
   useEffect(() => { setSub('posts'); }, [userId]);
 
@@ -74,9 +75,10 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
   }, [sub, fetchPosts]);
 
   // 팔로워/팔로잉은 상단 통계 숫자에도 쓰이므로 탭 전환과 무관하게 미리 불러온다.
-  useEffect(() => {
+  // 팔로우/언팔로우 액션 이후에도 재호출해서 카운트·목록을 최신 상태로 맞춘다.
+  const fetchFollowLists = useCallback(() => {
     setFollowLoading(true);
-    Promise.all([
+    return Promise.all([
       apiClient.get<PublicProfile[]>(`/api/v1/users/${userId}/followers`),
       apiClient.get<PublicProfile[]>(`/api/v1/users/${userId}/followings`),
     ])
@@ -90,6 +92,8 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
       })
       .finally(() => setFollowLoading(false));
   }, [userId]);
+
+  useEffect(() => { fetchFollowLists(); }, [fetchFollowLists]);
 
   // 팔로우 여부는 항상 "내" 팔로잉 목록을 기준으로 판단한다(내 프로필이든 남의 프로필이든 동일).
   const fetchMyFollowings = useCallback(() => {
@@ -134,6 +138,7 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
   const toggleFollow = useCallback(async (targetId: string) => {
     const currentlyFollowing = myFollowings.some((f) => f.id === targetId);
     setFollowBusyIds((prev) => new Set(prev).add(targetId));
+    setFollowActionError(null);
     try {
       await apiClient[currentlyFollowing ? 'delete' : 'post'](`/api/v1/users/${targetId}/follow`);
       if (currentlyFollowing) {
@@ -145,12 +150,15 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
           return known ? [...prev, known] : [...prev, { id: targetId, nickname: '', profileImageUrl: null, bio: null }];
         });
       }
-    } catch {
-      // 실패하면 그냥 그대로 둔다 — 버튼을 다시 누르면 재시도된다.
+      // 버튼 상태(myFollowings)뿐 아니라 지금 보고 있는 프로필의 팔로워/팔로잉 카운트·목록도
+      // 최신 상태로 맞춘다 (예: 내 프로필의 팔로잉 탭에서 언팔로우한 사람이 계속 남아있던 문제).
+      fetchFollowLists();
+    } catch (err) {
+      setFollowActionError(err instanceof ApiError ? err.message : '팔로우 처리에 실패했어요. 다시 시도해주세요.');
     } finally {
       setFollowBusyIds((prev) => { const next = new Set(prev); next.delete(targetId); return next; });
     }
-  }, [myFollowings, followers, followings]);
+  }, [myFollowings, followers, followings, fetchFollowLists]);
 
   const toggleHeaderFollow = async () => {
     setHeaderFollowBusy(true);
@@ -205,6 +213,11 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
               </div>
             )}
           </div>
+          {followActionError && (
+            <div style={{ fontFamily: 'var(--fk)', fontSize: 12.5, color: '#b3402b', marginTop: 4 }}>
+              {followActionError}
+            </div>
+          )}
           <div className="profile-bio">
             {profile.bio || '아직 자신의 결을 소개하지 않았어요.'}
           </div>

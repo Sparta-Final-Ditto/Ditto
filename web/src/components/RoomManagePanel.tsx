@@ -100,13 +100,12 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
   const openInvite = () => {
     setInviting(true);
     setInviteSelected(new Set());
-    if (followings.length === 0) {
-      setFollowingsLoading(true);
-      apiClient.get<PublicProfile[]>(`/api/v1/users/${myUserId}/followings`)
-        .then(setFollowings)
-        .catch(() => setFollowings([]))
-        .finally(() => setFollowingsLoading(false));
-    }
+    // 패널이 열려있는 동안 팔로우 목록이 바뀔 수 있으니 열 때마다 새로 불러온다.
+    setFollowingsLoading(true);
+    apiClient.get<PublicProfile[]>(`/api/v1/users/${myUserId}/followings`)
+      .then(setFollowings)
+      .catch(() => setFollowings([]))
+      .finally(() => setFollowingsLoading(false));
   };
 
   const submitInvite = async () => {
