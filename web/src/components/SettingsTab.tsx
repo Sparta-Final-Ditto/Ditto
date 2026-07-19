@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { memo, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, ApiError } from '../lib/apiClient';
 import type { AuthTokenResponse, LocationUpdateResponse, PublicProfile } from '../types/user';
@@ -13,7 +13,7 @@ const ICONS = {
   warning: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M12 9v4M12 17h.01" /><path d="M10.3 4.3 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" /></svg>,
 };
 
-export default function SettingsTab() {
+function SettingsTab() {
   const navigate = useNavigate();
 
   // 비밀번호 변경
@@ -252,3 +252,5 @@ export default function SettingsTab() {
     </div>
   );
 }
+
+export default memo(SettingsTab);

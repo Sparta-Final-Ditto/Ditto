@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { apiClient } from '../lib/apiClient';
 import type { FeedItem, FeedPageResponse } from '../types/post';
 import CreatePostModal from './CreatePostModal';
@@ -60,7 +60,7 @@ function PostCard({ post, onSelect }: { post: FeedItem; onSelect: (postId: strin
   );
 }
 
-export default function FeedTab() {
+function FeedTab() {
   const [active, setActive] = useState<FeedType>('follow');
   const [posts, setPosts] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -142,3 +142,5 @@ export default function FeedTab() {
     </div>
   );
 }
+
+export default memo(FeedTab);

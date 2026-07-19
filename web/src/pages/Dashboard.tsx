@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react';
+import { useCallback, useState, type ReactElement } from 'react';
 import { useNavigate } from 'react-router-dom';
 import FeedTab from '../components/FeedTab';
 import MatchingTab from '../components/MatchingTab';
@@ -38,23 +38,27 @@ export default function Dashboard() {
   const userName = localStorage.getItem('userName') || '소윤';
   const myUserId = localStorage.getItem('userId') || '';
 
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
     navigate('/login');
-  };
+  }, [navigate]);
 
-  const goToTab = (key: TabKey) => {
+  const goToTab = useCallback((key: TabKey) => {
     setActiveTab(key);
     setViewingUserId(null);
-  };
+  }, []);
 
   // 팔로워/팔로잉 목록, 채팅방 참여자 등 어디서든 이 콜백으로 프로필 탭으로 드릴다운한다.
-  const handleNavigateToUser = (userId: string) => {
+  const handleNavigateToUser = useCallback((userId: string) => {
     setViewingUserId(userId === myUserId ? null : userId);
     setActiveTab('profile');
-  };
+  }, [myUserId]);
+
+  const handleBackToOwnProfile = useCallback(() => {
+    setViewingUserId(null);
+  }, []);
 
   return (
     <div className="app">
@@ -120,7 +124,7 @@ export default function Dashboard() {
               userId={viewingUserId ?? myUserId}
               currentUserId={myUserId}
               onNavigateToUser={handleNavigateToUser}
-              onBack={viewingUserId ? () => setViewingUserId(null) : undefined}
+              onBack={viewingUserId ? handleBackToOwnProfile : undefined}
             />
           )}
           {activeTab === 'settings' && <SettingsTab />}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import type { ReactElement } from 'react';
 import { apiClient } from '../lib/apiClient';
 import type { NotificationItem, NotificationListResponse, NotificationType } from '../types/notification';
@@ -25,7 +25,7 @@ interface Props {
   onRead?: () => void;
 }
 
-export default function NotificationsTab({ onRead }: Props) {
+function NotificationsTab({ onRead }: Props) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,3 +94,5 @@ export default function NotificationsTab({ onRead }: Props) {
     </div>
   );
 }
+
+export default memo(NotificationsTab);

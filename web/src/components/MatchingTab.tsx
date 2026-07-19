@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useState } from 'react';
 import { apiClient, ApiError } from '../lib/apiClient';
 import type { MatchRequest, MatchResult, RecommendationItem } from '../types/match';
 import type { PublicProfile } from '../types/user';
@@ -21,7 +21,7 @@ const fetchProfiles = async (userIds: string[]): Promise<Record<string, PublicPr
   return map;
 };
 
-export default function MatchingTab() {
+function MatchingTab() {
   const [today, setToday] = useState<MatchResult | null>(null);
   const [todayLoading, setTodayLoading] = useState(true);
   const [requestLoading, setRequestLoading] = useState(false);
@@ -230,3 +230,5 @@ export default function MatchingTab() {
     </div>
   );
 }
+
+export default memo(MatchingTab);

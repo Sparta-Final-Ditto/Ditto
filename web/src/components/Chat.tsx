@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { memo, useState, useEffect, useRef, useCallback } from 'react';
 import { Client, type IMessage } from '@stomp/stompjs';
 import { apiClient } from '../lib/apiClient';
 import NewChatModal from './NewChatModal';
@@ -43,7 +43,7 @@ interface Props {
     onNavigateToUser: (userId: string) => void;
 }
 
-export default function Chat({ onNavigateToUser }: Props) {
+function Chat({ onNavigateToUser }: Props) {
     const myUserId = localStorage.getItem('userId') || '';
     const token = localStorage.getItem('accessToken') || '';
 
@@ -370,3 +370,5 @@ export default function Chat({ onNavigateToUser }: Props) {
         </>
     );
 }
+
+export default memo(Chat);

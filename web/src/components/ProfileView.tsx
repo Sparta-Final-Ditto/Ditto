@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect, useCallback } from 'react';
 import ProfileEditForm from './ProfileEditForm';
 import ProfilePostGrid from './ProfilePostGrid';
 import ProfileUserList from './ProfileUserList';
@@ -19,7 +19,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function ProfileView({ userId, currentUserId, onNavigateToUser, onBack }: Props) {
+function ProfileView({ userId, currentUserId, onNavigateToUser, onBack }: Props) {
   const isOwn = userId === currentUserId;
 
   const [profile, setProfile] = useState<UserProfile | PublicProfile | null>(null);
@@ -325,3 +325,5 @@ export default function ProfileView({ userId, currentUserId, onNavigateToUser, o
     </div>
   );
 }
+
+export default memo(ProfileView);
