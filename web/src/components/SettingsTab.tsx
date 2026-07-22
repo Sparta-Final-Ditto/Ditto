@@ -1,7 +1,8 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, ApiError } from '../lib/apiClient';
-import type { AuthTokenResponse, LocationUpdateResponse, PublicProfile } from '../types/user';
+import { useBlocks, useToggleBlock } from '../hooks/useBlock';
+import type { AuthTokenResponse, LocationUpdateResponse } from '../types/user';
 import './ProfileTab.css';
 import './SettingsTab.css';
 
@@ -34,19 +35,12 @@ function SettingsTab() {
   const [locMessage, setLocMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   // 차단 목록
-  const [blockedUsers, setBlockedUsers] = useState<PublicProfile[]>([]);
-  const [blockedLoading, setBlockedLoading] = useState(true);
+  const { data: blockedUsers = [], isLoading: blockedLoading } = useBlocks();
+  const toggleBlockMutation = useToggleBlock();
   const [unblockBusyId, setUnblockBusyId] = useState<string | null>(null);
 
   // 회원 탈퇴
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    apiClient.get<PublicProfile[]>('/api/v1/users/me/blocks')
-      .then(setBlockedUsers)
-      .catch(() => setBlockedUsers([]))
-      .finally(() => setBlockedLoading(false));
-  }, []);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,8 +109,7 @@ function SettingsTab() {
   const unblock = async (userId: string) => {
     setUnblockBusyId(userId);
     try {
-      await apiClient.delete(`/api/v1/users/${userId}/block`);
-      setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
+      await toggleBlockMutation.mutateAsync({ targetId: userId, currentlyBlocked: true });
     } catch {
       // 실패하면 그대로 둔다.
     } finally {

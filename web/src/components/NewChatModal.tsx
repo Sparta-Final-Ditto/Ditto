@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { apiClient, ApiError } from '../lib/apiClient';
-import type { PublicProfile } from '../types/user';
+import { useFollowings } from '../hooks/useFollow';
 import type { ChatDirectRoomResponse, ChatGroupRoomResponse } from '../types/chat';
 import UserSelectList from './UserSelectList';
 import './CreatePostModal.css';
@@ -12,20 +12,12 @@ interface Props {
 
 export default function NewChatModal({ onClose, onCreated }: Props) {
   const [mode, setMode] = useState<'direct' | 'group'>('direct');
-  const [followings, setFollowings] = useState<PublicProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const myUserId = localStorage.getItem('userId') || '';
+  const { data: followings = [], isLoading: loading } = useFollowings(myUserId);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [roomName, setRoomName] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const myUserId = localStorage.getItem('userId') || '';
-    apiClient.get<PublicProfile[]>(`/api/v1/users/${myUserId}/followings`)
-      .then(setFollowings)
-      .catch(() => setFollowings([]))
-      .finally(() => setLoading(false));
-  }, []);
 
   const toggle = (userId: string) => {
     setSelected((prev) => {

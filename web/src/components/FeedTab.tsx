@@ -1,4 +1,5 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo, useState } from 'react';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import type { FeedItem, FeedPageResponse } from '../types/post';
 import CreatePostModal from './CreatePostModal';
@@ -62,33 +63,32 @@ function PostCard({ post, onSelect }: { post: FeedItem; onSelect: (postId: strin
 
 function FeedTab() {
   const [active, setActive] = useState<FeedType>('follow');
-  const [posts, setPosts] = useState<FeedItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasNext, setHasNext] = useState(false);
   const [creating, setCreating] = useState(false);
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
 
   const currentUserId = localStorage.getItem('userId') || '';
 
-  const load = useCallback((type: FeedType, after?: string | null) => {
-    setLoading(true);
-    setError(null);
-    const query = after ? `?cursor=${after}&size=20` : '?size=20';
-    apiClient.get<FeedPageResponse>(`${ENDPOINTS[type]}${query}`)
-      .then((res) => {
-        setPosts((prev) => (after ? [...prev, ...res.feeds] : res.feeds));
-        setCursor(res.nextCursor);
-        setHasNext(res.hasNext);
-      })
-      .catch(() => setError('피드를 불러오지 못했어요.'))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    data,
+    isLoading: loading,
+    error: feedError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch: refresh,
+  } = useInfiniteQuery({
+    queryKey: ['feed', active],
+    queryFn: ({ pageParam }) => {
+      const query = pageParam ? `?cursor=${pageParam}&size=20` : '?size=20';
+      return apiClient.get<FeedPageResponse>(`${ENDPOINTS[active]}${query}`);
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.nextCursor : undefined),
+  });
 
-  useEffect(() => { load(active); }, [active, load]);
-
-  const refresh = useCallback(() => load(active), [active, load]);
+  const posts: FeedItem[] = data?.pages.flatMap((p) => p.feeds) ?? [];
+  const error = feedError ? '피드를 불러오지 못했어요.' : null;
+  const loadingMore = isFetchingNextPage;
 
   return (
     <div>
@@ -118,12 +118,12 @@ function FeedTab() {
 
       {posts.map((p) => <PostCard key={p.postId} post={p} onSelect={setSelectedPostId} />)}
 
-      {hasNext && (
+      {hasNextPage && (
         <div
           style={{ textAlign: 'center', fontSize: 13, color: 'var(--im)', cursor: 'pointer', padding: '12px 0' }}
-          onClick={() => !loading && cursor && load(active, cursor)}
+          onClick={() => !loadingMore && fetchNextPage()}
         >
-          {loading ? '불러오는 중...' : '더 보기'}
+          {loadingMore ? '불러오는 중...' : '더 보기'}
         </div>
       )}
 

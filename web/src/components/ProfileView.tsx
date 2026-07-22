@@ -1,4 +1,5 @@
-import { memo, useState, useEffect, useCallback } from 'react';
+import { memo, useState, useCallback, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ProfileEditForm from './ProfileEditForm';
 import ProfilePostGrid from './ProfilePostGrid';
 import ProfileUserList from './ProfileUserList';
@@ -6,6 +7,8 @@ import PostDetailModal from './PostDetailModal';
 import ReportModal from './ReportModal';
 import CreatePostModal from './CreatePostModal';
 import { apiClient, ApiError } from '../lib/apiClient';
+import { useFollowers, useFollowings, useToggleFollow } from '../hooks/useFollow';
+import { useBlocks, useToggleBlock } from '../hooks/useBlock';
 import type { UserProfile, PublicProfile } from '../types/user';
 import type { PostItem } from '../types/post';
 import './ProfileTab.css';
@@ -21,94 +24,54 @@ interface Props {
 
 function ProfileView({ userId, currentUserId, onNavigateToUser, onBack }: Props) {
   const isOwn = userId === currentUserId;
+  const queryClient = useQueryClient();
 
-  const [profile, setProfile] = useState<UserProfile | PublicProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
 
+  // userId가 바뀌면(다른 사람 프로필로 이동) 하위 탭을 게시물로 되돌린다 — 렌더 중 조정이라 effect가 필요 없다.
+  const [prevUserId, setPrevUserId] = useState(userId);
   const [sub, setSub] = useState<SubTab>('posts');
-  const [posts, setPosts] = useState<PostItem[]>([]);
-  const [postsLoading, setPostsLoading] = useState(false);
-  const [followers, setFollowers] = useState<PublicProfile[]>([]);
-  const [followings, setFollowings] = useState<PublicProfile[]>([]);
-  const [followLoading, setFollowLoading] = useState(false);
-  const [myFollowings, setMyFollowings] = useState<PublicProfile[]>([]);
+  if (userId !== prevUserId) {
+    setPrevUserId(userId);
+    setSub('posts');
+  }
+
   const [followBusyIds, setFollowBusyIds] = useState<Set<string>>(new Set());
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [blockedIds, setBlockedIds] = useState<Set<string>>(new Set());
   const [blockBusyIds, setBlockBusyIds] = useState<Set<string>>(new Set());
   const [reportTargetId, setReportTargetId] = useState<string | null>(null);
   const [headerFollowBusy, setHeaderFollowBusy] = useState(false);
   const [followActionError, setFollowActionError] = useState<string | null>(null);
 
-  useEffect(() => { setSub('posts'); }, [userId]);
+  const profileQueryKey = ['profile', userId, isOwn];
+  const { data: profile, isLoading: loading, error: profileError } = useQuery<UserProfile | PublicProfile>({
+    queryKey: profileQueryKey,
+    queryFn: () => isOwn
+      ? apiClient.get<UserProfile>('/api/v1/users/me')
+      : apiClient.get<PublicProfile>(`/api/v1/users/${userId}`),
+  });
+  const error = profileError ? (profileError instanceof ApiError ? profileError.message : '프로필을 불러오지 못했어요.') : null;
 
-  const fetchProfile = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = isOwn
-        ? await apiClient.get<UserProfile>('/api/v1/users/me')
-        : await apiClient.get<PublicProfile>(`/api/v1/users/${userId}`);
-      setProfile(data);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : '프로필을 불러오지 못했어요.');
-    } finally {
-      setLoading(false);
-    }
-  }, [userId, isOwn]);
-
-  useEffect(() => { fetchProfile(); }, [fetchProfile]);
-
-  const fetchPosts = useCallback(() => {
-    setPostsLoading(true);
-    apiClient.get<{ posts: PostItem[] }>(`/api/v1/posts/users/${userId}`)
-      .then((res) => setPosts(res.posts))
-      .catch(() => setPosts([]))
-      .finally(() => setPostsLoading(false));
-  }, [userId]);
-
-  useEffect(() => {
-    if (sub === 'posts') fetchPosts();
-  }, [sub, fetchPosts]);
+  const { data: posts = [], isLoading: postsLoading, refetch: fetchPosts } = useQuery({
+    queryKey: ['posts', userId],
+    queryFn: () => apiClient.get<{ posts: PostItem[] }>(`/api/v1/posts/users/${userId}`).then((res) => res.posts),
+    enabled: sub === 'posts',
+  });
 
   // 팔로워/팔로잉은 상단 통계 숫자에도 쓰이므로 탭 전환과 무관하게 미리 불러온다.
-  // 팔로우/언팔로우 액션 이후에도 재호출해서 카운트·목록을 최신 상태로 맞춘다.
-  const fetchFollowLists = useCallback(() => {
-    setFollowLoading(true);
-    return Promise.all([
-      apiClient.get<PublicProfile[]>(`/api/v1/users/${userId}/followers`),
-      apiClient.get<PublicProfile[]>(`/api/v1/users/${userId}/followings`),
-    ])
-      .then(([followersData, followingsData]) => {
-        setFollowers(followersData);
-        setFollowings(followingsData);
-      })
-      .catch(() => {
-        setFollowers([]);
-        setFollowings([]);
-      })
-      .finally(() => setFollowLoading(false));
-  }, [userId]);
-
-  useEffect(() => { fetchFollowLists(); }, [fetchFollowLists]);
+  // react-query 캐시를 쓰므로 같은 userId를 다른 화면에서 이미 조회했다면 재요청하지 않는다.
+  const { data: followers = [], isLoading: followersLoading } = useFollowers(userId);
+  const { data: followings = [], isLoading: followingsLoading } = useFollowings(userId);
+  const followLoading = followersLoading || followingsLoading;
 
   // 팔로우 여부는 항상 "내" 팔로잉 목록을 기준으로 판단한다(내 프로필이든 남의 프로필이든 동일).
-  const fetchMyFollowings = useCallback(() => {
-    apiClient.get<PublicProfile[]>(`/api/v1/users/${currentUserId}/followings`)
-      .then(setMyFollowings)
-      .catch(() => setMyFollowings([]));
-  }, [currentUserId]);
+  const { data: myFollowings = [] } = useFollowings(currentUserId);
+  const toggleFollowMutation = useToggleFollow();
 
-  useEffect(() => { fetchMyFollowings(); }, [fetchMyFollowings]);
-
-  useEffect(() => {
-    apiClient.get<PublicProfile[]>('/api/v1/users/me/blocks')
-      .then((list) => setBlockedIds(new Set(list.map((u) => u.id))))
-      .catch(() => {});
-  }, []);
+  const { data: blockedUsers = [] } = useBlocks();
+  const blockedIds = useMemo(() => new Set(blockedUsers.map((u) => u.id)), [blockedUsers]);
+  const toggleBlockMutation = useToggleBlock();
 
   const isBlocked = useCallback((id: string) => blockedIds.has(id), [blockedIds]);
 
@@ -116,19 +79,13 @@ function ProfileView({ userId, currentUserId, onNavigateToUser, onBack }: Props)
     const currentlyBlocked = blockedIds.has(targetId);
     setBlockBusyIds((prev) => new Set(prev).add(targetId));
     try {
-      if (currentlyBlocked) {
-        await apiClient.delete(`/api/v1/users/${targetId}/block`);
-        setBlockedIds((prev) => { const next = new Set(prev); next.delete(targetId); return next; });
-      } else {
-        await apiClient.post(`/api/v1/users/${targetId}/block`);
-        setBlockedIds((prev) => new Set(prev).add(targetId));
-      }
+      await toggleBlockMutation.mutateAsync({ targetId, currentlyBlocked });
     } catch {
       // 실패하면 그대로 둔다 — 다시 눌러보면 재시도된다.
     } finally {
       setBlockBusyIds((prev) => { const next = new Set(prev); next.delete(targetId); return next; });
     }
-  }, [blockedIds]);
+  }, [blockedIds, toggleBlockMutation]);
 
   const isFollowing = useCallback(
     (id: string) => myFollowings.some((f) => f.id === id),
@@ -137,28 +94,19 @@ function ProfileView({ userId, currentUserId, onNavigateToUser, onBack }: Props)
 
   const toggleFollow = useCallback(async (targetId: string) => {
     const currentlyFollowing = myFollowings.some((f) => f.id === targetId);
+    const knownProfile = followers.find((f) => f.id === targetId) || followings.find((f) => f.id === targetId);
     setFollowBusyIds((prev) => new Set(prev).add(targetId));
     setFollowActionError(null);
     try {
-      await apiClient[currentlyFollowing ? 'delete' : 'post'](`/api/v1/users/${targetId}/follow`);
-      if (currentlyFollowing) {
-        setMyFollowings((prev) => prev.filter((f) => f.id !== targetId));
-      } else {
-        setMyFollowings((prev) => {
-          if (prev.some((f) => f.id === targetId)) return prev;
-          const known = followers.find((f) => f.id === targetId) || followings.find((f) => f.id === targetId);
-          return known ? [...prev, known] : [...prev, { id: targetId, nickname: '', profileImageUrl: null, bio: null }];
-        });
-      }
-      // 버튼 상태(myFollowings)뿐 아니라 지금 보고 있는 프로필의 팔로워/팔로잉 카운트·목록도
-      // 최신 상태로 맞춘다 (예: 내 프로필의 팔로잉 탭에서 언팔로우한 사람이 계속 남아있던 문제).
-      fetchFollowLists();
+      // mutateAsync가 낙관적 업데이트로 myFollowings 캐시를 즉시 갱신하고,
+      // 완료 후 이 프로필(userId)의 팔로워/팔로잉 목록도 자동으로 무효화한다.
+      await toggleFollowMutation.mutateAsync({ currentUserId, targetId, currentlyFollowing, knownProfile });
     } catch (err) {
       setFollowActionError(err instanceof ApiError ? err.message : '팔로우 처리에 실패했어요. 다시 시도해주세요.');
     } finally {
       setFollowBusyIds((prev) => { const next = new Set(prev); next.delete(targetId); return next; });
     }
-  }, [myFollowings, followers, followings, fetchFollowLists]);
+  }, [myFollowings, followers, followings, toggleFollowMutation, currentUserId]);
 
   const toggleHeaderFollow = async () => {
     setHeaderFollowBusy(true);
@@ -296,7 +244,7 @@ function ProfileView({ userId, currentUserId, onNavigateToUser, onBack }: Props)
           profile={profile as UserProfile}
           onClose={() => setEditing(false)}
           onSaved={(updated) => {
-            setProfile({ ...profile, ...updated });
+            queryClient.setQueryData(profileQueryKey, (prev: UserProfile | PublicProfile | undefined) => (prev ? { ...prev, ...updated } : prev));
             setEditing(false);
           }}
         />

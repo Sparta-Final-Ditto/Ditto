@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useState } from 'react';
+import { memo } from 'react';
 import type { ReactElement } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/apiClient';
 import type { NotificationItem, NotificationListResponse, NotificationType } from '../types/notification';
 import './NotificationsTab.css';
@@ -26,31 +27,38 @@ interface Props {
 }
 
 function NotificationsTab({ onRead }: Props) {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | null>(null);
-  const [hasNext, setHasNext] = useState(false);
+  const queryClient = useQueryClient();
+  const queryKey = ['notifications'];
 
-  const load = useCallback((after?: string | null) => {
-    setLoading(true);
-    setError(null);
-    const query = after ? `?cursor=${after}&size=20` : '?size=20';
-    apiClient.get<NotificationListResponse>(`/api/v1/notifications${query}`)
-      .then((res) => {
-        setNotifications((prev) => (after ? [...prev, ...res.notifications] : res.notifications));
-        setCursor(res.nextCursor);
-        setHasNext(res.hasNext);
-      })
-      .catch(() => setError('알림을 불러오지 못했어요.'))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    data,
+    isLoading: loading,
+    error: listError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage: loadingMore,
+  } = useInfiniteQuery({
+    queryKey,
+    queryFn: ({ pageParam }) => {
+      const query = pageParam ? `?cursor=${pageParam}&size=20` : '?size=20';
+      return apiClient.get<NotificationListResponse>(`/api/v1/notifications${query}`);
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => (lastPage.hasNext ? lastPage.nextCursor : undefined),
+  });
 
-  useEffect(() => { load(); }, [load]);
+  const notifications = data?.pages.flatMap((p) => p.notifications) ?? [];
+  const error = listError ? '알림을 불러오지 못했어요.' : null;
 
   const markRead = async (n: NotificationItem) => {
     if (n.isRead) return;
-    setNotifications((prev) => prev.map((item) => (item.notificationId === n.notificationId ? { ...item, isRead: true } : item)));
+    queryClient.setQueryData(queryKey, (old?: typeof data) => old && {
+      ...old,
+      pages: old.pages.map((page) => ({
+        ...page,
+        notifications: page.notifications.map((item) => (item.notificationId === n.notificationId ? { ...item, isRead: true } : item)),
+      })),
+    });
     try {
       await apiClient.patch(`/api/v1/notifications/${n.notificationId}/read`);
       onRead?.();
@@ -83,12 +91,12 @@ function NotificationsTab({ onRead }: Props) {
         </div>
       ))}
 
-      {hasNext && (
+      {hasNextPage && (
         <div
           style={{ textAlign: 'center', fontSize: 13, color: 'var(--im)', cursor: 'pointer', padding: '12px 0' }}
-          onClick={() => !loading && cursor && load(cursor)}
+          onClick={() => !loadingMore && fetchNextPage()}
         >
-          {loading ? '불러오는 중...' : '더 보기'}
+          {loadingMore ? '불러오는 중...' : '더 보기'}
         </div>
       )}
     </div>

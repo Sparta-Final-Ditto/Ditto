@@ -97,6 +97,9 @@ function Chat({ onNavigateToUser }: Props) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    // fetchRooms는 최초 진입 시와 새 채팅 생성 후 모두에서 쓰는 공용 refetch 함수라
+    // effect 안에서만 쓰는 별도 버전으로 쪼개지 않았다 — 마운트 시 1회만 실행된다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     useEffect(() => { fetchRooms(); }, [fetchRooms]);
 
     const roomLabel = (room: RoomSummary) =>
@@ -167,14 +170,22 @@ function Chat({ onNavigateToUser }: Props) {
         setConnected(false);
     }, []);
 
+    // 방이 바뀌면(다른 대화방 클릭) 이전 방의 메시지/스크롤 상태를 즉시 지운다 — 렌더 중 조정이라 effect가 필요 없다.
+    const [prevActiveRoomId, setPrevActiveRoomId] = useState<string | null>(null);
+    if (activeRoomId !== prevActiveRoomId) {
+        setPrevActiveRoomId(activeRoomId);
+        if (activeRoomId) {
+            setMessages([]);
+            setOldestCursor(null);
+            setHistoryLoading(true);
+            setManaging(false);
+        }
+    }
+
     // 방 전환 시 히스토리 로드 + 실시간 재연결
     useEffect(() => {
         if (!activeRoomId) return;
         let cancelled = false;
-        setMessages([]);
-        setOldestCursor(null);
-        setHistoryLoading(true);
-        setManaging(false);
 
         fetch(`/api/v1/chat/rooms/${activeRoomId}/messages?size=30`, { headers: authHeaders() })
             .then((res) => (res.ok ? res.json() : Promise.reject()))
@@ -192,6 +203,9 @@ function Chat({ onNavigateToUser }: Props) {
         // 방을 열면 이 방과 관련된 알림(새 메시지 알림 등)도 함께 읽음 처리한다.
         apiClient.post('/api/v1/notifications/read-by-room', { roomId: activeRoomId }).catch(() => {});
 
+        // disconnect()가 setConnected(false)를 동기 호출하지만, 방 전환 시 이전 WebSocket
+        // 세션을 즉시 끊고 새로 붙어야 하는 연결 생명주기 관리라 effect 밖으로 옮기기 어렵다.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         disconnect();
         connect(activeRoomId);
         return () => { cancelled = true; disconnect(); };
