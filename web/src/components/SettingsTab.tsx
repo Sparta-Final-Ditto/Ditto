@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { memo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient, ApiError } from '../lib/apiClient';
-import type { AuthTokenResponse, LocationUpdateResponse, PublicProfile } from '../types/user';
+import { useBlocks, useToggleBlock } from '../hooks/useBlock';
+import type { AuthTokenResponse, LocationUpdateResponse } from '../types/user';
 import './ProfileTab.css';
 import './SettingsTab.css';
 
@@ -13,7 +14,7 @@ const ICONS = {
   warning: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}><path d="M12 9v4M12 17h.01" /><path d="M10.3 4.3 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z" /></svg>,
 };
 
-export default function SettingsTab() {
+function SettingsTab() {
   const navigate = useNavigate();
 
   // 비밀번호 변경
@@ -34,19 +35,12 @@ export default function SettingsTab() {
   const [locMessage, setLocMessage] = useState<{ text: string; ok: boolean } | null>(null);
 
   // 차단 목록
-  const [blockedUsers, setBlockedUsers] = useState<PublicProfile[]>([]);
-  const [blockedLoading, setBlockedLoading] = useState(true);
+  const { data: blockedUsers = [], isLoading: blockedLoading } = useBlocks();
+  const toggleBlockMutation = useToggleBlock();
   const [unblockBusyId, setUnblockBusyId] = useState<string | null>(null);
 
   // 회원 탈퇴
   const [deleting, setDeleting] = useState(false);
-
-  useEffect(() => {
-    apiClient.get<PublicProfile[]>('/api/v1/users/me/blocks')
-      .then(setBlockedUsers)
-      .catch(() => setBlockedUsers([]))
-      .finally(() => setBlockedLoading(false));
-  }, []);
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -115,8 +109,7 @@ export default function SettingsTab() {
   const unblock = async (userId: string) => {
     setUnblockBusyId(userId);
     try {
-      await apiClient.delete(`/api/v1/users/${userId}/block`);
-      setBlockedUsers((prev) => prev.filter((u) => u.id !== userId));
+      await toggleBlockMutation.mutateAsync({ targetId: userId, currentlyBlocked: true });
     } catch {
       // 실패하면 그대로 둔다.
     } finally {
@@ -252,3 +245,5 @@ export default function SettingsTab() {
     </div>
   );
 }
+
+export default memo(SettingsTab);

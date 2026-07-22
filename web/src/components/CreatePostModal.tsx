@@ -17,13 +17,15 @@ export default function CreatePostModal({ onClose, onCreated }: Props) {
   const [showLocation, setShowLocation] = useState(true);
   const [files, setFiles] = useState<File[]>([]);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'ok' | 'denied'>('idle');
+  // 초기 상태를 위치 API 지원 여부로 미리 계산해두면 effect 안에서 동기적으로 setState할 필요가 없다.
+  const [locStatus, setLocStatus] = useState<'idle' | 'loading' | 'ok' | 'denied'>(
+    () => (navigator.geolocation ? 'loading' : 'denied'),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!navigator.geolocation) { setLocStatus('denied'); return; }
-    setLocStatus('loading');
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });

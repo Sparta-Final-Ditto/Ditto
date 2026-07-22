@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { memo, useState, useRef, useEffect } from 'react';
 import './ChatbotWidget.css';
 
 
@@ -7,7 +7,7 @@ interface BotMessage {
   content: string;
 }
 
-export default function ChatbotWidget() {
+function ChatbotWidget() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<BotMessage[]>([
     { role: 'bot', content: '안녕하세요! 저는 Ditto 도우미예요. 매칭 관련해서 궁금한 점 있으면 편하게 물어보세요 🙂' },
@@ -88,3 +88,5 @@ export default function ChatbotWidget() {
     </>
   );
 }
+
+export default memo(ChatbotWidget);

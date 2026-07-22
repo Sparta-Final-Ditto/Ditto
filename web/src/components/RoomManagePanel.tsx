@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, ApiError } from '../lib/apiClient';
+import { useFollowings } from '../hooks/useFollow';
 import type { PublicProfile } from '../types/user';
 import type { ChatRoomDetail, ChatRoomInviteResponse } from '../types/chat';
 import UserSelectList from './UserSelectList';
@@ -14,44 +16,41 @@ interface Props {
 }
 
 export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificationChanged, onLeft, onNavigateToUser }: Props) {
-  const [detail, setDetail] = useState<ChatRoomDetail | null>(null);
-  const [profiles, setProfiles] = useState<Record<string, PublicProfile>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const roomQueryKey = ['room-detail', roomId];
+  const [actionError, setActionError] = useState<string | null>(null);
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
   const [notifBusy, setNotifBusy] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [followings, setFollowings] = useState<PublicProfile[]>([]);
-  const [followingsLoading, setFollowingsLoading] = useState(false);
+  const { data: followings = [], isLoading: followingsLoading } = useFollowings(myUserId, { enabled: inviting });
   const [inviteSelected, setInviteSelected] = useState<Set<string>>(new Set());
   const [inviteBusy, setInviteBusy] = useState(false);
 
-  const loadDetail = () => {
-    setLoading(true);
-    apiClient.get<ChatRoomDetail>(`/api/v1/chat/rooms/${roomId}`)
-      .then(async (res) => {
-        setDetail(res);
-        const active = res.participants.filter((p) => !p.leftAt);
-        const entries = await Promise.all(
-          active.map(async (p) => {
-            try {
-              const profile = await apiClient.get<PublicProfile>(`/api/v1/users/${p.userId}`);
-              return [p.userId, profile] as const;
-            } catch {
-              return [p.userId, null] as const;
-            }
-          }),
-        );
-        const map: Record<string, PublicProfile> = {};
-        entries.forEach(([id, profile]) => { if (profile) map[id] = profile; });
-        setProfiles(map);
-      })
-      .catch(() => setError('채팅방 정보를 불러오지 못했어요.'))
-      .finally(() => setLoading(false));
-  };
+  const { data, isLoading: loading, error: roomError, refetch: loadDetail } = useQuery({
+    queryKey: roomQueryKey,
+    queryFn: async () => {
+      const res = await apiClient.get<ChatRoomDetail>(`/api/v1/chat/rooms/${roomId}`);
+      const active = res.participants.filter((p) => !p.leftAt);
+      const entries = await Promise.all(
+        active.map(async (p) => {
+          try {
+            const profile = await apiClient.get<PublicProfile>(`/api/v1/users/${p.userId}`);
+            return [p.userId, profile] as const;
+          } catch {
+            return [p.userId, null] as const;
+          }
+        }),
+      );
+      const profiles: Record<string, PublicProfile> = {};
+      entries.forEach(([id, profile]) => { if (profile) profiles[id] = profile; });
+      return { detail: res, profiles };
+    },
+  });
 
-  useEffect(() => { loadDetail(); }, [roomId]);
+  const detail = data?.detail ?? null;
+  const profiles = data?.profiles ?? {};
+  const error = actionError ?? (roomError ? '채팅방 정보를 불러오지 못했어요.' : null);
 
   const myRole = detail?.participants.find((p) => p.userId === myUserId)?.role;
   const activeParticipants = detail?.participants.filter((p) => !p.leftAt) ?? [];
@@ -62,7 +61,7 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
     try {
       const next = !detail.notificationEnabled;
       await apiClient.patch(`/api/v1/chat/rooms/${roomId}/notifications`, { enabled: next });
-      setDetail((prev) => (prev ? { ...prev, notificationEnabled: next } : prev));
+      queryClient.setQueryData(roomQueryKey, (prev: typeof data) => (prev ? { ...prev, detail: { ...prev.detail, notificationEnabled: next } } : prev));
       onNotificationChanged(next);
     } catch {
       // 실패하면 그대로 둔다.
@@ -78,7 +77,7 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
       await apiClient.delete(`/api/v1/chat/rooms/${roomId}/participants/${userId}`);
       loadDetail();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '내보내지 못했어요.');
+      setActionError(err instanceof ApiError ? err.message : '내보내지 못했어요.');
     } finally {
       setBusyUserId(null);
     }
@@ -91,7 +90,7 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
       await apiClient.patch(`/api/v1/chat/rooms/${roomId}/participants/${userId}/role`, { role: 'OWNER' });
       loadDetail();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '방장 위임에 실패했어요.');
+      setActionError(err instanceof ApiError ? err.message : '방장 위임에 실패했어요.');
     } finally {
       setBusyUserId(null);
     }
@@ -100,13 +99,6 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
   const openInvite = () => {
     setInviting(true);
     setInviteSelected(new Set());
-    if (followings.length === 0) {
-      setFollowingsLoading(true);
-      apiClient.get<PublicProfile[]>(`/api/v1/users/${myUserId}/followings`)
-        .then(setFollowings)
-        .catch(() => setFollowings([]))
-        .finally(() => setFollowingsLoading(false));
-    }
   };
 
   const submitInvite = async () => {
@@ -119,7 +111,7 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
       setInviting(false);
       loadDetail();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '초대에 실패했어요.');
+      setActionError(err instanceof ApiError ? err.message : '초대에 실패했어요.');
     } finally {
       setInviteBusy(false);
     }
@@ -132,7 +124,7 @@ export default function RoomManagePanel({ roomId, myUserId, onClose, onNotificat
       await apiClient.post(`/api/v1/chat/rooms/${roomId}/leave`);
       onLeft();
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : '나가지 못했어요.');
+      setActionError(err instanceof ApiError ? err.message : '나가지 못했어요.');
     } finally {
       setLeaveBusy(false);
     }

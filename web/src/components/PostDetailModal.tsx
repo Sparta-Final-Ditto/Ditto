@@ -11,6 +11,8 @@ interface Props {
 }
 
 export default function PostDetailModal({ postId, currentUserId, onClose, onChanged }: Props) {
+  // postId가 바뀌면(다른 게시물로 이동) 로딩 상태를 다시 켠다 — 렌더 중 조정이라 effect가 필요 없다.
+  const [prevPostId, setPrevPostId] = useState(postId);
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
@@ -18,7 +20,7 @@ export default function PostDetailModal({ postId, currentUserId, onClose, onChan
   const [likeBusy, setLikeBusy] = useState(false);
 
   const [comments, setComments] = useState<CommentSummary[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(true);
   const [commentsCursor, setCommentsCursor] = useState<string | null>(null);
   const [commentsHasNext, setCommentsHasNext] = useState(false);
   const [newComment, setNewComment] = useState('');
@@ -32,9 +34,14 @@ export default function PostDetailModal({ postId, currentUserId, onClose, onChan
   const [deleted, setDeleted] = useState(false);
   const [restoring, setRestoring] = useState(false);
 
+  if (postId !== prevPostId) {
+    setPrevPostId(postId);
+    setLoading(true);
+    setCommentsLoading(true);
+  }
+
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     apiClient.get<PostDetail>(`/api/v1/posts/${postId}`)
       .then((detail) => {
         if (cancelled) return;
@@ -51,23 +58,32 @@ export default function PostDetailModal({ postId, currentUserId, onClose, onChan
         setLiked(likes.users.some((u) => u.userId === currentUserId));
       })
       .catch(() => {});
-    return () => { cancelled = true; };
-  }, [postId, currentUserId]);
 
-  const loadComments = useCallback((cursor?: string) => {
-    setCommentsLoading(true);
-    const query = cursor ? `?cursor=${cursor}&size=20` : '?size=20';
-    apiClient.get<CommentListResponse>(`/api/v1/posts/${postId}/comments${query}`)
+    // 댓글도 게시물 상세와 별개로 최초 20개를 불러온다.
+    apiClient.get<CommentListResponse>(`/api/v1/posts/${postId}/comments?size=20`)
       .then((res) => {
-        setComments((prev) => (cursor ? [...prev, ...res.comments] : res.comments));
+        if (cancelled) return;
+        setComments(res.comments);
         setCommentsCursor(res.nextCursor);
         setCommentsHasNext(res.hasNext);
       })
-      .catch(() => { if (!cursor) setComments([]); })
+      .catch(() => { if (!cancelled) setComments([]); })
+      .finally(() => { if (!cancelled) setCommentsLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [postId, currentUserId]);
+
+  const loadMoreComments = useCallback((cursor: string) => {
+    setCommentsLoading(true);
+    apiClient.get<CommentListResponse>(`/api/v1/posts/${postId}/comments?cursor=${cursor}&size=20`)
+      .then((res) => {
+        setComments((prev) => [...prev, ...res.comments]);
+        setCommentsCursor(res.nextCursor);
+        setCommentsHasNext(res.hasNext);
+      })
+      .catch(() => {})
       .finally(() => setCommentsLoading(false));
   }, [postId]);
-
-  useEffect(() => { loadComments(); }, [loadComments]);
 
   const toggleLike = async () => {
     setLikeBusy(true);
@@ -264,7 +280,7 @@ export default function PostDetailModal({ postId, currentUserId, onClose, onChan
                 {commentsHasNext && (
                   <div
                     style={{ textAlign: 'center', fontSize: 12.5, color: 'var(--im)', cursor: 'pointer', padding: '4px 0' }}
-                    onClick={() => commentsCursor && loadComments(commentsCursor)}
+                    onClick={() => commentsCursor && loadMoreComments(commentsCursor)}
                   >
                     {commentsLoading ? '불러오는 중...' : '댓글 더 보기'}
                   </div>
