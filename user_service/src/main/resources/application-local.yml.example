@@ -18,3 +18,7 @@ jwt:
   secret: ditto-dev-secret-key-must-be-32-chars-long!!
   expiration: 86400000
   refresh-expiration: 604800000
+
+app:
+  kakao:
+    api-key: your-kakao-api-key
